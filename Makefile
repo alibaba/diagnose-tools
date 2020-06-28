@@ -13,6 +13,7 @@ devel:
 	yum install -y zlib-static
 	yum install -y libunwind
 	yum install -y libunwind-devel
+	yum install -y elfutils-libelf-devel
 	yum install -y java-1.7.0-openjdk-devel.x86_64
 	yum install -y rpm-build
 	sh ./vender/devel.sh
