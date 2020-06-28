@@ -271,7 +271,7 @@ static int symbol_walk_callback(void *data, const char *name,
 {
 	if (strcmp(name, "kallsyms_lookup_name") == 0) {
 		__kallsyms_lookup_name = (void *)addr;
-		return 0;
+		return addr;
 	}
 
 	return 0;
