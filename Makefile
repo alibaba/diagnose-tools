@@ -34,7 +34,7 @@ module:
 	/bin/cp -f SOURCE/module/diagnose.ko build/lib/`uname -r`/
 
 tools:
-	cd SOURCE/diagnose-tools; make clean; make
+	cd SOURCE/diagnose-tools; make clean; VENDER_LDFLAGS="${VENDER_LDFLAGS}" make
 
 java_agent:
 	cd SOURCE/diagnose-tools/java_agent; make
