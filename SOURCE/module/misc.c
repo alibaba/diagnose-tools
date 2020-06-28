@@ -366,8 +366,10 @@ void __diag_cgroup_name(struct task_struct *tsk, char *buf, unsigned int count, 
     if (tsk && tsk->cgroups && tsk->cgroups->subsys
             && tsk->cgroups->subsys[cgroup_id]
             && tsk->cgroups->subsys[cgroup_id]->cgroup) {
+        rcu_read_lock();
         name = cgroup_name(tsk->cgroups->subsys[cgroup_id]->cgroup);
         strncpy(buf, name, count);
+        rcu_read_unlock();
     }
 }
 
@@ -380,8 +382,11 @@ static void inline __dump_cgroups_tsk(int pre, enum diag_printk_type type, void 
 	for (i = 0; i < CGROUP_SUBSYS_COUNT; i++) {
 		if (tsk->cgroups && tsk->cgroups->subsys
 				&& tsk->cgroups->subsys[i]
-				&& tsk->cgroups->subsys[i]->cgroup)
+				&& tsk->cgroups->subsys[i]->cgroup){
+			rcu_read_lock();
 			DIAG_TRACE_PRINTK(pre, type, obj, "\t[%s]\n", cgroup_name(tsk->cgroups->subsys[i]->cgroup));
+			rcu_read_unlock();
+		}
 	}
 }
 
