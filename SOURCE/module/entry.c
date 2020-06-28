@@ -271,7 +271,7 @@ static int symbol_walk_callback(void *data, const char *name,
 {
 	if (strcmp(name, "kallsyms_lookup_name") == 0) {
 		__kallsyms_lookup_name = (void *)addr;
-		return 0;
+		return addr;
 	}
 
 	return 0;
@@ -400,7 +400,7 @@ static int __init diagnosis_init(void)
 	int i;
 
 	ret = kallsyms_on_each_symbol(symbol_walk_callback, NULL);
-	if (ret || !__kallsyms_lookup_name) {
+	if (!ret || !__kallsyms_lookup_name) {
 		ret = -EINVAL;
 		goto out;
 	}
