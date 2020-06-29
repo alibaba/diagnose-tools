@@ -9,6 +9,7 @@
  *
  */
 
+#include <linux/version.h>
 #include <linux/hrtimer.h>
 #include <linux/kernel.h>
 #include <linux/kallsyms.h>
@@ -27,7 +28,9 @@
 #include <linux/rbtree.h>
 #include <linux/cpu.h>
 #include <linux/syscalls.h>
-
+#if KERNEL_VERSION(4, 19, 0) <= LINUX_VERSION_CODE
+#include <linux/sched/mm.h>
+#endif
 #include <asm/irq_regs.h>
 
 #include "internal.h"
