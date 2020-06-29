@@ -88,4 +88,5 @@ else
 	    rm -rf mm/*.o mm/*.mod.c mm/*.mod.o mm/*.ko* mm/Module.symvers mm/modules.order mm/.*.cmd
 	    rm -rf pub/*.o pub/*.mod.c pub/*.mod.o pub/*.ko* pub/Module.symvers pub/modules.order pub/.*.cmd
 	    rm -rf test/*.o test/*.mod.c test/*.mod.o test/*.ko* test/Module.symvers test/modules.order test/.*.cmd
+	    rm -rf .tmp_versions
 endif
