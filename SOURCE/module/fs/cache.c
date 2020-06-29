@@ -83,8 +83,7 @@ static void (*orig___iget)(struct inode *inode);
 static void (*orig_iterate_supers)(void (*f)(struct super_block *, void *), void *arg);
 #else
 static void (*orig_iterate_supers)(void (*f)(struct super_block *, void *), void *arg);
-#if !defined(CENTOS_3_10_862) && !defined(CENTOS_3_10_957_21_3) && !defined(CENTOS_3_10_1062_1_2) \
-	&& !defined(CENTOS_3_10_1062_9_1)
+#if !defined(CENTOS_3_10_862) && !defined(CENTOS_3_10_957) && !defined(CENTOS_3_10_1062)
 static spinlock_t *orig_inode_sb_list_lock;
 #endif
 #endif
@@ -189,8 +188,7 @@ static void dump_sb(struct super_block *sb, void *arg)
 #else
 	struct inode *inode, *toput_inode = NULL;
 
-#if !defined(CENTOS_3_10_862) && !defined(CENTOS_3_10_957_21_3) && !defined(CENTOS_3_10_1062_1_2) \
-	&& !defined(CENTOS_3_10_1062_9_1)
+#if !defined(CENTOS_3_10_862) && !defined(CENTOS_3_10_957) && !defined(CENTOS_3_10_1062)
 	spin_lock(orig_inode_sb_list_lock);
 #else
 	spin_lock(&sb->s_inode_list_lock);
@@ -204,8 +202,7 @@ static void dump_sb(struct super_block *sb, void *arg)
 		}
 		orig___iget(inode);
 		spin_unlock(&inode->i_lock);
-#if !defined(CENTOS_3_10_862) && !defined(CENTOS_3_10_957_21_3) && !defined(CENTOS_3_10_1062_1_2) \
-	&& !defined(CENTOS_3_10_1062_9_1)
+#if !defined(CENTOS_3_10_862) && !defined(CENTOS_3_10_957) && !defined(CENTOS_3_10_1062)
 		spin_unlock(orig_inode_sb_list_lock);
 #else
 		spin_unlock(&sb->s_inode_list_lock);
@@ -215,15 +212,13 @@ static void dump_sb(struct super_block *sb, void *arg)
 
 		iput(toput_inode);
 		toput_inode = inode;
-#if !defined(CENTOS_3_10_862) && !defined(CENTOS_3_10_957_21_3) && !defined(CENTOS_3_10_1062_1_2) \
-	&& !defined(CENTOS_3_10_1062_9_1)
+#if !defined(CENTOS_3_10_862) && !defined(CENTOS_3_10_957) && !defined(CENTOS_3_10_1062)
 		spin_lock(orig_inode_sb_list_lock);
 #else
 		spin_lock(&sb->s_inode_list_lock);
 #endif
 	}
-#if !defined(CENTOS_3_10_862) && !defined(CENTOS_3_10_957_21_3) && !defined(CENTOS_3_10_1062_1_2) \
-	&& !defined(CENTOS_3_10_1062_9_1)
+#if !defined(CENTOS_3_10_862) && !defined(CENTOS_3_10_957) && !defined(CENTOS_3_10_1062)
 		spin_unlock(orig_inode_sb_list_lock);
 #else
 		spin_unlock(&sb->s_inode_list_lock);
@@ -315,8 +310,7 @@ static void drop_sb(struct super_block *sb, void *arg)
 #else
 	struct inode *inode, *toput_inode = NULL;
 
-#if !defined(CENTOS_3_10_862) && !defined(CENTOS_3_10_957_21_3) && !defined(CENTOS_3_10_1062_1_2) \
-	&& !defined(CENTOS_3_10_1062_9_1)
+#if !defined(CENTOS_3_10_862) && !defined(CENTOS_3_10_957) && !defined(CENTOS_3_10_1062)
 	spin_lock(orig_inode_sb_list_lock);
 #else
 	spin_lock(&sb->s_inode_list_lock);
@@ -330,8 +324,7 @@ static void drop_sb(struct super_block *sb, void *arg)
 		}
 		orig___iget(inode);
 		spin_unlock(&inode->i_lock);
-#if !defined(CENTOS_3_10_862) && !defined(CENTOS_3_10_957_21_3) && !defined(CENTOS_3_10_1062_1_2) \
-	&& !defined(CENTOS_3_10_1062_9_1)
+#if !defined(CENTOS_3_10_862) && !defined(CENTOS_3_10_957) && !defined(CENTOS_3_10_1062)
 		spin_unlock(orig_inode_sb_list_lock);
 #else
 		spin_unlock(&sb->s_inode_list_lock);
@@ -343,8 +336,7 @@ static void drop_sb(struct super_block *sb, void *arg)
 
 		iput(toput_inode);
 		toput_inode = inode;
-#if !defined(CENTOS_3_10_862) && !defined(CENTOS_3_10_957_21_3) && !defined(CENTOS_3_10_1062_1_2) \
-	&& !defined(CENTOS_3_10_1062_9_1)
+#if !defined(CENTOS_3_10_862) && !defined(CENTOS_3_10_957) && !defined(CENTOS_3_10_1062)
 		spin_lock(orig_inode_sb_list_lock);
 #else
 		spin_lock(&sb->s_inode_list_lock);
@@ -353,8 +345,7 @@ static void drop_sb(struct super_block *sb, void *arg)
 		if (inode == arg)
 			break;
 	}
-#if !defined(CENTOS_3_10_862) && !defined(CENTOS_3_10_957_21_3) && !defined(CENTOS_3_10_1062_1_2) \
-	&& !defined(CENTOS_3_10_1062_9_1)
+#if !defined(CENTOS_3_10_862) && !defined(CENTOS_3_10_957) && !defined(CENTOS_3_10_1062)
 	spin_unlock(orig_inode_sb_list_lock);
 #else
 	spin_unlock(&sb->s_inode_list_lock);
@@ -486,8 +477,7 @@ static int lookup_syms(void)
 #else
 	LOOKUP_SYMS(iterate_supers);
 
-#if !defined(CENTOS_3_10_862) && !defined(CENTOS_3_10_957_21_3) && !defined(CENTOS_3_10_1062_1_2) \
-	&& !defined(CENTOS_3_10_1062_9_1)
+#if !defined(CENTOS_3_10_862) && !defined(CENTOS_3_10_957) && !defined(CENTOS_3_10_1062)
 	LOOKUP_SYMS(inode_sb_list_lock);
 #endif
 
