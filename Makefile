@@ -51,6 +51,7 @@ deb:
 	#sudo dpkg -i diagnose-tools*.deb
 
 test:
+	modprobe ext4
 	insmod SOURCE/module/diagnose.ko || echo ""
 	sh ./SOURCE/script/test.sh
 	rmmod diagnose
