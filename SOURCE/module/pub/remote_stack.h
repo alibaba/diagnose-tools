@@ -8,7 +8,7 @@
  *
  * Author: Baoyou Xie <baoyou.xie@linux.alibaba.com>
  *
- * License terms: GNU General Public License (GPL) version 2
+ * License terms: GNU General Public License (GPL) version 3
  */
 
 #ifndef __DIAG_PUB_REMOTE_STACK_H

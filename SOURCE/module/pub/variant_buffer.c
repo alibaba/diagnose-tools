@@ -6,7 +6,7 @@
  *
  * 作者： Baoyou Xie <baoyou.xie@linux.alibaba.com>
  *
- * License terms: GNU General Public License (GPL) version 2
+ * License terms: GNU General Public License (GPL) version 3
  */
 
 #include <linux/vmalloc.h>
