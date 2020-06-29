@@ -188,7 +188,7 @@ int alidiagnose_symbols_init(void)
 		return ret;
 
 	orig_ptype_all = (void *)__kallsyms_lookup_name("ptype_all");
-        if (!orig_ptype_all)
+	if (!orig_ptype_all)
                 return ret;
 
 	return 0;
