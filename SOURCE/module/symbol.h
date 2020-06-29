@@ -96,6 +96,9 @@ extern void (*orig_put_files_struct)(struct files_struct *files);
 struct dentry;
 struct inode;
 extern struct dentry * (*orig_d_find_any_alias)(struct inode *inode);
+extern int (*orig_task_statm)(struct mm_struct *mm,
+			 unsigned long *shared, unsigned long *text,
+			 unsigned long *data, unsigned long *resident);
 
 int alidiagnose_symbols_init(void);
 void alidiagnose_symbols_exit(void);

@@ -81,6 +81,10 @@ struct page *(*orig_follow_page)(struct vm_area_struct *vma, unsigned long addre
 
 struct dentry * (*orig_d_find_any_alias)(struct inode *inode);
 
+int (*orig_task_statm)(struct mm_struct *mm,
+			 unsigned long *shared, unsigned long *text,
+			 unsigned long *data, unsigned long *resident);
+
 atomic64_t xby_debug_counter1;
 atomic64_t xby_debug_counter2;
 atomic64_t xby_debug_counter3;
@@ -130,6 +134,8 @@ static int lookup_syms(void)
 #else
 	LOOKUP_SYMS(follow_page_mask);
 #endif
+	LOOKUP_SYMS(task_statm);
+
 	orig_d_find_any_alias = (void *)__kallsyms_lookup_name("d_find_any_alias");
 
 	orig_find_task_by_vpid = (void *)__kallsyms_lookup_name("find_task_by_vpid");

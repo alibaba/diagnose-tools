@@ -50,12 +50,10 @@
 #if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
 #define diag_record_stamp ali_reserved5
 #define diag_exec ali_reserved6
-#define diag_pages ali_reserved7
 #define diag_wild ali_reserved8
 #elif KERNEL_VERSION(3, 10, 0) <= LINUX_VERSION_CODE
 #define diag_record_stamp rh_reserved5
 #define diag_exec rh_reserved6
-#define diag_pages rh_reserved7
 #define diag_wild rh_reserved8
 #endif
 
@@ -81,7 +79,6 @@ static void __maybe_unused clean_data(void)
 
 	for_each_process(tsk) {
 		tsk->diag_exec = 0;
-		tsk->diag_pages = 0;
 		tsk->diag_wild = 0;
 	}
 
@@ -93,6 +90,8 @@ static void dump_task_info(struct task_struct *tsk)
 	struct utilization_detail *detail;
 	unsigned long flags;
 	unsigned long exec, pages, wild;
+	unsigned long size = 0, resident = 0, shared = 0, text = 0, data = 0;
+	struct mm_struct *mm;
 
 	if (!utilization_settings.activated || !utilization_settings.sample) {
 		return;
@@ -101,8 +100,14 @@ static void dump_task_info(struct task_struct *tsk)
 		return;
 
 	detail = &diag_percpu_context[smp_processor_id()]->utilization_detail;
+
+	mm = get_task_mm(tsk);
+	if (mm) {
+		size = orig_task_statm(mm, &shared, &text, &data, &resident);
+		mmput(mm);
+	}
+
 	exec = xchg(&tsk->diag_exec, 0);
-	pages = xchg(&tsk->diag_pages, 0);
 	wild = xchg(&tsk->diag_wild, 0);
 	if (exec == 0 && pages == 0 && wild == 0)
 		return;
@@ -116,7 +121,7 @@ static void dump_task_info(struct task_struct *tsk)
 		dump_proc_chains_argv(utilization_settings.style, &mm_tree, tsk, &detail->proc_chains);
 	}
 	detail->exec = exec;
-	detail->pages = pages;
+	detail->pages = resident;
 	detail->wild = wild;
 
 	diag_variant_buffer_spin_lock(&utilization_variant_buffer, flags);
@@ -189,21 +194,6 @@ static void trace_sched_switch_hit(struct rq *rq, struct task_struct *prev,
 	tsk->diag_record_stamp = now;
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
-static void trace_mm_page_alloc_hit(void *ignore, struct page *page,
-		unsigned int order, gfp_t gfp_flags, int migratetype)
-#else
-static void trace_mm_page_alloc_hit(struct page *page,
-		unsigned int order, gfp_t gfp_flags, int migratetype)
-#endif
-{
-	if (in_interrupt() || in_atomic() || irqs_disabled()
-       || ((gfp_flags & GFP_ATOMIC) == GFP_ATOMIC) || ((gfp_flags & GFP_HIGHUSER) != GFP_HIGHUSER))
-		return;
-
-	xadd(&current->diag_pages, 2 << order);
-}
-
 #if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
 static void trace_sched_process_fork_hit(void *__data, struct task_struct *parent, struct task_struct *child)
 #elif KERNEL_VERSION(3, 10, 0) <= LINUX_VERSION_CODE
@@ -214,7 +204,6 @@ static void trace_sched_process_fork_hit(struct task_struct *parent, struct task
 {
 	child->diag_record_stamp = 0;
 	child->diag_exec = 0;
-	child->diag_pages = 0;
 	child->diag_wild = 0;
 }
 
@@ -294,7 +283,6 @@ static int __activate_utilization(void)
 
 	clean_data();
 
-	hook_tracepoint("mm_page_alloc", trace_mm_page_alloc_hit, NULL);
 	hook_tracepoint("sched_switch", trace_sched_switch_hit, NULL);
 	hook_tracepoint("sched_process_fork", trace_sched_process_fork_hit, NULL);
 	hook_tracepoint("sched_process_exit", trace_sched_process_exit_hit, NULL);
@@ -327,7 +315,6 @@ static int __deactivate_utilization(void)
 	int ret = 0;
 
 	unhook_tracepoint("sched_switch", trace_sched_switch_hit, NULL);
-	unhook_tracepoint("mm_page_alloc", trace_mm_page_alloc_hit, NULL);
 	unhook_tracepoint("sched_process_fork", trace_sched_process_fork_hit, NULL);
 	unhook_tracepoint("sched_process_exit", trace_sched_process_exit_hit, NULL);
 
