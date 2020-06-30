@@ -17,6 +17,34 @@ ifeq ($(EXPERIENTIAL),1)
 	DIAG_EXTRA_CFLAGS += -DEXPERIENTIAL
 endif
 
+ifneq ($(findstring el7.x86_64,$(KERNEL_BUILD_PATH)),)
+	DIAG_EXTRA_CFLAGS += -DCENTOS_7U
+
+	ifneq ($(findstring 3.10.0-293,$(KERNEL_BUILD_PATH)),)
+		DIAG_EXTRA_CFLAGS += -DCENTOS_3_10_293
+	endif
+
+	ifneq ($(findstring 3.10.0-514,$(KERNEL_BUILD_PATH)),)
+		DIAG_EXTRA_CFLAGS += -DCENTOS_3_10_514
+	endif
+
+	ifneq ($(findstring 3.10.0-693,$(KERNEL_BUILD_PATH)),)
+		DIAG_EXTRA_CFLAGS += -DCENTOS_3_10_693
+	endif
+
+	ifneq ($(findstring 3.10.0-957,$(KERNEL_BUILD_PATH)),)
+		DIAG_EXTRA_CFLAGS += -DCENTOS_3_10_957
+	endif
+
+	ifneq ($(findstring 3.10.0-1062,$(KERNEL_BUILD_PATH)),)
+                DIAG_EXTRA_CFLAGS += -DCENTOS_3_10_1062
+        endif
+
+	ifneq ($(findstring 3.10.0-1127,$(KERNEL_BUILD_PATH)),)
+		DIAG_EXTRA_CFLAGS += -DCENTOS_3_10_1127
+	endif
+endif
+
 ifneq ($(findstring 3.10.0-862.el7.x86_64,$(KERNEL_BUILD_PATH)),)
 	DIAG_EXTRA_CFLAGS += -DCENTOS_3_10_862 -DCENTOS_7U
 endif
