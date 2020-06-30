@@ -45,6 +45,14 @@ ifneq ($(findstring 3.10.0-1062.9.1.el7.x86_64,$(KERNEL_BUILD_PATH)),)
 	DIAG_EXTRA_CFLAGS += -DCENTOS_3_10_1062 -DCENTOS_3_10_1062_9_1 -DCENTOS_7U
 endif
 
+ifneq ($(findstring 3.10.0-1127.el7.x86_64,$(KERNEL_BUILD_PATH)),)
+	DIAG_EXTRA_CFLAGS += -DCENTOS_3_10_1127
+endif
+
+ifneq ($(findstring 3.10.0-1127.8.2.el7.x86_64,$(KERNEL_BUILD_PATH)),)
+	DIAG_EXTRA_CFLAGS += -DCENTOS_3_10_1127 -DCENTOS_3_10_1127_8_2 -DCENTOS_7U
+endif
+
 ifneq ($(KERNELRELEASE),)
 	TARGET := diagnose
 	obj-m = $(TARGET).o

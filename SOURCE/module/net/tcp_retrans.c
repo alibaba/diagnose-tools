@@ -187,7 +187,7 @@ __maybe_unused static struct diag_tcp_retrans *__find_alloc_desc(struct diag_tcp
 }
 
 #if !defined(CENTOS_3_10_862) && !defined(CENTOS_3_10_957) \
-	&& !defined(CENTOS_3_10_1062)
+	&& !defined(CENTOS_3_10_1062) && !defined(CENTOS_3_10_1127)
 int diag_tcp_retrans_init(void)
 {
 	return 0;
@@ -362,7 +362,7 @@ static void tcp_collapse_retrans(struct sock *sk, struct sk_buff *skb)
 
 	BUG_ON(tcp_skb_pcount(skb) != 1 || tcp_skb_pcount(next_skb) != 1);
 
-#if defined(CENTOS_3_10_1062)
+#if defined(CENTOS_3_10_1062) || defined(CENTOS_3_10_1127)
 	tcp_highest_sack_replace(sk, next_skb, skb);
 #else
 	tcp_highest_sack_combine(sk, next_skb, skb);
@@ -485,7 +485,7 @@ int diag__tcp_retransmit_skb(struct sock *sk, struct sk_buff *skb)
 		return -EBUSY;
 
 	if (before(TCP_SKB_CB(skb)->seq, tp->snd_una)) {
-#if defined(CENTOS_3_10_1062)
+#if defined(CENTOS_3_10_1062) || defined(CENTOS_3_10_1127)
         if (unlikely(before(TCP_SKB_CB(skb)->end_seq, tp->snd_una))) {
             WARN_ON_ONCE(1);
             return -EINVAL;
@@ -538,7 +538,7 @@ int diag__tcp_retransmit_skb(struct sock *sk, struct sk_buff *skb)
 	 */
 	if (unlikely((NET_IP_ALIGN && ((unsigned long)skb->data & 3)) ||
 				skb_headroom(skb) >= 0xFFFF)) {
-#if defined(CENTOS_3_10_1062)
+#if defined(CENTOS_3_10_1062) || defined(CENTOS_3_10_1127)
         struct sk_buff *nskb;
 
         skb_mstamp_get(&skb->skb_mstamp);
