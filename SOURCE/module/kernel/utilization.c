@@ -93,7 +93,7 @@ static void dump_task_info(struct task_struct *tsk)
 {
 	struct utilization_detail *detail;
 	unsigned long flags;
-	unsigned long exec, pages, wild;
+	unsigned long exec = 0, pages = 0, wild = 0;
 	unsigned long size = 0, resident = 0, shared = 0, text = 0, data = 0;
 	struct mm_struct *mm;
 
@@ -108,6 +108,7 @@ static void dump_task_info(struct task_struct *tsk)
 	mm = get_task_mm(tsk);
 	if (mm) {
 		size = orig_task_statm(mm, &shared, &text, &data, &resident);
+		pages = resident;
 		mmput(mm);
 	}
 
@@ -125,7 +126,7 @@ static void dump_task_info(struct task_struct *tsk)
 		dump_proc_chains_argv(utilization_settings.style, &mm_tree, tsk, &detail->proc_chains);
 	}
 	detail->exec = exec;
-	detail->pages = resident;
+	detail->pages = pages;
 	detail->wild = wild;
 
 	diag_variant_buffer_spin_lock(&utilization_variant_buffer, flags);
