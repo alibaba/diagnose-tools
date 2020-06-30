@@ -16,7 +16,8 @@ devel:
 	yum install -y elfutils-libelf-devel
 	yum install -y java-1.7.0-openjdk-devel.x86_64
 	yum install -y rpm-build
-	yum install -y libxml2-devel
+	yum install -y xz-libs
+	yum install -y xz-devel
 	sh ./vender/devel.sh
 
 deps:
