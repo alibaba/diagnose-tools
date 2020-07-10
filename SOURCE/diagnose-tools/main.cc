@@ -205,6 +205,7 @@ static struct diagnose_func all_funcs[] {
 	{"test-md5", md5_main},
 	{"test-run-trace", test_run_trace_main},
 	{"sys-cost", sys_cost_main},
+	{"test", testcase_main},
 };
 
 int main(int argc, char* argv[])

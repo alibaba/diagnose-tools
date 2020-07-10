@@ -101,7 +101,7 @@ ifneq ($(KERNELRELEASE),)
 		$(TARGET)-objs += pub/remote_stack.o
 	endif
 
-	$(TARGET)-objs += entry.o misc.o symbol.o mm_tree.o stack.o stub.o pupil.o
+	$(TARGET)-objs += entry.o chr_dev.o misc.o symbol.o mm_tree.o stack.o stub.o pupil.o
 	$(TARGET)-objs += kernel/kern_entry.o kernel/mutex.o kernel/load.o kernel/exit.o \
 			kernel/irq_stats.o kernel/irq_delay.o kernel/sys_delay.o \
 			kernel/exec.o kernel/perf.o kernel/run_trace.o kernel/irq_trace.o \

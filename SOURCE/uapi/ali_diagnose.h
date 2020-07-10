@@ -13,12 +13,23 @@
 #define UAPI_DIAG_H
 
 #include <linux/ptrace.h>
+#include <linux/ioctl.h>
 
 struct pt_regs;
 
-
 #define XBY_VERSION					"diagnose-tools 2.0-rc1"
 #define diag_VERSION		((2 << 24) | (0 << 16) | 0x0001)
+
+
+#define DIAG_DEV_NAME "diagnose-tools"
+#define DIAG_IOCTL_MAX_NR 10000
+
+#define DIAG_IOCTL_TEST_TYPE 1
+struct diag_ioctl_test {
+	int in;
+	int out;
+};
+#define DIAG_IOCTL_TEST_IOCTL _IOWR(DIAG_IOCTL_TEST_TYPE, 1, struct diag_ioctl_test)
 
 #define BACKTRACE_DEPTH 30
 #define DIAG_USER_STACK_SIZE (16 * 1024)

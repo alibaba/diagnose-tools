@@ -766,5 +766,9 @@ int high_order_syscall(struct pt_regs *regs, long id);
 int diag_high_order_init(void);
 void diag_high_order_exit(void);
 void record_dump_cmd(char *module);
+
+int diag_dev_init(void);
+void diag_dev_cleanup(void);
+
 #endif /* __DIAG_INTERNAL_H */
 

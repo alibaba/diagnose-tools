@@ -461,11 +461,17 @@ static int __init diagnosis_init(void)
 	if (ret)
 		goto out_xby_test;
 
+	ret = diag_dev_init();
+	if (ret)
+		goto out_dev;
+
 	hook_tracepoint("sys_enter", trace_sys_enter_hit, NULL);
 	printk("diagnose-tools in diagnosis_init\n");
 
 	return 0;
 
+out_dev:
+	diag_xby_test_exit();
 out_xby_test:
 	diag_fs_exit();
 out_fs:
@@ -502,6 +508,7 @@ static void __exit diagnosis_exit(void)
 	diag_linux_proc_exit();
 	msleep(20);
 
+	diag_dev_cleanup();
 	unhook_tracepoint("sys_enter", trace_sys_enter_hit, NULL);
 	synchronize_sched();
 
