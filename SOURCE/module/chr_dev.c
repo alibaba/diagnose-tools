@@ -59,7 +59,7 @@ static long diag_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     int ret = -EINVAL;
     int nr;
 
-    if (_IOC_TYPE(cmd) == DIAG_IOCTL_TEST_TYPE) {
+    if (_IOC_TYPE(cmd) == DIAG_IOCTL_TYPE_TEST) {
         nr = _IOC_NR(cmd);
         if (nr == 1) {
             struct diag_ioctl_test val;

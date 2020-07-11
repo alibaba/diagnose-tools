@@ -214,11 +214,11 @@ int main(int argc, char* argv[])
 	diagnose_fp func = usage;
 	unsigned int version = -1;
 
-	syscall(DIAG_VERSION, &version);
-	if (version != diag_VERSION && version != -1UL && version != 0xffffffffU) {
+	syscall(DIAG_SYSCALL_VERSION, &version);
+	if (version != DIAG_VERSION && version != -1UL && version != 0xffffffffU) {
 		printf("严重警告，diagnose-tools工具与内核模块版本不匹配。\n");
 		printf("期望的版本号：%lx, 运行的模块版本号：%x\n",
-			(unsigned long)diag_VERSION,
+			(unsigned long)DIAG_VERSION,
 			version);
 		return -1;
 	}

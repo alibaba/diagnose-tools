@@ -284,7 +284,7 @@ static void diag_cb_sys_enter(void *data, struct pt_regs *regs, long id)
 
 		down(&controller_sem);
 		if (id == DIAG_VERSION) {
-			ret = diag_VERSION;
+			ret = DIAG_VERSION;
 		} else if (id >= DIAG_BASE_SYSCALL_PUPIL
 		   && id < DIAG_BASE_SYSCALL_PUPIL + DIAG_SYSCALL_INTERVAL) {
 			ret = pupil_syscall(regs, id);
