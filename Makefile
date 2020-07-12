@@ -64,7 +64,7 @@ deb:
 test:
 	modprobe ext4
 	insmod SOURCE/module/diagnose.ko || echo ""
-	sh ./SOURCE/script/test.sh
+	bash ./SOURCE/script/test.sh
 	rmmod diagnose
 	rm tmp.txt -f
 	rm *.svg -f
