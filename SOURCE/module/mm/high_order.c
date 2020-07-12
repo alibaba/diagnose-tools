@@ -212,6 +212,7 @@ int high_order_syscall(struct pt_regs *regs, long id)
 		if (addr)
 			free_pages(addr, 3);
 		ret = 0;
+		break;
 	default:
 		ret = -ENOSYS;
 		break;
