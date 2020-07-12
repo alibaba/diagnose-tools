@@ -677,6 +677,19 @@ int diag_copy_stack_frame(struct task_struct *tsk,
 	void *frame,
 	unsigned int size);
 
+#if KERNEL_VERSION(5, 0, 0) <= LINUX_VERSION_CODE
+#define synchronize_sched synchronize_rcu
+
+static inline void do_gettimeofday(struct timeval *tv)
+{
+	struct timespec64 ts;
+
+	ktime_get_real_ts64(&ts);
+	tv->tv_sec = ts.tv_sec;
+	tv->tv_usec = ts.tv_nsec/1000;
+}
+#endif
+
 extern unsigned long diag_ignore_jump_check;
 
 int activate_run_trace(void);

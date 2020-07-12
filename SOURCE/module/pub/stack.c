@@ -243,6 +243,11 @@ int diagnose_stack_trace_cmp(unsigned long *backtrace1, unsigned long *backtrace
 static void __diagnose_print_stack_trace(int pre, enum diag_printk_type type, void *obj,
 	struct task_struct *p, unsigned long *backtrace)
 {
+#if KERNEL_VERSION(5, 0, 0) <= LINUX_VERSION_CODE
+	int i;
+	
+	orig_stack_trace_save_tsk(p, backtrace, BACKTRACE_DEPTH, 0);
+#else
 	struct stack_trace trace;
 	int i;
 
@@ -251,9 +256,10 @@ static void __diagnose_print_stack_trace(int pre, enum diag_printk_type type, vo
 	trace.max_entries = BACKTRACE_DEPTH;
 	trace.entries = backtrace;
 	save_stack_trace_tsk(p, &trace);
+#endif
 
 	for (i = 0; i < BACKTRACE_DEPTH; i++) {
-                if (STACK_IS_END(backtrace[i]))
+		if (STACK_IS_END(backtrace[i]))
 			break;
 
 		DIAG_TRACE_PRINTK(pre, type, obj, " %pS\n", (void *)backtrace[i]);
@@ -292,21 +298,27 @@ void diagnose_trace_file_nolock_stack_trace(int pre, struct diag_trace_file *fil
 static void __diagnose_print_stack_trace_user(int pre, enum diag_printk_type type, void *obj,
 	unsigned long *backtrace)
 {
-        struct stack_trace trace;
-        int i;
+#if KERNEL_VERSION(5, 0, 0) <= LINUX_VERSION_CODE
+	int i;
+	
+	orig_stack_trace_save_user(backtrace, BACKTRACE_DEPTH);
+#else
+	struct stack_trace trace;
+	int i;
 
-        memset(&trace, 0, sizeof(trace));
-        memset(backtrace, 0, BACKTRACE_DEPTH * sizeof(unsigned long));
-        trace.max_entries = BACKTRACE_DEPTH;
-        trace.entries = backtrace;
-		diag_save_stack_trace_user(&trace);
+	memset(&trace, 0, sizeof(trace));
+	memset(backtrace, 0, BACKTRACE_DEPTH * sizeof(unsigned long));
+	trace.max_entries = BACKTRACE_DEPTH;
+	trace.entries = backtrace;
+	diag_save_stack_trace_user(&trace);
+#endif
 
-        for (i = 0; i < BACKTRACE_DEPTH; i++) {
-            if (STACK_IS_END(backtrace[i]))
-					break;
+	for (i = 0; i < BACKTRACE_DEPTH; i++) {
+		if (STACK_IS_END(backtrace[i]))
+				break;
 
-			DIAG_TRACE_PRINTK(pre, type, obj, "_USER_STACK_ %d %lx\n", current->tgid, backtrace[i]);
-        }
+		DIAG_TRACE_PRINTK(pre, type, obj, "_USER_STACK_ %d %lx\n", current->tgid, backtrace[i]);
+	}
 }
 
 void diagnose_print_stack_trace_user(int pre, unsigned long *backtrace)
@@ -341,6 +353,11 @@ void diagnose_trace_file_stack_trace_user(int pre, struct diag_trace_file *file,
 static void __diagnose_print_stack_trace_unfold(int pre, enum diag_printk_type type, void *obj,
 	struct task_struct *p, unsigned long *backtrace)
 {
+#if KERNEL_VERSION(5, 0, 0) <= LINUX_VERSION_CODE
+	int i;
+	
+	orig_stack_trace_save_tsk(p, backtrace, BACKTRACE_DEPTH, 0);
+#else
 	struct stack_trace trace;
 	int i;
 
@@ -349,6 +366,7 @@ static void __diagnose_print_stack_trace_unfold(int pre, enum diag_printk_type t
 	trace.max_entries = BACKTRACE_DEPTH;
 	trace.entries = backtrace;
 	save_stack_trace_tsk(p, &trace);
+#endif
 
 	for (i = 0; i < BACKTRACE_DEPTH; i++) {
                 if (STACK_IS_END(backtrace[i]))
@@ -392,22 +410,28 @@ void diagnose_trace_file_nolock_stack_trace_unfold(int pre, struct diag_trace_fi
 static void __diagnose_print_stack_trace_unfold_user(int pre, enum diag_printk_type type, void *obj,
 	unsigned long *backtrace)
 {
-        struct stack_trace trace;
-        int i;
+#if KERNEL_VERSION(5, 0, 0) <= LINUX_VERSION_CODE
+	int i;
+	
+	orig_stack_trace_save_user(backtrace, BACKTRACE_DEPTH);
+#else
+	struct stack_trace trace;
+	int i;
 
-        memset(&trace, 0, sizeof(trace));
-        memset(backtrace, 0, BACKTRACE_DEPTH * sizeof(unsigned long));
-        trace.max_entries = BACKTRACE_DEPTH;
-        trace.entries = backtrace;
-		diag_save_stack_trace_user(&trace);
+	memset(&trace, 0, sizeof(trace));
+	memset(backtrace, 0, BACKTRACE_DEPTH * sizeof(unsigned long));
+	trace.max_entries = BACKTRACE_DEPTH;
+	trace.entries = backtrace;
+	diag_save_stack_trace_user(&trace);
+#endif
 
-        for (i = 0; i < BACKTRACE_DEPTH; i++) {
-            if (STACK_IS_END(backtrace[i]))
-					break;
+	for (i = 0; i < BACKTRACE_DEPTH; i++) {
+		if (STACK_IS_END(backtrace[i]))
+			break;
 
-			DIAG_TRACE_PRINTK(pre, type, obj, "_USER_STACK_ %d %lx (%s)\n",
-				current->tgid, backtrace[i], current->comm);
-        }
+		DIAG_TRACE_PRINTK(pre, type, obj, "_USER_STACK_ %d %lx (%s)\n",
+			current->tgid, backtrace[i], current->comm);
+	}
 }
 
 void diagnose_print_stack_trace_unfold_user(int pre, unsigned long *backtrace)
@@ -441,6 +465,9 @@ void diagnose_trace_file_stack_trace_unfold_user(int pre, struct diag_trace_file
 
 void diagnose_save_stack_trace(struct task_struct *tsk, unsigned long *backtrace)
 {
+#if KERNEL_VERSION(5, 0, 0) <= LINUX_VERSION_CODE
+	orig_stack_trace_save_tsk(tsk, backtrace, BACKTRACE_DEPTH, 0);
+#else
 	struct stack_trace trace;
 
 	memset(&trace, 0, sizeof(trace));
@@ -448,6 +475,7 @@ void diagnose_save_stack_trace(struct task_struct *tsk, unsigned long *backtrace
 	trace.max_entries = BACKTRACE_DEPTH;
 	trace.entries = backtrace;
 	save_stack_trace_tsk(tsk, &trace);
+#endif
 }
 
 #if !defined(DIAG_ARM64)
@@ -461,8 +489,10 @@ copy_stack_frame(const void __user *fp, struct stack_frame_user *frame)
 {
 	int ret;
 
+#if KERNEL_VERSION(5, 0, 0) >= LINUX_VERSION_CODE
 	if (!access_ok(VERIFY_READ, fp, sizeof(*frame)))
 		return 0;
+#endif
 
 	ret = 1;
 	pagefault_disable();
@@ -472,6 +502,14 @@ copy_stack_frame(const void __user *fp, struct stack_frame_user *frame)
 
 	return ret;
 }
+
+#if KERNEL_VERSION(5, 0, 0) <= LINUX_VERSION_CODE
+struct stack_trace {
+	unsigned int nr_entries, max_entries;
+	unsigned long *entries;
+	int skip;	/* input argument: How many entries to skip */
+};
+#endif
 
 static inline void __save_stack_trace_user(struct stack_trace *trace)
 {

@@ -79,6 +79,13 @@ struct page *(*orig_follow_page)(struct vm_area_struct *vma, unsigned long addre
 			unsigned int flags);
 #endif
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 0, 0)
+unsigned int (*orig_stack_trace_save_tsk)(struct task_struct *task,
+				  unsigned long *store, unsigned int size,
+				  unsigned int skipnr);
+unsigned int (*orig_stack_trace_save_user)(unsigned long *store, unsigned int size);
+#endif
+
 struct dentry * (*orig_d_find_any_alias)(struct inode *inode);
 
 int (*orig_task_statm)(struct mm_struct *mm,
@@ -104,7 +111,12 @@ static int lookup_syms(void)
 #else
 	LOOKUP_SYMS(text_poke_bp);
 #endif /* LINUX_VERSION_CODE */
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 0, 0)
+	LOOKUP_SYMS(stack_trace_save_tsk);
+	LOOKUP_SYMS(stack_trace_save_user);
+#else
 	LOOKUP_SYMS(save_stack_trace_user);
+#endif
 #endif /* DIAG_ARM64 */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)

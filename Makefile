@@ -1,5 +1,6 @@
 
 CWD = $(shell pwd)
+UNAME_A := $(shell uname -a)
 
 all: module tools java_agent pkg
 	yum remove -y diagnose-tools
@@ -7,6 +8,14 @@ all: module tools java_agent pkg
 	diagnose-tools -v
 
 devel:
+ifneq ($(findstring Ubuntu,$(UNAME_A)),)
+	apt -y install gcc
+	apt -y install g++
+	apt -y install libunwind8-dev
+	apt -y install elfutils
+	apt -y install libelf-dev
+	apt install openjdk-8-jdk
+else
 	yum install -y libstdc++-static
 	yum install -y glibc-static
 	yum install -y zlib-devel
@@ -18,6 +27,7 @@ devel:
 	yum install -y rpm-build
 	yum install -y xz-libs
 	yum install -y xz-devel
+endif
 	sh ./vender/devel.sh
 
 deps:
@@ -26,7 +36,6 @@ deps:
 	#cd SOURCE/diagnose-tools/xz; ./autogen.sh; ./configure CFLAGS="-g -O2" --prefix=$(PWD)/SOURCE/diagnose-tools/deps; make install
 	#cd SOURCE/diagnose-tools/zlib; ./configure --prefix=$(PWD)/SOURCE/diagnose-tools/deps; make install
 	cd SOURCE/diagnose-tools/java_agent; make
-
 	sh ./vender/deps.sh
 
 .PHONY: deps
