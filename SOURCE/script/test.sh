@@ -263,16 +263,14 @@ fs_cache() {
 	eval "$diag_ fs-cache --deactivate --activate --report --settings"
 }
 
-function call_sub_cmd()
-{
+call_sub_cmd() {
 	func=$1
 	func=${func//-/_}
 	shift 1
 	eval "$func $*"
 }
 
-function main()
-{
+main() {
 	if [ $# -eq 0 ]; then
 		for key in ${!__all_case[@]}; do
 			SUB_CMD=${__all_case[$key]}
