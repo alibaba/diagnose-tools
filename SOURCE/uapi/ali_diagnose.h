@@ -54,6 +54,31 @@ struct pt_regs;
 #define DIAG_IOCTL_TYPE_D (DIAG_IOCTL_TYPE_HIGH_ORDER + 1)
 #define DIAG_IOCTL_TYPE_END (DIAG_IOCTL_TYPE_D + 1)
 
+long diag_ioctl_sys_delay(unsigned int cmd, unsigned long arg);
+long diag_ioctl_sys_cost(unsigned int cmd, unsigned long arg);
+long diag_ioctl_sched_delay(unsigned int cmd, unsigned long arg);
+long diag_ioctl_irq_delay(unsigned int cmd, unsigned long arg);
+long diag_ioctl_irq_stats(unsigned int cmd, unsigned long arg);
+long diag_ioctl_irq_trace(unsigned int cmd, unsigned long arg);
+long diag_ioctl_load_monitor(unsigned int cmd, unsigned long arg);
+long diag_ioctl_run_trace(unsigned int cmd, unsigned long arg);
+long diag_ioctl_perf(unsigned int cmd, unsigned long arg);
+long diag_ioctl_kprobe(unsigned int cmd, unsigned long arg);
+long diag_ioctl_uprobe(unsigned int cmd, unsigned long arg);
+long diag_ioctl_utilization(unsigned int cmd, unsigned long arg);
+long diag_ioctl_exit_monitor(unsigned int cmd, unsigned long arg);
+long diag_ioctl_mutex_monitor(unsigned int cmd, unsigned long arg);
+long diag_ioctl_exec_monitor(unsigned int cmd, unsigned long arg);
+long diag_ioctl_alloc_top(unsigned int cmd, unsigned long arg);
+long diag_ioctl_high_order(unsigned int cmd, unsigned long arg);
+long diag_ioctl_drop_packet(unsigned int cmd, unsigned long arg);
+long diag_ioctl_tcp_retrans(unsigned int cmd, unsigned long arg);
+long diag_ioctl_ping_delay(unsigned int cmd, unsigned long arg);
+long diag_ioctl_rw_top(unsigned int cmd, unsigned long arg);
+long diag_ioctl_fs_shm(unsigned int cmd, unsigned long arg);
+long diag_ioctl_fs_orphan(unsigned int cmd, unsigned long arg);
+long diag_ioctl_fs_cache(unsigned int cmd, unsigned long arg);
+
 struct diag_ioctl_test {
 	int in;
 	int out;

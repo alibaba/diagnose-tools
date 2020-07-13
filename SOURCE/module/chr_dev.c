@@ -57,10 +57,13 @@ struct diag_dev {
 static long diag_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
     int ret = -EINVAL;
-    int nr;
+    int type, nr;
 
-    if (_IOC_TYPE(cmd) == DIAG_IOCTL_TYPE_TEST) {
-        nr = _IOC_NR(cmd);
+    type = _IOC_TYPE(cmd);
+    nr = _IOC_NR(cmd);
+
+    switch (type) {
+    case DIAG_IOCTL_TYPE_TEST:
         if (nr == 1) {
             struct diag_ioctl_test val;
 
@@ -69,9 +72,83 @@ static long diag_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 val.out = val.in + 1;
                 ret = copy_to_user((void *)arg, &val, sizeof(struct diag_ioctl_test));
             }
-        } else {
-            return -EINVAL;
         }
+
+        break;
+    case DIAG_IOCTL_TYPE_SYS_DELAY:
+        ret = diag_ioctl_sys_delay(nr, arg);
+        break;
+    case DIAG_IOCTL_TYPE_SYS_COST:
+        ret = diag_ioctl_sys_cost(nr, arg);
+        break;
+    case DIAG_IOCTL_TYPE_SCHED_DELAY:
+        ret = diag_ioctl_sched_delay(nr, arg);
+        break;
+    case DIAG_IOCTL_TYPE_IRQ_DELAY:
+        ret = diag_ioctl_irq_delay(nr, arg);
+        break;
+    case DIAG_IOCTL_TYPE_IRQ_STATS:
+        ret = diag_ioctl_irq_stats(nr, arg);
+        break;
+    case DIAG_IOCTL_TYPE_IRQ_TRACE:
+        ret = diag_ioctl_irq_trace(nr, arg);
+        break;
+    case DIAG_IOCTL_TYPE_LOAD_MONITOR:
+        ret = diag_ioctl_load_monitor(nr, arg);
+        break;
+    case DIAG_IOCTL_TYPE_RUN_TRACE:
+        ret = diag_ioctl_run_trace(nr, arg);
+        break;
+    case DIAG_IOCTL_TYPE_PERF:
+        ret = diag_ioctl_perf(nr, arg);
+        break;
+    case DIAG_IOCTL_TYPE_KPROBE:
+        ret = diag_ioctl_kprobe(nr, arg);
+        break;
+    case DIAG_IOCTL_TYPE_UPROBE:
+        ret = diag_ioctl_uprobe(nr, arg);
+        break;
+    case DIAG_IOCTL_TYPE_UTILIZATION:
+        ret = diag_ioctl_utilization(nr, arg);
+        break;
+    case DIAG_IOCTL_TYPE_EXIT_MONITOR:
+        ret = diag_ioctl_exit_monitor(nr, arg);
+        break;
+    case DIAG_IOCTL_TYPE_MUTEX_MONITOR:
+        ret = diag_ioctl_mutex_monitor(nr, arg);
+        break;
+    case DIAG_IOCTL_TYPE_EXEC_MONITOR:
+        ret = diag_ioctl_exec_monitor(nr, arg);
+        break;
+    case DIAG_IOCTL_TYPE_ALLOC_TOP:
+        ret = diag_ioctl_alloc_top(nr, arg);
+        break;
+    case DIAG_IOCTL_TYPE_HIGH_ORDER:
+        ret = diag_ioctl_high_order(nr, arg);
+        break;
+    case DIAG_IOCTL_TYPE_DROP_PACKET:
+        ret = diag_ioctl_drop_packet(nr, arg);
+        break;
+    case DIAG_IOCTL_TYPE_TCP_RETRANS:
+        ret = diag_ioctl_tcp_retrans(nr, arg);
+        break;
+    case DIAG_IOCTL_TYPE_PING_DELAY:
+        ret = diag_ioctl_ping_delay(nr, arg);
+        break;
+    case DIAG_IOCTL_TYPE_RW_TOP:
+        ret = diag_ioctl_rw_top(nr, arg);
+        break;
+    case DIAG_IOCTL_TYPE_FS_SHM:
+        ret = diag_ioctl_fs_shm(nr, arg);
+        break;
+    case DIAG_IOCTL_TYPE_FS_ORPHAN:
+        ret = diag_ioctl_fs_orphan(nr, arg);
+        break;
+    case DIAG_IOCTL_TYPE_FS_CACHE:
+        ret = diag_ioctl_fs_cache(nr, arg);
+        break;
+    default:
+        break;
     }
 
     return ret;

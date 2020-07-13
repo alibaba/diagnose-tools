@@ -929,3 +929,123 @@ int __weak diag_high_order_init(void)
 void __weak diag_high_order_exit(void)
 {
 }
+
+long __weak diag_ioctl_sys_delay(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_sys_cost(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_sched_delay(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_irq_delay(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_irq_stats(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_irq_trace(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_load_monitor(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_run_trace(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_perf(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_kprobe(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_uprobe(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_utilization(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_exit_monitor(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_mutex_monitor(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_exec_monitor(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_alloc_top(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_high_order(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_drop_packet(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_tcp_retrans(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_ping_delay(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_rw_top(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_fs_shm(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_fs_orphan(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_fs_cache(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}

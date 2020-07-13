@@ -12,6 +12,8 @@
 #ifndef UAPI_SYS_DELAY_H
 #define UAPI_SYS_DELAY_H
 
+#include <linux/ioctl.h>
+
 int sys_delay_syscall(struct pt_regs *regs, long id);
 
 //#define DIAG_SYS_DELAY_ACTIVATE (DIAG_BASE_SYSCALL_SYS_DELAY)
