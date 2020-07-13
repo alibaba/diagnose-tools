@@ -359,6 +359,11 @@ int kprobe_syscall(struct pt_regs *regs, long id)
 	return ret;
 }
 
+long diag_ioctl_kprobe(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
 int diag_kprobe_init(void)
 {
 	if (lookup_syms())

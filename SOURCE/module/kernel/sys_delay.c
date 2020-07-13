@@ -457,6 +457,11 @@ int sys_delay_syscall(struct pt_regs *regs, long id)
 	return ret;
 }
 
+long diag_ioctl_sys_delay(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
 static int lookup_syms(void)
 {
 	LOOKUP_SYMS(_cond_resched);

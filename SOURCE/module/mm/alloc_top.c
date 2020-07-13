@@ -395,6 +395,11 @@ int alloc_top_syscall(struct pt_regs *regs, long id)
 	return ret;
 }
 
+long diag_ioctl_alloc_top(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
 int diag_alloc_top_init(void)
 {
 	INIT_RADIX_TREE(&task_tree, GFP_ATOMIC);

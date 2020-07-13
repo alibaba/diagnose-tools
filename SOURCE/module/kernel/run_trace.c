@@ -1071,6 +1071,11 @@ int run_trace_clear_syscall(unsigned int pid)
 	return ret;
 }
 
+long diag_ioctl_run_trace(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
 __maybe_unused static int uprobe_start_handler(struct uprobe_consumer *self, struct pt_regs *regs)
 {
 	if (current->tgid != run_trace_uprobe_tgid)

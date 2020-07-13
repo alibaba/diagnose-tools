@@ -359,6 +359,11 @@ int uprobe_syscall(struct pt_regs *regs, long id)
 	return ret;
 }
 
+long diag_ioctl_uprobe(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
 int diag_uprobe_init(void)
 {
 	diag_uprobe.uprobe_consumer.handler = kern_uprobe_handler;

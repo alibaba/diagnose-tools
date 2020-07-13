@@ -549,6 +549,11 @@ int mutex_monitor_syscall(struct pt_regs *regs, long id)
 	return ret;
 }
 
+long diag_ioctl_mutex_monitor(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
 static int lookup_syms(void)
 {
 	LOOKUP_SYMS(__mutex_lock_slowpath);

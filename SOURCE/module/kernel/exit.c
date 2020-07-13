@@ -252,6 +252,11 @@ int exit_monitor_syscall(struct pt_regs *regs, long id)
 	return ret;
 }
 
+long diag_ioctl_exit_monitor(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
 int diag_exit_init(void)
 {
 	init_diag_variant_buffer(&exit_monitor_variant_buffer, 1 * 1024 * 1024);

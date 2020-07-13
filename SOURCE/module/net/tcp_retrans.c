@@ -797,6 +797,11 @@ int tcp_retrans_syscall(struct pt_regs *regs, long id)
 	return ret;
 }
 
+long diag_ioctl_tcp_retrans(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
 int diag_tcp_retrans_init(void)
 {
 	if (lookup_syms())

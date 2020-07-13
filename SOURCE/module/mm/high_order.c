@@ -221,6 +221,11 @@ int high_order_syscall(struct pt_regs *regs, long id)
 	return ret;
 }
 
+long diag_ioctl_high_order(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
 int diag_high_order_init(void)
 {
 	init_diag_variant_buffer(&high_order_variant_buffer, 10 * 1024 * 1024);

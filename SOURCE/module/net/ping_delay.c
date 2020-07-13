@@ -2033,6 +2033,11 @@ int ping_delay_syscall(struct pt_regs *regs, long id)
 	return ret;
 }
 
+long diag_ioctl_ping_delay(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
 int diag_net_ping_delay_init(void)
 {
 	INIT_RADIX_TREE(&skb_tree, GFP_ATOMIC);

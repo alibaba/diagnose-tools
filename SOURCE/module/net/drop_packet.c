@@ -1938,6 +1938,11 @@ int drop_packet_syscall(struct pt_regs *regs, long id)
 	return ret;
 }
 
+long diag_ioctl_drop_packet(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
 int diag_net_drop_packet_init(void)
 {
 	INIT_RADIX_TREE(&conn_tree, GFP_ATOMIC);

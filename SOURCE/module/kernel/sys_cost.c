@@ -335,6 +335,11 @@ int sys_cost_syscall(struct pt_regs *regs, long id)
 	return ret;
 }
 
+long diag_ioctl_sys_cost(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
 int diag_sys_cost_init(void)
 {
 	init_diag_variant_buffer(&sys_cost_variant_buffer, 1 * 1024 * 1024);
