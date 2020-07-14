@@ -83,6 +83,16 @@ struct diag_ioctl_test {
 	int in;
 	int out;
 };
+
+#ifndef __KERNEL__
+#define __user
+#endif
+struct diag_ioctl_dump_param {
+	int __user *user_ptr_len;
+	size_t __user user_buf_len;
+	void __user *user_buf;
+};
+
 #define DIAG_IOCTL_TEST_IOCTL _IOWR(DIAG_IOCTL_TYPE_TEST, 1, struct diag_ioctl_test)
 
 #define BACKTRACE_DEPTH 30

@@ -459,7 +459,45 @@ int sys_delay_syscall(struct pt_regs *regs, long id)
 
 long diag_ioctl_sys_delay(unsigned int cmd, unsigned long arg)
 {
-	return -EINVAL;
+	long ret = -EINVAL;
+	struct diag_sys_delay_settings settings;
+	struct diag_ioctl_dump_param dump_param;
+	int ms = 0;
+
+	switch (cmd) {
+	case CMD_SYS_DELAY_SET:
+		ret = copy_from_user(&settings, (void *)arg, sizeof(struct diag_sys_delay_settings));
+        if (!ret) {
+			sys_delay_settings = settings;
+        }
+		break;
+	case CMD_SYS_DELAY_SETTINGS:
+		settings = sys_delay_settings;
+		ret = copy_to_user((void *)arg, &settings, sizeof(struct diag_sys_delay_settings));
+		break;
+	case CMD_SYS_DELAY_DUMP:
+		ret = copy_from_user(&dump_param, (void *)arg, sizeof(struct diag_ioctl_dump_param));
+		if (!sys_delay_alloced) {
+			ret = -EINVAL;
+		} if (!ret) {
+			ret = copy_to_user_variant_buffer(&sys_delay_variant_buffer,
+				dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len);
+			if (ret >= 0)
+				ret = copy_to_user((void *)arg, &dump_param, sizeof(struct diag_ioctl_dump_param));
+			record_dump_cmd("sys-delay");
+		}
+		break;
+	case CMD_SYS_DELAY_TEST:
+		ret = copy_from_user(&ms, (void *)arg, sizeof(int));
+		if (!ret) {
+			ret = do_test(ms);
+		}
+		break;
+	default:
+		break;
+	}
+
+	return ret;
 }
 
 static int lookup_syms(void)
