@@ -335,7 +335,7 @@ static void do_sls(char *arg)
 	int len;
 	int jiffies_sls = 0;
 	struct diag_ioctl_dump_param dump_param = {
-		.user_ptr_len = &ret,
+		.user_ptr_len = &len,
 		.user_buf_len = 1024 * 1024,
 		.user_buf = variant_buf,
 	};
