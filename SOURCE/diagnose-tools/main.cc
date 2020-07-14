@@ -213,14 +213,19 @@ int main(int argc, char* argv[])
 	unsigned int i;
 	diagnose_fp func = usage;
 	unsigned int version = -1;
+	int fd;
 
-	syscall(DIAG_SYSCALL_VERSION, &version);
-	if (version != DIAG_VERSION && version != -1UL && version != 0xffffffffU) {
-		printf("严重警告，diagnose-tools工具与内核模块版本不匹配。\n");
-		printf("期望的版本号：%lx, 运行的模块版本号：%x\n",
-			(unsigned long)DIAG_VERSION,
-			version);
-		return -1;
+	fd = open("/dev/diagnose-tools", O_RDWR, 0);
+	if (fd > 0) {
+		version = ioctl(fd, DIAG_IOCTL_VERSION_ALL, 0);
+		close(fd);
+		if (version != DIAG_VERSION && version != -1UL && version != 0xffffffffU) {
+			printf("严重警告，diagnose-tools工具与内核模块版本不匹配。\n");
+			printf("期望的版本号：%lx, 运行的模块版本号：%x\n",
+				(unsigned long)DIAG_VERSION,
+				version);
+			return -1;
+		}
 	}
 
 	if (argc <= 1) {

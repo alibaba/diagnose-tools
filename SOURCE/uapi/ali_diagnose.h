@@ -94,6 +94,7 @@ struct diag_ioctl_dump_param {
 };
 
 #define DIAG_IOCTL_TEST_IOCTL _IOWR(DIAG_IOCTL_TYPE_TEST, 1, struct diag_ioctl_test)
+#define DIAG_IOCTL_VERSION_ALL _IO(DIAG_IOCTL_TYPE_VERSION, 1)
 
 #define BACKTRACE_DEPTH 30
 #define DIAG_USER_STACK_SIZE (16 * 1024)

@@ -73,7 +73,11 @@ static long diag_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 ret = copy_to_user((void *)arg, &val, sizeof(struct diag_ioctl_test));
             }
         }
-
+        break;
+    case DIAG_IOCTL_TYPE_VERSION:
+        if (nr == 1) {
+            ret = DIAG_VERSION;
+        }
         break;
     case DIAG_IOCTL_TYPE_SYS_DELAY:
         ret = diag_ioctl_sys_delay(nr, arg);
