@@ -47,7 +47,6 @@ struct diag_run_trace_settings run_trace_settings = {
 };
 
 static unsigned int run_trace_alloced;
-static int sys_call_run_trace_activated = 0;
 
 static struct radix_tree_root run_trace_tree;
 static DEFINE_SPINLOCK(tree_lock);
@@ -466,15 +465,16 @@ static void trace_sched_switch_hit(struct rq *rq, struct task_struct *prev,
 	hook_sched_switch(prev, next);
 }
 
-void cb_sys_enter_run_trace(void *__data, struct pt_regs *regs, long id)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
+static void trace_sys_enter_hit(struct pt_regs *regs, long id)
+#else
+static void trace_sys_enter_hit(void *__data, struct pt_regs *regs, long id)
+#endif
 {
 	struct task_info *task_info;
 	struct monitor_info *monitor_info;
 	struct task_struct *leader;
 	unsigned long flags;
-
-	if (!sys_call_run_trace_activated)
-		return;
 
 	leader = current->group_leader ? current->group_leader : current;
 	monitor_info = find_monitor_info(leader);
@@ -923,11 +923,10 @@ static int __activate_run_trace(void)
 	if (ret)
 		goto out_variant_buffer;
 	run_trace_alloced = 1;
-	sys_call_run_trace_activated = 1;
 	msleep(10);
 	hook_tracepoint("sched_switch", trace_sched_switch_hit, NULL);
 	hook_tracepoint("sched_process_exit", trace_sched_process_exit_hit, NULL);
-	//diag_register_cb_sys_enter(trace_sys_enter_hit, NULL);
+	hook_tracepoint("sys_enter", trace_sys_enter_hit, NULL);
 	hook_tracepoint("sys_exit", trace_sys_exit_hit, NULL);
 	hook_tracepoint("sched_wakeup", trace_sched_wakeup_hit, NULL);
 
@@ -984,14 +983,13 @@ static int __deactivate_run_trace(void)
 	}
 	run_trace_settings.timer_us = 0;
 
-	sys_call_run_trace_activated = 0;
 	msleep(10);
 
 	unhook_uprobe(&diag_uprobe_start);
 	unhook_uprobe(&diag_uprobe_stop);
 	unhook_tracepoint("sched_switch", trace_sched_switch_hit, NULL);
 	unhook_tracepoint("sched_process_exit", trace_sched_process_exit_hit, NULL);
-	//diag_unregister_cb_sys_enter(trace_sys_enter_hit, NULL);
+	unhook_tracepoint("sys_enter", trace_sys_enter_hit, NULL);
 	unhook_tracepoint("sys_exit", trace_sys_exit_hit, NULL);
 	unhook_tracepoint("sched_wakeup", trace_sched_wakeup_hit, NULL);
 

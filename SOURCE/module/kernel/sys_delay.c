@@ -46,7 +46,6 @@ struct diag_sys_delay_settings sys_delay_settings = {
 };
 
 static unsigned int sys_delay_alloced;
-static int sys_call_sys_delay_activated;
 static struct kprobe kprobe_kvm_check_async_pf_completion;
 
 static struct diag_variant_buffer sys_delay_variant_buffer;
@@ -86,7 +85,9 @@ int new__cond_resched(void *x)
 	update_sched_time();
 
 	if (should_resched()) {
+		atomic64_inc_return(&diag_nr_running);
 		orig___cond_resched();
+		atomic64_dec_return(&diag_nr_running);
 		return 1;
 	}
 	return 0;
@@ -141,7 +142,9 @@ int new__cond_resched(void *x)
 	current->cond_resched++;
 #endif
 	if (should_resched(0)) {
+		atomic64_inc_return(&diag_nr_running);
 		preempt_schedule_common();
+		atomic64_dec_return(&diag_nr_running);
 		return 1;
 	}
 	return 0;
@@ -162,11 +165,12 @@ static void trace_sched_switch_hit(struct rq *rq, struct task_struct *prev,
 	update_sched_time();
 }
 
-void cb_sys_enter_sys_delay(void *__data, struct pt_regs *regs, long id)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
+static void trace_sys_enter_hit(struct pt_regs *regs, long id)
+#else
+static void trace_sys_enter_hit(void *__data, struct pt_regs *regs, long id)
+#endif
 {
-	if (!sys_call_sys_delay_activated)
-		return;
-
 	update_sched_time();
 }
 
@@ -276,9 +280,6 @@ static void trace_kvm_exit_hit(u32 exit_reason, unsigned long ip)
 {
 	struct diag_percpu_context *context = get_percpu_context();
 
-	if (!sys_call_sys_delay_activated)
-		return;
-
 	context->sys_delay.sys_delay_in_kvm = 0;
 	update_sched_time();
 }
@@ -304,12 +305,11 @@ static int __activate_sys_delay(void)
 
 	JUMP_CHECK(_cond_resched);
 
-	//diag_register_cb_sys_enter(cb_sys_enter_sys_delay, NULL);
-	sys_call_sys_delay_activated = 1;
 	msleep(10);
 
 	hook_kprobe(&kprobe_kvm_check_async_pf_completion, "kvm_check_async_pf_completion",
 				kprobe_kvm_check_async_pf_completion_pre, NULL);
+	hook_tracepoint("sys_enter", trace_sys_enter_hit, NULL);
 	hook_tracepoint("sched_switch", trace_sched_switch_hit, NULL);
 	hook_tracepoint("kvm_entry", trace_kvm_entry_hit, NULL);
 	hook_tracepoint("kvm_exit", trace_kvm_exit_hit, NULL);
@@ -343,10 +343,9 @@ int activate_sys_delay(void)
 
 static void __deactivate_sys_delay(void)
 {
-	//diag_unregister_cb_sys_enter(cb_sys_enter_sys_delay, NULL);
-	sys_call_sys_delay_activated = 0;
 	msleep(10);
 
+	unhook_tracepoint("sys_enter", trace_sys_enter_hit, NULL);
 	unhook_tracepoint("sched_switch", trace_sched_switch_hit, NULL);
 	unhook_tracepoint("kvm_entry", trace_kvm_entry_hit, NULL);
 	unhook_tracepoint("kvm_exit", trace_kvm_exit_hit, NULL);

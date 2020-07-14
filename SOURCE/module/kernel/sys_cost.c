@@ -165,7 +165,11 @@ static void stop_trace_syscall(struct task_struct *tsk)
 	context->sys_cost.cost[id] += delta_ns;
 }
 
-void cb_sys_enter_sys_cost(void *__data, struct pt_regs *regs, long id)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
+static void trace_sys_enter_hit(struct pt_regs *regs, long id)
+#else
+static void trace_sys_enter_hit(void *__data, struct pt_regs *regs, long id)
+#endif
 {
 	if (!need_trace(current))
 		return;
@@ -207,6 +211,7 @@ static int __activate_sys_cost(void)
 
 	clean_data();
 
+	hook_tracepoint("sys_enter", trace_sys_enter_hit, NULL);
 	hook_tracepoint("sys_exit", trace_sys_exit_hit, NULL);
 	hook_tracepoint("sched_switch", trace_sched_switch, NULL);
 
@@ -217,6 +222,7 @@ out_variant_buffer:
 
 static void __deactivate_sys_cost(void)
 {
+	unhook_tracepoint("sys_enter", trace_sys_enter_hit, NULL);
 	unhook_tracepoint("sys_exit", trace_sys_exit_hit, NULL);
 	unhook_tracepoint("sched_switch", trace_sched_switch, NULL);
 
