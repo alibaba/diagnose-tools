@@ -269,6 +269,7 @@ static void do_isolate(char *arg)
 	int ret;
 	char comm[256];
 	struct diag_ioctl_utilization_isolate isolate = {
+        .cpu = 0,
 		.user_buf = comm,
 		.user_buf_len = 256,
 	};
