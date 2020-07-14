@@ -14,6 +14,10 @@
 #include "uapi/ali_diagnose.h"
 #include "json/json.h"
 
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+
 extern std::set<int> g_proc_map;
 
 int run_trace_main(int argc, char **argv);
@@ -151,3 +155,30 @@ int high_order_main(int argc, char *argv[]);
 void usage_high_order(void);
 
 int testcase_main(int argc, char *argv[]);
+
+#ifndef __KERNEL__
+#define __user
+#endif
+
+static inline long diag_call_ioctl(unsigned long request, unsigned long arg)
+{
+	long ret = 0;
+	int fd;
+
+	fd = open("/dev/diagnose-tools", O_RDWR, 0);
+	if (fd < 0) {
+		printf("open /dev/diagnose-tools error!\n");
+		return -EEXIST;
+	}
+
+	ret = ioctl(fd, request, arg);
+	if (ret < 0) {
+		printf("call cmd %lx fail, ret is %lu\n", request, ret);
+		goto err;
+	}
+
+err:
+	close(fd);
+
+	return ret;
+}
