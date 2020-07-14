@@ -466,10 +466,14 @@ long diag_ioctl_sys_delay(unsigned int cmd, unsigned long arg)
 
 	switch (cmd) {
 	case CMD_SYS_DELAY_SET:
-		ret = copy_from_user(&settings, (void *)arg, sizeof(struct diag_sys_delay_settings));
-        if (!ret) {
-			sys_delay_settings = settings;
-        }
+		if (sys_delay_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, (void *)arg, sizeof(struct diag_sys_delay_settings));
+			if (!ret) {
+				sys_delay_settings = settings;
+			}
+		}
 		break;
 	case CMD_SYS_DELAY_SETTINGS:
 		settings = sys_delay_settings;

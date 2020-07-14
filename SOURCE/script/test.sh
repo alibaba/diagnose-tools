@@ -136,9 +136,10 @@ uprobe() {
 
 utilization() {
 	eval "$diag_ utilization --deactivate --activate='style=1 sample=1' --settings"
+echo xby-debug step 1
 	sleep 1
 	eval "$diag_ utilization --report --deactivate"
-
+echo xby-debug step 2
 	eval "$diag_ utilization --deactivate --activate='style=2 sample=1' --settings"
 	sleep 1
 	eval "$diag_ utilization --report --deactivate"

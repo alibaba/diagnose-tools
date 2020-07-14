@@ -460,7 +460,78 @@ int utilization_syscall(struct pt_regs *regs, long id)
 
 long diag_ioctl_utilization(unsigned int cmd, unsigned long arg)
 {
-	return -EINVAL;
+	int ret = -EINVAL;
+	struct diag_utilization_settings settings;
+	struct diag_ioctl_dump_param dump_param;
+	struct diag_ioctl_utilization_isolate isolate_param;
+	int sample;
+
+	switch (cmd) {
+	case CMD_UTILIZATION_SET:
+		if (utilization_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, (void *)arg, sizeof(struct diag_utilization__settings));
+			if (!ret) {
+				if (settings.cpus[0]) {
+					str_to_cpumask(settings.cpus, &utilization_cpumask);
+				} else {
+					utilization_cpumask = *cpu_possible_mask;
+				}
+				utilization_settings = settings;
+			}
+		}
+		break;
+	case CMD_UTILIZATION_SETTINGS:
+		settings = utilization_settings;
+		cpumask_to_str(&utilization_cpumask, settings.cpus, 512);
+		ret = copy_to_user((void *)arg, &settings, sizeof(struct diag_utilization_settings));
+		break;
+	case CMD_UTILIZATION_DUMP:
+		ret = copy_from_user(&dump_param, (void *)arg, sizeof(struct diag_ioctl_dump_param));
+
+		if (!utilization_alloced) {
+			ret = -EINVAL;
+		} else if (!ret) {
+			do_dump();
+			ret = copy_to_user_variant_buffer(&utilization_variant_buffer,
+					dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len);
+			record_dump_cmd("utilization");
+		}
+		break;
+	case CMD_UTILIZATION_ISOLATE:
+		ret = copy_from_user(&isolate_param, (void *)arg, sizeof(struct diag_ioctl_utilization_isolate);
+		
+		if (!ret) {
+			if (isolate_param.user_buf_len >= CGROUP_NAME_LEN)
+				isolate_param.user_buf_len = CGROUP_NAME_LEN - 1;
+			if (isolate_param.cpu >= num_possible_cpus())
+				ret = -EINVAL;
+			else {
+				char *isolate = per_cpu(isolate_cgroup_name, cpu);
+				struct cpuacct *cpuacct;
+				struct cgroup *cgroup;
+				
+				ret = copy_from_user(isolate, isolate_param.user_buf, isolate_param.user_buf_len);
+				isolate[CGROUP_NAME_LEN - 1] = 0;
+
+				cpuacct = diag_find_cpuacct_name(isolate);
+				cgroup = cpuacct_to_cgroup(cpuacct);
+				per_cpu(isolate_cgroup_ptr, cpu) = cgroup;
+			}
+		}
+		break;
+	case CMD_UTILIZATION_SAMPLE:
+		ret = copy_from_user(&sample, (void *)arg, sizeof(int));
+		if (!ret) {
+			utilization_settings.sample = sample;
+		}
+		break;
+	default:
+		break;
+	}
+
+	return ret;
 }
 
 static int lookup_syms(void)
