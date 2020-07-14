@@ -17,6 +17,38 @@
 
 struct pt_regs;
 
+#ifndef __KERNEL__
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <errno.h>
+
+#define __user
+
+static inline long diag_call_ioctl(unsigned long request, unsigned long arg)
+{
+	long ret = 0;
+	int fd;
+
+	fd = open("/dev/diagnose-tools", O_RDWR, 0);
+	if (fd < 0) {
+		printf("open /dev/diagnose-tools error!\n");
+		return -EEXIST;
+	}
+
+	ret = ioctl(fd, request, arg);
+	if (ret < 0) {
+		printf("call cmd %lx fail, ret is %lu\n", request, ret);
+		goto err;
+	}
+
+err:
+	close(fd);
+
+	return ret;
+}
+#endif
+
 #define XBY_VERSION					"diagnose-tools 2.0-rc1"
 #define DIAG_VERSION		((2 << 24) | (0 << 16) | 0x0001)
 
