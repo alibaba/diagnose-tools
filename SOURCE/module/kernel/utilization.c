@@ -471,7 +471,7 @@ long diag_ioctl_utilization(unsigned int cmd, unsigned long arg)
 		if (utilization_settings.activated) {
 			ret = -EBUSY;
 		} else {
-			ret = copy_from_user(&settings, (void *)arg, sizeof(struct diag_utilization__settings));
+			ret = copy_from_user(&settings, (void *)arg, sizeof(struct diag_utilization_settings));
 			if (!ret) {
 				if (settings.cpus[0]) {
 					str_to_cpumask(settings.cpus, &utilization_cpumask);
@@ -500,7 +500,7 @@ long diag_ioctl_utilization(unsigned int cmd, unsigned long arg)
 		}
 		break;
 	case CMD_UTILIZATION_ISOLATE:
-		ret = copy_from_user(&isolate_param, (void *)arg, sizeof(struct diag_ioctl_utilization_isolate);
+		ret = copy_from_user(&isolate_param, (void *)arg, sizeof(struct diag_ioctl_utilization_isolate));
 		
 		if (!ret) {
 			if (isolate_param.user_buf_len >= CGROUP_NAME_LEN)
@@ -508,7 +508,7 @@ long diag_ioctl_utilization(unsigned int cmd, unsigned long arg)
 			if (isolate_param.cpu >= num_possible_cpus())
 				ret = -EINVAL;
 			else {
-				char *isolate = per_cpu(isolate_cgroup_name, cpu);
+				char *isolate = per_cpu(isolate_cgroup_name, isolate_param.cpu);
 				struct cpuacct *cpuacct;
 				struct cgroup *cgroup;
 				
@@ -517,7 +517,7 @@ long diag_ioctl_utilization(unsigned int cmd, unsigned long arg)
 
 				cpuacct = diag_find_cpuacct_name(isolate);
 				cgroup = cpuacct_to_cgroup(cpuacct);
-				per_cpu(isolate_cgroup_ptr, cpu) = cgroup;
+				per_cpu(isolate_cgroup_ptr, isolate_param.cpu) = cgroup;
 			}
 		}
 		break;
