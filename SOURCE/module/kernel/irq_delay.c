@@ -211,6 +211,7 @@ long diag_ioctl_irq_delay(unsigned int cmd, unsigned long arg)
 		ret = copy_to_user((void *)arg, &settings, sizeof(struct diag_irq_delay_settings));
 		break;
 	case CMD_IRQ_DELAY_DUMP:
+		ret = copy_from_user(&dump_param, (void *)arg, sizeof(struct diag_ioctl_dump_param));
 		if (!irq_delay_alloced) {
 			ret = -EINVAL;
 		} else {
