@@ -19,6 +19,15 @@ int fs_cache_syscall(struct pt_regs *regs, long id);
 #define DIAG_FS_CACHE_DUMP (DIAG_FS_CACHE_SETTINGS + 1)
 #define DIAG_FS_CACHE_DROP (DIAG_FS_CACHE_DUMP + 1)
 
+#define CMD_FS_CACHE_SET (0)
+#define CMD_FS_CACHE_SETTINGS (CMD_FS_CACHE_SET + 1)
+#define CMD_FS_CACHE_DUMP (CMD_FS_CACHE_SETTINGS + 1)
+#define CMD_FS_CACHE_DROP (CMD_FS_CACHE_DUMP + 1)
+#define DIAG_IOCTL_FS_CACHE_SET (DIAG_IOCTL_TYPE_FS_CACHE, CMD_FS_CACHE_SET, struct diag_fs_cache_settings)
+#define DIAG_IOCTL_FS_CACHE_SETTINGS (DIAG_IOCTL_TYPE_FS_CACHE, CMD_FS_CACHE_SETTINGS, struct diag_fs_cache_settings)
+#define DIAG_IOCTL_FS_CACHE_DUMP (DIAG_IOCTL_TYPE_FS_CACHE, CMD_FS_CACHE_DUMP, struct diag_ioctl_dump_param)
+#define DIAG_IOCTL_FS_CACHE_DROP (DIAG_IOCTL_TYPE_FS_CACHE, CMD_FS_CACHE_DROP, unsigned long)
+
 struct diag_fs_cache_settings {
 	unsigned int activated;
 	unsigned int verbose;
