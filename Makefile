@@ -14,6 +14,8 @@ ifneq ($(findstring Ubuntu,$(UNAME_A)),)
 	apt -y install libunwind8-dev
 	apt -y install elfutils
 	apt -y install libelf-dev
+	apt -y install rpm
+	apt -y install alien
 	apt install openjdk-8-jdk
 else
 	yum install -y libstdc++-static
@@ -54,12 +56,13 @@ java_agent:
 pkg:
 	cd rpmbuild; sh rpmbuild.sh
 	ls rpmbuild/RPMS/*/*
-
-deb:
-	rm ./rpmbuild/diagnose-tools*.deb
-	sudo alien -d ./rpmbuild/RPMS/x86_64/diagnose-tools*.rpm
-	#dpkg -P diagnose-tools || echo "remove alibaba diagnose tool error"
-	#sudo dpkg -i diagnose-tools*.deb
+ifneq ($(findstring Ubuntu,$(UNAME_A)),)
+	#sudo dpkg-reconfigure dash !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	cd rpmbuild; rm -f diagnose-tools*.deb
+	cd rpmbuild; sudo alien -d ./RPMS/x86_64/diagnose-tools*.rpm
+	dpkg -P diagnose-tools || echo "remove diagnose-tools error"
+	cd rpmbuild; sudo dpkg -i diagnose-tools*.deb
+endif
 
 test:
 	modprobe ext4
