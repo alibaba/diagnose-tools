@@ -38,7 +38,7 @@ static inline long diag_call_ioctl(unsigned long request, unsigned long arg)
 
 	ret = ioctl(fd, request, arg);
 	if (ret < 0) {
-		printf("call cmd %lx fail, ret is %lu\n", request, ret);
+		printf("call cmd %lx fail, ret is %ld\n", request, ret);
 		goto err;
 	}
 

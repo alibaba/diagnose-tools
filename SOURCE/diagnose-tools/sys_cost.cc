@@ -75,13 +75,15 @@ static void do_activate(const char *arg)
 		settings.comm[TASK_COMM_LEN - 1] = 0;
 	}
 
-	ret = -ENOSYS;
-	syscall(DIAG_SYS_COST_SET, &ret, &settings, sizeof(struct diag_sys_cost_settings));
+	ret = diag_call_ioctl(DIAG_IOCTL_SYS_COST_SET, (long)&settings);
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
 	printf("    进程ID：%d\n", settings.tgid);
 	printf("    线程ID：%d\n", settings.pid);
 	printf("    进程名称：%s\n", settings.comm);
 	printf("    输出级别：%d\n", settings.verbose);
+	if (ret)
+		return;
+
 	ret = diag_activate("sys-cost");
 	if (ret == 1) {
 		printf("sys-cost activated\n");
@@ -132,8 +134,7 @@ static void do_settings(const char *arg)
 	enable_json = parse.int_value("json");
 
 	memset(&settings, 0, sizeof(struct diag_sys_cost_settings));
-	ret = -ENOSYS;
-	syscall(DIAG_SYS_COST_SETTINGS, &ret, &settings, sizeof(struct diag_sys_cost_settings));
+	ret = diag_call_ioctl(DIAG_IOCTL_SYS_COST_SETTINGS, (long)&settings);
 
 	if (1 == enable_json) {
 		return print_settings_in_json(&settings, ret);
@@ -246,13 +247,17 @@ static void do_extract(char *buf, int len)
 
 static void do_dump(void)
 {
-	static char variant_buf[40 * 1024 * 1024];
+	static char variant_buf[10 * 1024 * 1024];
 	int len;
 	int ret = 0;
+	struct diag_ioctl_dump_param dump_param = {
+		.user_ptr_len = &len,
+		.user_buf_len = 10 * 1024 * 1024,
+		.user_buf = variant_buf,
+	};
 
-	memset(variant_buf, 0, 40* 1024 * 1024);
-	ret = -ENOSYS;
-	syscall(DIAG_SYS_COST_DUMP, &ret, &len, variant_buf, 1 * 1024 * 1024);
+	memset(variant_buf, 0, 10 * 1024 * 1024);
+	ret = diag_call_ioctl(DIAG_IOCTL_SYS_COST_DUMP, (long)&dump_param);
 	if (ret == 0) {
 		do_extract(variant_buf, len);
 	}
@@ -261,15 +266,20 @@ static void do_dump(void)
 static void do_sls(char *arg)
 {
 	int ret;
-	static char variant_buf[1024 * 1024];
-
 	int len;
+	static char variant_buf[1024 * 1024];
+	struct diag_ioctl_dump_param dump_param = {
+		.user_ptr_len = &len,
+		.user_buf_len = 1024 * 1024,
+		.user_buf = variant_buf,
+	};
+
 	ret = log_config(arg, sls_file, &syslog_enabled);
 	if (ret != 1)
 		return;
 
 	while (1) {
-		syscall(DIAG_SYS_COST_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+		ret = diag_call_ioctl(DIAG_IOCTL_SYS_COST_DUMP, (long)&dump_param);
 		if (ret == 0 && len > 0) {
 			extract_variant_buffer(variant_buf, len, sls_extract, NULL);
 		}

@@ -12,6 +12,8 @@
 #ifndef UAPI_SYS_COST_H
 #define UAPI_SYS_COST_H
 
+#include <linux/ioctl.h>
+
 int sys_cost_syscall(struct pt_regs *regs, long id);
 
 #define DIAG_SYS_COST_SET (DIAG_BASE_SYSCALL_SYS_COST)
@@ -35,5 +37,12 @@ struct sys_cost_detail {
 	unsigned long count[USER_NR_syscalls_virt];
 	unsigned long cost[USER_NR_syscalls_virt];
 };
+
+#define CMD_SYS_COST_SET (0)
+#define CMD_SYS_COST_SETTINGS (CMD_SYS_COST_SET + 1)
+#define CMD_SYS_COST_DUMP (CMD_SYS_COST_SETTINGS + 1)
+#define DIAG_IOCTL_SYS_COST_SET _IOR(DIAG_IOCTL_TYPE_SYS_COST, CMD_SYS_COST_SET, struct diag_sys_cost_settings)
+#define DIAG_IOCTL_SYS_COST_SETTINGS _IOW(DIAG_IOCTL_TYPE_SYS_COST, CMD_SYS_COST_SETTINGS, struct diag_sys_cost_settings)
+#define DIAG_IOCTL_SYS_COST_DUMP _IOR(DIAG_IOCTL_TYPE_SYS_COST, CMD_SYS_COST_DUMP, struct diag_ioctl_dump_param)
 
 #endif /* UAPI_SYS_COST_H */
