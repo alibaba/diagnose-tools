@@ -528,7 +528,45 @@ int irq_stats_syscall(struct pt_regs *regs, long id)
 
 long diag_ioctl_irq_stats(unsigned int cmd, unsigned long arg)
 {
-	return -EINVAL;
+	int ret = 0;
+	struct diag_irq_stats_settings settings;
+	struct diag_ioctl_dump_param dump_param;
+
+	mutex_lock(&irq_stats_mutex);
+
+	switch (cmd) {
+	case CMD_IRQ_STATS_SET:
+		if (irq_stats_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, (void *)arg, sizeof(struct diag_irq_stats_settings));
+			if (!ret) {
+				irq_stats_settings = settings;
+			}
+		}
+		break;
+	case CMD_IRQ_STATS_SETTINGS:
+		settings = irq_stats_settings;
+		ret = copy_to_user((void *)arg, &settings, sizeof(struct diag_irq_stats_settings));
+		break;
+	case CMD_IRQ_STATS_DUMP:
+		ret = copy_from_user(&dump_param, (void *)arg, sizeof(struct diag_ioctl_dump_param));
+		if (!irq_stats_alloced) {
+			ret = -EINVAL;
+		} else if (!ret) {
+			dump_data();
+			ret = copy_to_user_variant_buffer(&irq_stats_variant_buffer,
+					dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len);
+			record_dump_cmd("irq-stats");
+		}
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	mutex_unlock(&irq_stats_mutex);
+	return ret;
 }
 
 static int lookup_syms(void)
