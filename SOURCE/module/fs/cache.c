@@ -481,6 +481,53 @@ int fs_cache_syscall(struct pt_regs *regs, long id)
 
 long diag_ioctl_fs_cache(unsigned int cmd, unsigned long arg)
 {
+	int ret = 0;
+	struct diag_fs_cache_settings settings;
+	struct diag_ioctl_dump_param dump_param;
+	void *inode_addr;
+
+	switch (cmd) {
+	case CMD_FS_CACHE_SET:
+		if (fs_cache_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, (void *)arg, sizeof(struct diag_fs_cache_settings));
+			if (!ret) {
+				fs_cache_settings = settings;
+			}
+		}
+		break;
+	case CMD_FS_CACHE_SETTINGS:
+		settings = fs_cache_settings;
+		ret = copy_to_user((void *)arg, &settings, sizeof(struct diag_fs_cache_settings));
+		break;
+	case CMD_FS_CACHE_DUMP:
+		ret = copy_from_user(&dump_param, (void *)arg, sizeof(struct diag_ioctl_dump_param));
+		if (!fs_cache_alloced) {
+			ret = -EINVAL;
+		} if (!ret) {
+			do_dump();
+			ret = copy_to_user_variant_buffer(&fs_cache_variant_buffer,
+					dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len);
+			record_dump_cmd("fs-cache");
+		}
+		break;
+	case CMD_FS_CACHE_DROP:
+		ret = copy_from_user(&inode_addr, (void *)arg, sizeof(unsigned long));
+		if (!ret) {
+			do_drop(inode_addr);
+		}
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
+}
+
+long diag_ioctl_fs_cache(unsigned int cmd, unsigned long arg)
+{
 	return -EINVAL;
 }
 
