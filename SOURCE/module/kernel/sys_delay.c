@@ -485,8 +485,6 @@ long diag_ioctl_sys_delay(unsigned int cmd, unsigned long arg)
 		} if (!ret) {
 			ret = copy_to_user_variant_buffer(&sys_delay_variant_buffer,
 				dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len);
-			if (ret >= 0)
-				ret = copy_to_user((void *)arg, &dump_param, sizeof(struct diag_ioctl_dump_param));
 			record_dump_cmd("sys-delay");
 		}
 		break;
