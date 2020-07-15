@@ -79,14 +79,15 @@ static void do_activate(const char *arg)
 		settings.comm[TASK_COMM_LEN - 1] = 0;
 	}
 
-	ret = -ENOSYS;
-	syscall(DIAG_SCHED_DELAY_SET, &ret, &settings, sizeof(struct diag_sched_delay_settings));
+	ret = diag_call_ioctl(DIAG_IOCTL_SCHED_DELAY_SET, (long)&settings);
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
 	printf("    进程ID：\t%d\n", settings.pid);
 	printf("    线程ID：\t%d\n", settings.pid);
 	printf("    进程名称：\t%s\n", settings.comm);
 	printf("    监控阈值(ms)：\t%d\n", settings.threshold_ms);
 	printf("    输出级别：\t%d\n", settings.verbose);
+	if (ret)
+		return;
 
 	ret = diag_activate("sched-delay");
 	if (ret == 1) {
@@ -117,9 +118,7 @@ static void do_settings(const char *arg)
 	struct params_parser parse(arg);
 	enable_json = parse.int_value("json");
 
-	ret = -ENOSYS;
-	syscall(DIAG_SCHED_DELAY_SETTINGS, &ret, &settings,
-		sizeof(struct diag_sched_delay_settings));
+	ret = diag_call_ioctl(DIAG_IOCTL_SCHED_DELAY_SETTINGS, (long)&settings);
 	if (ret == 0) {
 		if (1 != enable_json)
 		{
@@ -223,13 +222,17 @@ static void do_extract(char *buf, int len)
 
 static void do_dump(const char *arg)
 {
-	static char variant_buf[50 * 1024 * 1024];
+	static char variant_buf[140 * 1024 * 1024];
 	int len;
 	int ret = 0;
+	struct diag_ioctl_dump_param dump_param = {
+		.user_ptr_len = &len,
+		.user_buf_len = 4 * 1024 * 1024,
+		.user_buf = variant_buf,
+	};
 
 	memset(variant_buf, 0, 4 * 1024 * 1024);
-	ret = -ENOSYS;
-	syscall(DIAG_SCHED_DELAY_DUMP, &ret, &len, variant_buf, 4 * 1024 * 1024);
+	ret = diag_call_ioctl(DIAG_IOCTL_SCHED_DELAY_DUMP, (long)&dump_param);
 	if (ret == 0 && len > 0) {
 		do_extract(variant_buf, len);
 	}
@@ -300,6 +303,11 @@ static void do_sls(char *arg)
 	static char variant_buf[4 * 1024 * 1024];
 	int len;
 	int jiffies_sls = 0;
+	struct diag_ioctl_dump_param dump_param = {
+		.user_ptr_len = &len,
+		.user_buf_len = 4 * 1024 * 1024,
+		.user_buf = variant_buf,
+	};
 
 	ret = log_config(arg, sls_file, &syslog_enabled);
 	if (ret != 1)
@@ -307,8 +315,7 @@ static void do_sls(char *arg)
 
 	java_attach_once();
 	while (1) {
-		ret = -ENOSYS;
-		syscall(DIAG_SCHED_DELAY_DUMP, &ret, &len, variant_buf, 4 * 1024 * 1024);
+		ret = diag_call_ioctl(DIAG_SCHED_DELAY_DUMP, (long)&dump_param);
 		if (ret == 0 && len > 0) {
 			/**
 			 * 10 min
