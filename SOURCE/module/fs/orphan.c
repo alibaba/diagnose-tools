@@ -309,19 +309,6 @@ long diag_ioctl_fs_orphan(unsigned int cmd, unsigned long arg)
 	return ret;
 }
 
-long diag_ioctl_fs_orphan(unsigned int cmd, unsigned long arg)
-{
-	return -EINVAL;
-}
-
-static void clean_data(void)
-{
-	//
-}
-long diag_ioctl_fs_orphan(unsigned int cmd, unsigned long arg)
-{
-	return -EINVAL;
-}
 
 static void clean_data(void)
 {

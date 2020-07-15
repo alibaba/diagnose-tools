@@ -526,11 +526,6 @@ long diag_ioctl_fs_cache(unsigned int cmd, unsigned long arg)
 	return ret;
 }
 
-long diag_ioctl_fs_cache(unsigned int cmd, unsigned long arg)
-{
-	return -EINVAL;
-}
-
 static int lookup_syms(void)
 {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 12, 0)
