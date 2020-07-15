@@ -214,7 +214,7 @@ long diag_ioctl_irq_delay(unsigned int cmd, unsigned long arg)
 		ret = copy_from_user(&dump_param, (void *)arg, sizeof(struct diag_ioctl_dump_param));
 		if (!irq_delay_alloced) {
 			ret = -EINVAL;
-		} else {
+		} else if (!ret) {
 			ret = copy_to_user_variant_buffer(&irq_delay_variant_buffer,
 					dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len);
 			record_dump_cmd("irq-delay");
