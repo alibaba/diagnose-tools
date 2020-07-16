@@ -29,6 +29,7 @@ struct diag_utilization_settings {
 	unsigned int verbose;
 	unsigned int style;
 	unsigned int sample;
+	unsigned int cgroup_type;
 	char cpus[512];
 };
 
