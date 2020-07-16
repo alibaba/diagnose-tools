@@ -16,6 +16,7 @@ ifneq ($(findstring Ubuntu,$(UNAME_A)),)
 	apt -y install libelf-dev
 	apt -y install rpm
 	apt -y install alien
+	apt -y install bash-completion # git自动补全
 	apt install openjdk-8-jdk
 else
 	yum install -y libstdc++-static
