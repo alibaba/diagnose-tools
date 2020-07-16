@@ -12,6 +12,8 @@
 #ifndef UAPI_ALLOC_TOP_H
 #define UAPI_ALLOC_TOP_H
 
+#include <linux/ioctl.h>
+
 int alloc_top_syscall(struct pt_regs *regs, long id);
 
 //#define DIAG_ALLOC_TOP_ACTIVATE (DIAG_BASE_SYSCALL_ALLOC_TOP)
@@ -35,5 +37,12 @@ struct alloc_top_detail {
 	char cgroup_name[CGROUP_NAME_LEN];
 	unsigned long page_count;
 };
+
+#define CMD_ALLOC_TOP_SET (0)
+#define CMD_ALLOC_TOP_SETTINGS (CMD_ALLOC_TOP_SET + 1)
+#define CMD_ALLOC_TOP_DUMP (CMD_ALLOC_TOP_SETTINGS + 1)
+#define DIAG_IOCTL_ALLOC_TOP_SET _IOWR(DIAG_IOCTL_TYPE_ALLOC_TOP, CMD_ALLOC_TOP_SET, struct diag_alloc_top_settings)
+#define DIAG_IOCTL_ALLOC_TOP_SETTINGS _IOWR(DIAG_IOCTL_TYPE_ALLOC_TOP, CMD_ALLOC_TOP_SETTINGS, struct diag_alloc_top_settings)
+#define DIAG_IOCTL_ALLOC_TOP_DUMP _IOWR(DIAG_IOCTL_TYPE_ALLOC_TOP, CMD_ALLOC_TOP_DUMP, struct diag_ioctl_dump_param)
 
 #endif /* UAPI_ALLOC_TOP_H */
