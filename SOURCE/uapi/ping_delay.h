@@ -12,6 +12,8 @@
 #ifndef UAPI_PING_DELAY_H
 #define UAPI_PING_DELAY_H
 
+#include <linux/ioctl.h>
+
 #define DIAG_PING_DELAY_SET (DIAG_BASE_SYSCALL_PING_DELAY)
 #define DIAG_PING_DELAY_SETTINGS (DIAG_PING_DELAY_SET + 1)
 #define DIAG_PING_DELAY_DUMP (DIAG_PING_DELAY_SETTINGS + 1)
@@ -92,5 +94,12 @@ struct ping_delay_event {
 	int action;
 	unsigned long func;
 };
+
+#define CMD_PING_DELAY_SET (0)
+#define CMD_PING_DELAY_SETTINGS (CMD_PING_DELAY_SET + 1)
+#define CMD_PING_DELAY_DUMP (CMD_PING_DELAY_SETTINGS + 1)
+#define DIAG_IOCTL_PING_DELAY_SET _IOWR(DIAG_IOCTL_TYPE_PING_DELAY, CMD_PING_DELAY_SET, struct diag_ping_delay_settings)
+#define DIAG_IOCTL_PING_DELAY_SETTINGS _IOWR(DIAG_IOCTL_TYPE_PING_DELAY, CMD_PING_DELAY_SETTINGS, struct diag_ping_delay_settings)
+#define DIAG_IOCTL_PING_DELAY_DUMP _IOWR(DIAG_IOCTL_TYPE_PING_DELAY, CMD_PING_DELAY_DUMP, struct diag_ioctl_dump_param)
 
 #endif /* UAPI_PING_DELAY_H */

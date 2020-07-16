@@ -2035,7 +2035,43 @@ int ping_delay_syscall(struct pt_regs *regs, long id)
 
 long diag_ioctl_ping_delay(unsigned int cmd, unsigned long arg)
 {
-	return -EINVAL;
+	int ret = 0;
+	struct diag_ping_delay_settings settings;
+	struct diag_ioctl_dump_param dump_param;
+
+	switch (cmd) {
+	case CMD_PING_DELAY_SET:
+		if (ping_delay_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, (void *)arg, sizeof(struct diag_ping_delay_settings));
+			if (!ret) {
+				ping_delay_settings = settings;
+			}
+		}
+		break;
+	case CMD_PING_DELAY_SETTINGS:
+		settings = ping_delay_settings;
+		ret = copy_to_user((void *)arg, &settings, sizeof(struct diag_ping_delay_settings));
+		break;
+	case CMD_PING_DELAY_DUMP:
+		ret = copy_from_user(&dump_param, (void *)arg, sizeof(struct diag_ioctl_dump_param));
+
+		if (!ping_delay_alloced) {
+			ret = -EINVAL;
+		} else if(!ret){
+			dump_data();
+			ret = copy_to_user_variant_buffer(&ping_delay_variant_buffer,
+					dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len);
+			record_dump_cmd("ping-delay");
+		}
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
 }
 
 int diag_net_ping_delay_init(void)
