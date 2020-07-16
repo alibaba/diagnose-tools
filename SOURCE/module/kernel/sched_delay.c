@@ -298,7 +298,7 @@ long diag_ioctl_sched_delay(unsigned int cmd, unsigned long arg)
 		if (sched_delay_settings.activated) {
 			ret = -EBUSY;
 		} else {
-			ret = copy_from_user(&settings, arg, sizeof(struct diag_sched_delay_settings));
+			ret = copy_from_user(&settings, (void *)arg, sizeof(struct diag_sched_delay_settings));
 			if (!ret) {
 				sched_delay_settings = settings;
 			}
