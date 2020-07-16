@@ -12,6 +12,8 @@
 #ifndef UAPI_FS_SHM_H
 #define UAPI_FS_SHM_H
 
+#include <linux/ioctl.h>
+
 int fs_shm_syscall(struct pt_regs *regs, long id);
 
 //#define DIAG_FS_SHM_ACTIVATE (DIAG_BASE_SYSCALL_FS_SHM)
@@ -36,5 +38,12 @@ struct fs_shm_detail {
 	char comm[TASK_COMM_LEN];
 	char path_name[DIAG_PATH_LEN];
 };
+
+#define CMD_FS_SHM_SET (0)
+#define CMD_FS_SHM_SETTINGS (CMD_FS_SHM_SET + 1)
+#define CMD_FS_SHM_DUMP (CMD_FS_SHM_SETTINGS + 1)
+#define DIAG_IOCTL_FS_SHM_SET _IOWR(DIAG_IOCTL_TYPE_FS_SHM, CMD_FS_SHM_SET, struct diag_fs_shm_settings)
+#define DIAG_IOCTL_FS_SHM_SETTINGS _IOWR(DIAG_IOCTL_TYPE_FS_SHM, CMD_FS_SHM_SETTINGS, struct diag_fs_shm_settings)
+#define DIAG_IOCTL_FS_SHM_DUMP _IOWR(DIAG_IOCTL_TYPE_FS_SHM, CMD_FS_SHM_DUMP, struct diag_ioctl_dump_param)
 
 #endif /* UAPI_FS_SHM_H */
