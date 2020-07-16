@@ -67,12 +67,12 @@ static void do_activate(const char *arg)
 	}
 
 	ret = diag_call_ioctl(DIAG_IOCTL_FS_ORPHAN_SET, (long)&settings);
-	if (ret)
-		return;
-
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
 	printf("    输出级别：%d\n", settings.verbose);
 	printf("    DEV：%s\n", settings.devname);
+	if (ret)
+		return;
+
 	ret = diag_activate("fs-orphan");
 	if (ret == 1) {
 		printf("fs-orphan activated\n");
@@ -115,8 +115,7 @@ static void do_settings(const char *arg)
 	enable_json = parse.int_value("json");
 
 	ret = diag_call_ioctl(DIAG_IOCTL_FS_ORPHAN_SETTINGS, (long)&settings);
-	if (ret)
-		return;
+
 	if (1 == enable_json) {
 		return print_settings_in_json(&settings, ret);
 	}

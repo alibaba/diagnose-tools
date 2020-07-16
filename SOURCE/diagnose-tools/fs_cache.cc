@@ -63,13 +63,12 @@ static void do_activate(const char *arg)
 		settings.top = 100;
 
 	ret = diag_call_ioctl(DIAG_IOCTL_FS_CACHE_SET, (long)&settings);
-	if (ret)
-		return;
 
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
 	printf("    TOP：%d\n", settings.top);
 	printf("    输出级别：%d\n", settings.verbose);
-
+	if (ret)
+		return;
 
 	ret = diag_activate("fs-cache");
 	if (ret == 1) {
@@ -119,8 +118,6 @@ static void do_settings(const char *arg)
 	enable_json = parse.int_value("json");
 
 	ret = diag_call_ioctl(DIAG_IOCTL_FS_CACHE_SETTINGS, (long)&settings);
-	if (ret)
-		return;
 
 	if (1 == enable_json) {
 		return print_settings_in_json(&settings, ret);

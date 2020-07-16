@@ -21,7 +21,6 @@ int fs_cache_syscall(struct pt_regs *regs, long id);
 #define DIAG_FS_CACHE_DUMP (DIAG_FS_CACHE_SETTINGS + 1)
 #define DIAG_FS_CACHE_DROP (DIAG_FS_CACHE_DUMP + 1)
 
-
 struct diag_fs_cache_settings {
 	unsigned int activated;
 	unsigned int verbose;

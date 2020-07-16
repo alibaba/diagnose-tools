@@ -288,13 +288,14 @@ long diag_ioctl_fs_orphan(unsigned int cmd, unsigned long arg)
 		}
 		break;
 	case CMD_FS_ORPHAN_SETTINGS:
-			settings = fs_orphan_settings;
-			ret = copy_to_user((void *)arg, &settings, sizeof(struct diag_fs_orphan_settings));
+		settings = fs_orphan_settings;
+		ret = copy_to_user((void *)arg, &settings, sizeof(struct diag_fs_orphan_settings));
 		break;
 	case CMD_FS_ORPHAN_DUMP:
+		ret = copy_from_user(&dump_param, (void *)arg, sizeof(struct diag_ioctl_dump_param));
 		if (!fs_orphan_alloced) {
 			ret = -EINVAL;
-		} else {
+		} else if (!ret) {
 			fs_orphan_show();
 			ret = copy_to_user_variant_buffer(&fs_orphan_variant_buffer,
 					dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len);
