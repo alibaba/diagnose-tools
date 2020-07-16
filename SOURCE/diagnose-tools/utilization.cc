@@ -132,9 +132,8 @@ static void do_settings(const char *arg)
 	struct params_parser parse(arg);
 	enable_json = parse.int_value("json");
 
+	memset(&settings, 0, sizeof(struct diag_utilization_settings));
 	ret = diag_call_ioctl(DIAG_IOCTL_UTILIZATION_SETTINGS, (long)&settings);
-	if (ret)
-		return;
 
 	if (1 == enable_json) {
 		print_settings_in_json(&settings, ret);
@@ -258,6 +257,7 @@ static void do_dump(void)
 		.user_buf = variant_buf,
 	};
 
+	memset(variant_buf, 0, 1024 * 1024);
 	ret = diag_call_ioctl(DIAG_IOCTL_UTILIZATION_DUMP, (long)&dump_param);
 	if (ret == 0) {
 		do_extract(variant_buf, len);

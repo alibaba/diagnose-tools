@@ -12,6 +12,8 @@
 #ifndef UAPI_TCP_RETRANS_H
 #define UAPI_TCP_RETRANS_H
 
+#include <linux/ioctl.h>
+
 int tcp_retrans_syscall(struct pt_regs *regs, long id);
 
 //#define DIAG_TCP_RETRANS_ACTIVATE (DIAG_BASE_SYSCALL_TCP_RETRANS)
@@ -57,5 +59,12 @@ struct tcp_retrans_trace {
 	int sync_or_skb;
 	struct timeval tv;
 };
+
+#define CMD_TCP_RETRANS_SET (0)
+#define CMD_TCP_RETRANS_SETTINGS (CMD_TCP_RETRANS_SET + 1)
+#define CMD_TCP_RETRANS_DUMP (CMD_TCP_RETRANS_SETTINGS + 1)
+#define DIAG_IOCTL_TCP_RETRANS_SET _IOWR(DIAG_IOCTL_TYPE_TCP_RETRANS, CMD_TCP_RETRANS_SET, struct diag_tcp_retrans_settings)
+#define DIAG_IOCTL_TCP_RETRANS_SETTINGS _IOWR(DIAG_IOCTL_TYPE_TCP_RETRANS, CMD_TCP_RETRANS_SETTINGS, struct diag_tcp_retrans_settings)
+#define DIAG_IOCTL_TCP_RETRANS_SET_DUMP _IOWR(DIAG_IOCTL_TYPE_TCP_RETRANS, CMD_TCP_RETRANS_DUMP, struct diag_ioctl_dump_param)
 
 #endif /* UAPI_TCP_RETRANS_H */
