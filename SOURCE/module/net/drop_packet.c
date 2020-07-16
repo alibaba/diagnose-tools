@@ -1940,7 +1940,44 @@ int drop_packet_syscall(struct pt_regs *regs, long id)
 
 long diag_ioctl_drop_packet(unsigned int cmd, unsigned long arg)
 {
-	return -EINVAL;
+	int ret = 0;
+	struct diag_drop_packet_settings settings;
+	struct diag_ioctl_dump_param dump_param;
+
+	switch (cmd) {
+	case CMD_DROP_PACKET_SET:
+		if (drop_packet_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, (void *)arg, sizeof(struct diag_drop_packet_settings));
+			if (!ret) {
+				drop_packet_settings = settings;
+			}
+		}
+		break;
+	case CMD_DROP_PACKET_SETTINGS:
+		settings.activated = drop_packet_settings.activated;
+		settings.verbose = drop_packet_settings.verbose;
+		ret = copy_to_user((void *)arg, &settings, sizeof(struct diag_drop_packet_settings));
+		break;
+	case CMD_DROP_PACKET_DUMP:
+		ret = copy_from_user(&dump_param, (void *)arg, sizeof(struct diag_ioctl_dump_param));
+
+		if (!drop_packet_alloced) {
+			ret = -EINVAL;
+		} else if (!ret) {
+			do_dump();
+			ret = copy_to_user_variant_buffer(&drop_packet_variant_buffer,
+					dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len);
+			record_dump_cmd("drop-packet");
+		}
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
 }
 
 int diag_net_drop_packet_init(void)
