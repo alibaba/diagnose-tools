@@ -12,6 +12,8 @@
 #ifndef UAPI_FS_CACHE_H
 #define UAPI_FS_CACHE_H
 
+#include <linux/ioctl.h>
+
 int fs_cache_syscall(struct pt_regs *regs, long id);
 
 #define DIAG_FS_CACHE_SET (DIAG_BASE_SYSCALL_FS_CACHE)
@@ -35,5 +37,14 @@ struct fs_cache_detail {
 	unsigned long f_size;
 	unsigned long cache_nr_pages;
 };
+
+#define CMD_FS_CACHE_SET (0)
+#define CMD_FS_CACHE_SETTINGS (CMD_FS_CACHE_SET + 1)
+#define CMD_FS_CACHE_DUMP (CMD_FS_CACHE_SETTINGS + 1)
+#define CMD_FS_CACHE_DROP (CMD_FS_CACHE_DUMP + 1)
+#define DIAG_IOCTL_FS_CACHE_SET _IOWR(DIAG_IOCTL_TYPE_FS_CACHE, CMD_FS_CACHE_SET, struct diag_fs_cache_settings)
+#define DIAG_IOCTL_FS_CACHE_SETTINGS _IOWR(DIAG_IOCTL_TYPE_FS_CACHE, CMD_FS_CACHE_SETTINGS, struct diag_fs_cache_settings)
+#define DIAG_IOCTL_FS_CACHE_DUMP _IOWR(DIAG_IOCTL_TYPE_FS_CACHE, CMD_FS_CACHE_DUMP, struct diag_ioctl_dump_param)
+#define DIAG_IOCTL_FS_CACHE_DROP _IOWR(DIAG_IOCTL_TYPE_FS_CACHE, CMD_FS_CACHE_DROP, unsigned long)
 
 #endif /* UAPI_FS_CACHE_H */
