@@ -201,10 +201,9 @@ static void do_dump(void)
 
 static void do_test(void)
 {
-	int ret;
 	int ms = 100;
 
-	ret = diag_call_ioctl(DIAG_IOCTL_IRQ_DELAY_TEST, (long)&ms);
+	diag_call_ioctl(DIAG_IOCTL_IRQ_DELAY_TEST, (long)&ms);
 }
 
 static int sls_extract(void *buf, unsigned int len, void *)
