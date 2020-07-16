@@ -12,6 +12,8 @@
 #ifndef UAPI_RUN_TRACE_H
 #define UAPI_RUN_TRACE_H
 
+#include <linux/ioctl.h>
+
 struct event_common_header {
 	int et_type;
 	int seq;
@@ -125,4 +127,35 @@ struct diag_run_trace_settings {
 	int threads_count;
 };
 
+struct diag_run_trace_monitor_syscall {
+	int pid;
+	unsigned int syscall;
+	unsigned int threshold;
+};
+
+struct diag_run_trace_uprobe {
+	unsigned long offset_start;
+	unsigned long offset_stop;
+	unsigned long tgid;
+	unsigned long fd_start, fd_stop;
+};
+
+#define CMD_RUN_TRACE_SET (0)
+#define CMD_RUN_TRACE_SETTINGS (CMD_RUN_TRACE_SET + 1)
+#define CMD_RUN_TRACE_DUMP (CMD_RUN_TRACE_SETTINGS + 1)
+#define CMD_RUN_TRACE_START (CMD_RUN_TRACE_DUMP + 1)
+#define CMD_RUN_TRACE_STOP (CMD_RUN_TRACE_START + 1)
+#define CMD_RUN_TRACE_MONITOR_SYSCALL (CMD_RUN_TRACE_STOP + 1)
+#define CMD_RUN_TRACE_CLEAR_SYSCALL (CMD_RUN_TRACE_MONITOR_SYSCALL + 1)
+#define CMD_RUN_TRACE_UPROBE (CMD_RUN_TRACE_CLEAR_SYSCALL + 1)
+#define DIAG_IOCTL_RUN_TRACE_SET _IOWR(DIAG_IOCTL_TYPE_RUN_TRACE, CMD_RUN_TRACE_SET, struct diag_run_trace_settings)
+#define DIAG_IOCTL_RUN_TRACE_SETTINGS _IOWR(DIAG_IOCTL_TYPE_RUN_TRACE, CMD_RUN_TRACE_SETTINGS, struct diag_run_trace_settings)
+#define DIAG_IOCTL_RUN_TRACE_DUMP _IOWR(DIAG_IOCTL_TYPE_RUN_TRACE, CMD_RUN_TRACE_DUMP, struct diag_ioctl_dump_param)
+#define DIAG_IOCTL_RUN_TRACE_START _IOWR(DIAG_IOCTL_TYPE_RUN_TRACE, CMD_RUN_TRACE_START, int)
+#define DIAG_IOCTL_RUN_TRACE_STOP _IO(DIAG_IOCTL_TYPE_RUN_TRACE, CMD_RUN_TRACE_STOP)
+#define DIAG_IOCTL_RUN_TRACE_MONITOR_SYSCALL _IOWR(DIAG_IOCTL_TYPE_RUN_TRACE,\
+			CMD_RUN_TRACE_MONITOR_SYSCALL, struct diag_run_trace_monitor_syscall)
+#define DIAG_IOCTL_RUN_TRACE_CLEAR_SYSCALL _IOWR(DIAG_IOCTL_TYPE_RUN_TRACE, CMD_RUN_TRACE_CLEAR_SYSCALL, int)
+#define DIAG_IOCTL_RUN_TRACE_UPROBE _IOWR(DIAG_IOCTL_TYPE_RUN_TRACE,\
+			CMD_RUN_TRACE_UPROBE, struct diag_run_trace_uprobe)
 #endif /* UAPI_RUN_TRACE_H */

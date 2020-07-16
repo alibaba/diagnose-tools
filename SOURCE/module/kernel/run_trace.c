@@ -1069,11 +1069,6 @@ int run_trace_clear_syscall(unsigned int pid)
 	return ret;
 }
 
-long diag_ioctl_run_trace(unsigned int cmd, unsigned long arg)
-{
-	return -EINVAL;
-}
-
 __maybe_unused static int uprobe_start_handler(struct uprobe_consumer *self, struct pt_regs *regs)
 {
 	if (current->tgid != run_trace_uprobe_tgid)
@@ -1195,6 +1190,89 @@ int run_trace_syscall(struct pt_regs *regs, long id)
 		offset_stop = SYSCALL_PARAM5(regs);
 
 		ret = do_uprobe(tgid, fd_start, offset_start, fd_stop, offset_stop);
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
+}
+
+long diag_ioctl_run_trace(unsigned int cmd, unsigned long arg)
+{
+	int ret = 0;
+	int pid;
+	unsigned int threshold;
+	struct diag_run_trace_settings settings;
+	struct diag_ioctl_dump_param dump_param;
+	struct diag_run_trace_monitor_syscall monitor_syscall;
+	struct diag_run_trace_uprobe uprobe;
+
+	switch (cmd) {
+	case CMD_RUN_TRACE_SET:
+		if (run_trace_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, (void *)arg, sizeof(struct diag_run_trace_settings));
+			if ((settings.timer_us && settings.timer_us < 10)
+				  || (settings.buf_size_k && (settings.buf_size_k < 200 || settings.buf_size_k > 10 * 1024))) {
+				ret = -EINVAL;
+			}
+			if (!ret) {
+				run_trace_settings = settings;
+			}
+		}
+		break;
+	case CMD_RUN_TRACE_SETTINGS:
+		settings = run_trace_settings;
+		settings.threads_count = atomic64_read(&settings_threads_count);
+		settings.syscall_count = atomic64_read(&settings_syscall_count);
+		ret = copy_to_user((void *)arg, &settings, sizeof(struct diag_run_trace_settings));
+		break;
+	case CMD_RUN_TRACE_START:
+		ret = copy_from_user(&threshold, (void *)arg, sizeof(int));
+		if (!ret) {
+			down_read(&run_trace_sem);
+			ret = start_run_trace(current, threshold, 0);
+			up_read(&run_trace_sem);
+		}
+		break;
+	case CMD_RUN_TRACE_STOP:
+		stop_run_trace(current, 0);
+		ret = 0;
+		break;
+	case CMD_RUN_TRACE_MONITOR_SYSCALL:
+		ret = copy_from_user(&monitor_syscall, (void *)arg,
+			sizeof(struct diag_run_trace_monitor_syscall));
+		if (!ret) {
+			ret = run_trace_set_syscall(monitor_syscall.pid,
+				monitor_syscall.syscall, monitor_syscall.threshold);
+		}
+		break;
+	case CMD_RUN_TRACE_CLEAR_SYSCALL:
+		ret = copy_from_user(&pid, (void *)arg, sizeof(int));
+		if (!ret) {
+			ret = run_trace_clear_syscall(pid);
+		}
+		break;
+	case CMD_RUN_TRACE_DUMP:
+		ret = copy_from_user(&dump_param, (void *)arg, sizeof(struct diag_ioctl_dump_param));
+		if (!run_trace_alloced) {
+			ret = -EINVAL;
+		} else if (!ret) {
+			ret = copy_to_user_variant_buffer(&run_trace_variant_buffer,
+					dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len);
+			record_dump_cmd("run-trace");
+		}
+
+		break;
+	case CMD_RUN_TRACE_UPROBE:
+		ret = copy_from_user(&uprobe, (void *)arg, sizeof(struct diag_run_trace_uprobe));
+		if (!ret) {
+			ret = do_uprobe(uprobe.tgid, uprobe.fd_start,
+				uprobe.offset_start, uprobe.fd_stop, uprobe.offset_stop);
+		}
 		break;
 	default:
 		ret = -ENOSYS;
