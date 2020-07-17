@@ -66,11 +66,13 @@ static void do_activate(const char *arg)
 		settings.comm[TASK_COMM_LEN - 1] = 0;
 	}
 #endif
-
-	ret = -ENOSYS;
-	syscall(DIAG_DROP_PACKET_SET, &ret, &settings, sizeof(struct diag_drop_packet_settings));
+	
+	ret = diag_call_ioctl(DIAG_IOCTL_DROP_PACKET_SET, (long)&settings);
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
 	printf("    输出级别：%d\n", settings.verbose);
+
+	if (ret)
+		return;
 
 	ret = diag_activate("drop-packet");
 	if (ret == 1) {
@@ -118,8 +120,7 @@ static void do_settings(const char *arg)
 	struct params_parser parse(arg);
 	enable_json = parse.int_value("json");
 
-	ret = -ENOSYS;
-	syscall(DIAG_DROP_PACKET_SETTINGS, &ret, &settings, sizeof(struct diag_drop_packet_settings));
+	ret = diag_call_ioctl(DIAG_IOCTL_DROP_PACKET_SETTINGS, (long)&settings);
 
 	if (1 == enable_json) {
 		return print_settings_in_json(&settings, ret);
@@ -255,9 +256,14 @@ static void do_dump(void)
 	static char variant_buf[1024 * 1024];
 	int len;
 	int ret = 0;
+	struct diag_ioctl_dump_param dump_param = {
+		.user_ptr_len = &len,
+		.user_buf_len = 1024 * 1024,
+		.user_buf = variant_buf,
+	};
 
-	ret = -ENOSYS;
-	syscall(DIAG_DROP_PACKET_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+	memset(variant_buf, 0, 1024 * 1024);
+	ret = diag_call_ioctl(DIAG_IOCTL_DROP_PACKET_DUMP, (long)&dump_param);
 	if (ret == 0) {
 		do_extract(variant_buf, len);
 	}
@@ -268,13 +274,18 @@ static void do_sls(char *arg)
 	int ret;
 	int len;
 	static char variant_buf[1024 * 1024];
+	struct diag_ioctl_dump_param dump_param = {
+		.user_ptr_len = &len,
+		.user_buf_len = 1024 * 1024,
+		.user_buf = variant_buf,
+	};
 
 	ret = log_config(arg, sls_file, &syslog_enabled);
 	if (ret != 1)
 		return;
 
 	while (1) {
-		syscall(DIAG_DROP_PACKET_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+		ret = diag_call_ioctl(DIAG_IOCTL_DROP_PACKET_DUMP, (long)&dump_param);
 		if (ret == 0 && len > 0) {
 			extract_variant_buffer(variant_buf, len, sls_extract, NULL);
 		}
