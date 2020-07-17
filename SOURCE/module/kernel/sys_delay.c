@@ -518,7 +518,7 @@ static void jump_init(void)
 	JUMP_INIT(_cond_resched);
 }
 
-int diag_syscall_init(void)
+int diag_sys_delay_init(void)
 {
 	if (lookup_syms())
 		return -EINVAL;
@@ -533,7 +533,7 @@ int diag_syscall_init(void)
 	return 0;
 }
 
-void diag_syscall_exit(void)
+void diag_sys_delay_exit(void)
 {
 	if (sys_delay_settings.activated)
 		deactivate_sys_delay();

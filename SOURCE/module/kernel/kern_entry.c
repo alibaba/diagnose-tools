@@ -182,7 +182,7 @@ int diag_kernel_init(void)
 	if (ret)
 		goto out_task_time;
 
-	ret = diag_syscall_init();
+	ret = diag_sys_delay_init();
 	if (ret)
 		goto out_syscall;
 
@@ -277,7 +277,7 @@ out_runq_info:
 out_exec:
 	diag_timer_exit();
 out_timer:
-	diag_syscall_exit();
+	diag_sys_delay_exit();
 out_syscall:
 	diag_task_time_exit();
 out_task_time:
@@ -339,7 +339,7 @@ void diag_kernel_exit(void)
 	diag_timer_exit();
 	diag_task_time_exit();
 	diag_sys_cost_exit();
-	diag_syscall_exit();
+	diag_sys_delay_exit();
 	diag_exit_exit();
 	diag_load_exit();
 	diag_mutex_exit();

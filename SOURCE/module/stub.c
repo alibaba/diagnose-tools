@@ -129,12 +129,12 @@ void __weak diag_exit_exit(void)
 	//
 }
 
-int __weak diag_syscall_init(void)
+int __weak diag_sys_delay_init(void)
 {
 	return 0;
 }
 
-void __weak diag_syscall_exit(void)
+void __weak diag_sys_delay_exit(void)
 {
 	//
 }
