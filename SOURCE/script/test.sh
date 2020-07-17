@@ -21,11 +21,10 @@ declare -a __all_case=(["1"]="sys-delay" ["2"]="sys-cost" ["3"]="sched-delay" \
 			["7"]="load-monitor" ["8"]="run-trace" ["9"]="perf" \
 			["10"]="kprobe" ["11"]="uprobe" ["12"]="utilization" \
 			["13"]="exit-monitor" ["14"]="mutex-monitor" ["15"]="exec-monitor" \
-			["16"]="proc-monitor" ["17"]="runq-info" \
-			["18"]="alloc-load" ["19"]="alloc-top" ["20"]="high-order"\
-			["21"]="drop-packet" ["22"]="tcp-retrans" ["23"]="ping-delay" \
-			["24"]="rw-top" ["25"]="fs-shm" ["26"]="fs-orphan" ["27"]="df-du" \
-			["28"]="fs-cache" ["999"]="kern-demo" )
+			["16"]="alloc-top" ["17"]="high-order"\
+			["18"]="drop-packet" ["19"]="tcp-retrans" ["20"]="ping-delay" \
+			["21"]="rw-top" ["22"]="fs-shm" ["23"]="fs-orphan" \
+			["24"]="fs-cache" ["999"]="kern-demo" )
 
 sys_delay() {
 	eval "$diag_ sys-delay --deactivate --activate='style=0' --test --report --deactivate --settings"
@@ -170,22 +169,6 @@ exec_monitor() {
 	eval "$diag_ exec-monitor --report --deactivate --settings"
 }
 
-proc_monitor() {
-	eval "$diag_ proc-monitor --deactivate --activate='detail=1' --test --report --deactivate --settings"
-}
-
-runq_info() {
-	eval "$diag_ runq-info --deactivate --activate"
-	sleep 1
-	eval "$diag_ runq-info --report --deactivate --settings"
-}
-
-alloc_load() {
-	eval "$diag_ alloc-load --deactivate --activate"
-	sleep 1
-	eval "$diag_ alloc-load --report --deactivate --settings"
-}
-
 alloc_top() {
 	eval "$diag_ alloc-top --deactivate --activate='top=20'"
 	sleep 1
@@ -252,10 +235,6 @@ fs_shm() {
 
 fs_orphan() {
 	eval "$diag_ fs-orphan --deactivate --activate='dev=sdb' --settings --report --deactivate --settings"
-}
-
-df_du() {
-	eval "$diag_ df-du --deactivate --activate --report='file=/apsarapangu/a.data' --settings"
 }
 
 fs_cache() {
