@@ -3,9 +3,14 @@ CWD = $(shell pwd)
 UNAME_A := $(shell uname -a)
 
 all: module tools java_agent pkg
+ifneq ($(findstring Ubuntu,$(UNAME_A)),)
+	dpkg -P diagnose-tools || echo "remove diagnose-tools error"
+	cd rpmbuild; sudo dpkg -i diagnose-tools*.deb
+else
 	yum remove -y diagnose-tools
 	yum install -y rpmbuild/RPMS/x86_64/diagnose-tools-*.rpm
 	diagnose-tools -v
+endif
 
 devel:
 ifneq ($(findstring Ubuntu,$(UNAME_A)),)
@@ -61,8 +66,6 @@ ifneq ($(findstring Ubuntu,$(UNAME_A)),)
 	#sudo dpkg-reconfigure dash !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	cd rpmbuild; rm -f diagnose-tools*.deb
 	cd rpmbuild; sudo alien -d ./RPMS/x86_64/diagnose-tools*.rpm
-	dpkg -P diagnose-tools || echo "remove diagnose-tools error"
-	cd rpmbuild; sudo dpkg -i diagnose-tools*.deb
 endif
 
 test:
