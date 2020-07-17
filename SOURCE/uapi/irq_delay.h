@@ -14,8 +14,6 @@
 
 #include <linux/ioctl.h>
 
-int irq_delay_syscall(struct pt_regs *regs, long id);
-
 //#define DIAG_IRQ_DELAY_ACTIVATE (DIAG_BASE_SYSCALL_IRQ_DELAY)
 //#define DIAG_IRQ_DELAY_DEACTIVATE (DIAG_IRQ_DELAY_ACTIVATE + 1)
 #define DIAG_IRQ_DELAY_SET (DIAG_BASE_SYSCALL_IRQ_DELAY)

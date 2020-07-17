@@ -79,7 +79,7 @@ int test_run_trace_main(int argc, char *argv[])
 
 	for (i = 0; i < count; i++) {
 		if (type == 0) {
-			syscall(DIAG_RUN_TRACE_START, threshold);
+			diag_call_ioctl(DIAG_IOCTL_RUN_TRACE_START, (long)&threshold);
 		} else if (type == 1) {
 			fp = open("/proc/ali-linux/diagnose/kern/run-trace-settings", O_WRONLY);
 			if (fp != -1) {
@@ -95,7 +95,7 @@ int test_run_trace_main(int argc, char *argv[])
 		sleep(1);
 
 		if (type == 0) {
-			syscall(DIAG_RUN_TRACE_STOP);
+			diag_call_ioctl(DIAG_IOCTL_RUN_TRACE_STOP, 0);
 		} else if (type == 1) {
 			fp = open("/proc/ali-linux/diagnose/kern/run-trace-settings", O_WRONLY);
 			if (fp != -1) {

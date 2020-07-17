@@ -485,26 +485,6 @@ void __weak diag_utilization_exit(void)
 	//
 }
 
-int __weak exit_monitor_syscall(struct pt_regs *regs, long id)
-{
-	return -ENOSYS;
-}
-
-int __weak pupil_syscall(struct pt_regs *regs, long id)
-{
-	return -ENOSYS;
-}
-
-int __weak irq_delay_syscall(struct pt_regs *regs, long id)
-{
-	return -ENOSYS;
-}
-
-int __weak load_monitor_syscall(struct pt_regs *regs, long id)
-{
-	return -ENOSYS;
-}
-
 int __weak mutex_monitor_syscall(struct pt_regs *regs, long id)
 {
 	return -ENOSYS;
@@ -515,57 +495,7 @@ int __weak perf_syscall(struct pt_regs *regs, long id)
 	return -ENOSYS;
 }
 
-int __weak run_trace_syscall(struct pt_regs *regs, long id)
-{
-	return -ENOSYS;
-}
-
-int __weak rw_top_syscall(struct pt_regs *regs, long id)
-{
-	return -ENOSYS;
-}
-
-int __weak sys_delay_syscall(struct pt_regs *regs, long id)
-{
-	return -ENOSYS;
-}
-
-int __weak tcp_retrans_syscall(struct pt_regs *regs, long id)
-{
-	return -ENOSYS;
-}
-
-int __weak utilization_syscall(struct pt_regs *regs, long id)
-{
-	return -ENOSYS;
-}
-
-int __weak alloc_top_syscall(struct pt_regs *regs, long id)
-{
-	return -ENOSYS;
-}
-
-int __weak drop_packet_syscall(struct pt_regs *regs, long id)
-{
-	return -ENOSYS;
-}
-
 int __weak exec_monitor_syscall(struct pt_regs *regs, long id)
-{
-	return -ENOSYS;
-}
-
-int __weak fs_shm_syscall(struct pt_regs *regs, long id)
-{
-	return -ENOSYS;
-}
-
-int __weak irq_stats_syscall(struct pt_regs *regs, long id)
-{
-	return -ENOSYS;
-}
-
-int __weak irq_trace_syscall(struct pt_regs *regs, long id)
 {
 	return -ENOSYS;
 }
