@@ -292,7 +292,7 @@ static void do_sample(char *arg)
 	if (ret < 1)
 		return;
 
-	ret = diag_call_ioctl(DIAG_IOCTL_UTILIZATION_SAMPLE, &sample);
+	ret = diag_call_ioctl(DIAG_IOCTL_UTILIZATION_SAMPLE, (long)&sample);
 	printf("set sample for utilization: %d, ret is %d\n", sample, ret);
 }
 
