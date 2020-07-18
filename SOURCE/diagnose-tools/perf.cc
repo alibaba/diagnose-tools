@@ -88,8 +88,7 @@ static void do_activate(const char *arg)
 		settings.cpus[511] = 0;
 	}
 
-	ret = -ENOSYS;
-	syscall(DIAG_PERF_SET, &ret, &settings, sizeof(struct diag_perf_settings));
+	ret = diag_call_ioctl(DIAG_IOCTL_PERF_SET, (long)&settings);	
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
 	printf("    STYLE：\t%d\n", settings.style);
 	printf("    输出级别：\t%d\n", settings.verbose);
@@ -101,6 +100,9 @@ static void do_activate(const char *arg)
 	printf("    BVT：\t%d\n", settings.bvt);
 	printf("    SYS：\t%d\n", settings.sys);
 	
+	if (ret)
+		return;
+
 	ret = diag_activate("perf");
 	if (ret == 1) {
 		printf("perf activated\n");
@@ -131,8 +133,7 @@ static void do_settings(const char *arg)
 	enable_json = parse.int_value("json");
 
 
-	ret = -ENOSYS;
-	syscall(DIAG_PERF_SETTINGS, &ret, &settings, sizeof(struct diag_perf_settings));
+	ret = diag_call_ioctl(DIAG_IOCTL_PERF_SETTINGS, (long)&settings);
 	if (ret == 0) {
 		if (1 != enable_json)
 		{
@@ -246,13 +247,17 @@ static void do_dump(const char *arg)
 	int len;
 	int ret = 0;
 	struct params_parser parse(arg);
+	struct diag_ioctl_dump_param dump_param = {
+		.user_ptr_len = &len,
+		.user_buf_len = 50 * 1024 * 1024,
+		.user_buf = variant_buf,
+	};
 
 	report_reverse = parse.int_value("reverse");
 	run_in_container = parse.int_value("container");
 
 	memset(variant_buf, 0, 50 * 1024 * 1024);
-	ret = -ENOSYS;
-	syscall(DIAG_PERF_DUMP, &ret, &len, variant_buf, 50 * 1024 * 1024);
+	ret = diag_call_ioctl(DIAG_IOCTL_PERF_DUMP, (long)&dump_param);
 	if (ret == 0 && len > 0) {
 		java_attach_once();
 		do_extract(variant_buf, len);
@@ -360,6 +365,11 @@ static void do_sls(char *arg)
 	static char store_file[256];
 	std::string buf;
 	int jiffies_sls = 0;
+	struct diag_ioctl_dump_param dump_param = {
+		.user_ptr_len = &len,
+		.user_buf_len = 50 * 1024 * 1024,
+		.user_buf = variant_buf,
+	};
 
 	ret = log_config(arg, store_file, &syslog_enabled);
 	if (ret != 1)
@@ -369,8 +379,7 @@ static void do_sls(char *arg)
 	java_attach_once();
 
 	while (1) {
-		ret = -ENOSYS;
-		syscall(DIAG_PERF_DUMP, &ret, &len, variant_buf, 50 * 1024 * 1024);
+		ret = diag_call_ioctl(DIAG_IOCTL_PERF_DUMP, (long)&dump_param);
 		if (ret == 0 && len > 0) {
 			/**
 			 * 10 min

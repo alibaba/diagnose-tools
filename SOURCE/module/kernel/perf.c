@@ -298,7 +298,50 @@ int perf_syscall(struct pt_regs *regs, long id)
 
 long diag_ioctl_perf(unsigned int cmd, unsigned long arg)
 {
-	return -EINVAL;
+	int ret = 0;
+	static struct diag_perf_settings settings;
+	struct diag_ioctl_dump_param dump_param;
+
+	switch (cmd) {
+	case CMD_PERF_SET:
+		if (perf_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, (void *)arg, sizeof(struct diag_perf_settings));
+			if (!ret) {
+				if (settings.cpus[0]) {
+					str_to_cpumask(settings.cpus, &perf_cpumask);
+				} else {
+					perf_cpumask = *cpu_possible_mask;
+				}
+				
+				perf_settings = settings;
+			}
+		}
+		break;
+	case CMD_PERF_SETTINGS:
+		settings = perf_settings;
+		cpumask_to_str(&perf_cpumask, settings.cpus, 512);
+		ret = copy_to_user((void *)arg, &settings, sizeof(struct diag_perf_settings));
+		break;
+	case CMD_PERF_DUMP:
+		ret = copy_from_user(&dump_param, (void *)arg, sizeof(struct diag_ioctl_dump_param));
+
+		if (!perf_alloced) {
+			ret = -EINVAL;
+		} else if (!ret) {
+			perf_seq++;
+			ret = copy_to_user_variant_buffer(&perf_variant_buffer,
+					dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len);
+			record_dump_cmd("perf");
+		}
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
 }
 
 int diag_kern_perf_init(void)
