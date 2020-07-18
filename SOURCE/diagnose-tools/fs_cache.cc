@@ -237,7 +237,7 @@ static void do_drop(const char *arg)
 		return;
 	}
 	
-	ret = diag_call_ioctl(DIAG_IOCTL_FS_CACHE_DROP, inode);
+	ret = diag_call_ioctl(DIAG_IOCTL_FS_CACHE_DROP, (long)&inode);
 	if (ret)
 		return;
 	printf("fs-cache drop inode %lx, ret %d\n", inode, ret);

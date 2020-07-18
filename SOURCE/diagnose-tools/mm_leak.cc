@@ -68,7 +68,7 @@ static void do_verbose(char *arg)
 	if (ret != 1)
 		return;
 
-	ret = diag_call_ioctl(DIAG_IOCTL_MM_LEAK_VERBOSE, (unsigned long)verbose);
+	ret = diag_call_ioctl(DIAG_IOCTL_MM_LEAK_VERBOSE, (unsigned long)&verbose);
 	printf("set verbose for mm-leak: %d, ret is %d\n", verbose, ret);
 }
 
