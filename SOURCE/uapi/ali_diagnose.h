@@ -110,6 +110,7 @@ long diag_ioctl_rw_top(unsigned int cmd, unsigned long arg);
 long diag_ioctl_fs_shm(unsigned int cmd, unsigned long arg);
 long diag_ioctl_fs_orphan(unsigned int cmd, unsigned long arg);
 long diag_ioctl_fs_cache(unsigned int cmd, unsigned long arg);
+long diag_ioctl_mm_leak(unsigned int cmd, unsigned long arg);
 
 struct diag_ioctl_test {
 	int in;
@@ -123,6 +124,13 @@ struct diag_ioctl_dump_param {
 	int __user *user_ptr_len;
 	size_t __user user_buf_len;
 	void __user *user_buf;
+};
+
+struct diag_ioctl_dump_param_cycle {
+	int __user *user_ptr_len;
+	size_t __user user_buf_len;
+	void __user *user_buf;
+	size_t __user cycle;
 };
 
 #define DIAG_IOCTL_TEST_IOCTL _IOWR(DIAG_IOCTL_TYPE_TEST, 1, struct diag_ioctl_test)
