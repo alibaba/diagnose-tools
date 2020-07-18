@@ -197,7 +197,7 @@ static void do_dump(void)
 	};
 
 	memset(variant_buf, 0, 1024 * 1024);
-	ret = diag_call_ioctl(DIAG_IOCTL_MUTEX_MONITOR_DUMP, (long)&dump_param)
+	ret = diag_call_ioctl(DIAG_IOCTL_MUTEX_MONITOR_DUMP, (long)&dump_param);
 	if (ret == 0) {
 		do_extract(variant_buf, len);
 	}
