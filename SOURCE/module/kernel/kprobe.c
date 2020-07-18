@@ -404,7 +404,6 @@ long diag_ioctl_kprobe(unsigned int cmd, unsigned long arg)
 	}
 
 	return ret;
-	return -EINVAL;
 }
 
 int diag_kprobe_init(void)
