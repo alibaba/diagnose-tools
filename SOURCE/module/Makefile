@@ -50,6 +50,50 @@ ifneq ($(findstring alios7.x86_64,$(KERNEL_BUILD_PATH)),)
 
 	ifneq ($(findstring ali3000,$(KERNEL_BUILD_PATH)),)
 		DIAG_EXTRA_CFLAGS += -DALIOS_3000
+
+		ifneq ($(findstring -009,$(KERNEL_BUILD_PATH)),)
+			DIAG_EXTRA_CFLAGS += -DALIOS_3000_009
+		endif
+
+		ifneq ($(findstring -010,$(KERNEL_BUILD_PATH)),)
+			DIAG_EXTRA_CFLAGS += -DALIOS_3000_010
+		endif
+
+		ifneq ($(findstring -011,$(KERNEL_BUILD_PATH)),)
+			DIAG_EXTRA_CFLAGS += -DALIOS_3000_011
+		endif
+
+		ifneq ($(findstring -012,$(KERNEL_BUILD_PATH)),)
+			DIAG_EXTRA_CFLAGS += -DALIOS_3000_012
+		endif
+
+		ifneq ($(findstring -013,$(KERNEL_BUILD_PATH)),)
+			DIAG_EXTRA_CFLAGS += -DALIOS_3000_013
+		endif
+
+		ifneq ($(findstring -014,$(KERNEL_BUILD_PATH)),)
+			DIAG_EXTRA_CFLAGS += -DALIOS_3000_014
+		endif
+
+		ifneq ($(findstring -015,$(KERNEL_BUILD_PATH)),)
+			DIAG_EXTRA_CFLAGS += -DALIOS_3000_015
+		endif
+
+		ifneq ($(findstring -016,$(KERNEL_BUILD_PATH)),)
+			DIAG_EXTRA_CFLAGS += -DALIOS_3000_016
+		endif
+
+		ifneq ($(findstring -017,$(KERNEL_BUILD_PATH)),)
+			DIAG_EXTRA_CFLAGS += -DALIOS_3000_017
+		endif
+
+		ifneq ($(findstring -018,$(KERNEL_BUILD_PATH)),)
+			DIAG_EXTRA_CFLAGS += -DALIOS_3000_018
+		endif
+
+		ifneq ($(findstring -019,$(KERNEL_BUILD_PATH)),)
+			DIAG_EXTRA_CFLAGS += -DALIOS_3000_019
+		endif
 	endif
 
 	ifneq ($(findstring ali4000,$(KERNEL_BUILD_PATH)),)
