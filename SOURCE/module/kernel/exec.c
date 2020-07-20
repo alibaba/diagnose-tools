@@ -255,7 +255,42 @@ int exec_monitor_syscall(struct pt_regs *regs, long id)
 
 long diag_ioctl_exec_monitor(unsigned int cmd, unsigned long arg)
 {
-	return -EINVAL;
+	int ret = 0;
+	struct diag_exec_monitor_settings settings;
+	struct diag_ioctl_dump_param dump_param;
+
+	switch (cmd) {
+	case CMD_EXEC_MONITOR_SET:
+		if (exec_monitor_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, (void *)arg, sizeof(struct diag_exec_monitor_settings));
+			if (!ret) {
+				exec_monitor_settings = settings;
+			}
+		}
+		break;
+	case CMD_EXEC_MONITOR_SETTINGS:
+		settings = exec_monitor_settings;
+		ret = copy_to_user((void *)arg, &settings, sizeof(struct diag_exec_monitor_settings));
+		break;
+	case CMD_EXEC_MONITOR_DUMP:
+		ret = copy_from_user(&dump_param, (void *)arg, sizeof(struct diag_ioctl_dump_param));
+
+		if (!exec_monitor_alloced) {
+			ret = -EINVAL;
+		} else {
+			ret = copy_to_user_variant_buffer(&exec_monitor_variant_buffer,
+					dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len);
+			record_dump_cmd("exec-monitor");
+		}
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
 }
 
 int diag_exec_init(void)

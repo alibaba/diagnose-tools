@@ -49,8 +49,7 @@ static void do_pid(char *arg)
 		return;
 	}
 
-	ret = -ENOSYS;
-	syscall(DIAG_PUPIL_TASK_PID, &ret, pid);
+	ret = diag_call_ioctl(DIAG_IOCTL_PUPIL_TASK_PID, (long)&pid);
 	if (ret) {
 		printf("	获取线程信息错误： %d\n", ret);
 	}
@@ -67,9 +66,7 @@ static void do_tgid(char *arg)
 		return;
 	}
 
-	ret = -ENOSYS;
-	syscall(DIAG_PUPIL_TASK_TGID, &ret, tgid);
-
+	ret = diag_call_ioctl(DIAG_IOCTL_PUPIL_TASK_TGID, (long)&tgid);
 	if (ret) {
 		printf("	获取线程信息错误： %d\n", ret);
 	}
@@ -131,13 +128,17 @@ static void do_dump(const char *arg)
 	int len;
 	int ret = 0;
 	struct params_parser parse(arg);
+	struct diag_ioctl_dump_param dump_param = {
+		.user_ptr_len = &len,
+		.user_buf_len = 5 * 1024 * 1024,
+		.user_buf = variant_buf,
+	};
 
 	report_reverse = parse.int_value("reverse");
 
 	memset(variant_buf, 0, 5 * 1024 * 1024);
-	ret = -ENOSYS;
-	syscall(DIAG_PUPIL_TASK_DUMP, &ret, &len, variant_buf, 5 * 1024 * 1024);
-	if (ret == 0 && len > 0) {
+	ret = diag_call_ioctl(DIAG_IOCTL_PUPIL_TASK_DUMP, (long)&dump_param);
+	if (ret == 0) {
 		do_extract(variant_buf, len);
 	}
 }

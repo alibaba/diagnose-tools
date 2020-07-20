@@ -84,7 +84,8 @@ err:
 #define DIAG_IOCTL_TYPE_FS_CACHE (DIAG_IOCTL_TYPE_SYS_COST + 1)
 #define DIAG_IOCTL_TYPE_HIGH_ORDER (DIAG_IOCTL_TYPE_FS_CACHE + 1)
 #define DIAG_IOCTL_TYPE_D (DIAG_IOCTL_TYPE_HIGH_ORDER + 1)
-#define DIAG_IOCTL_TYPE_END (DIAG_IOCTL_TYPE_D + 1)
+#define DIAG_IOCTL_TYPE_PUPIL_TASK (DIAG_IOCTL_TYPE_D + 1)
+#define DIAG_IOCTL_TYPE_END (DIAG_IOCTL_TYPE_PUPIL_TASK + 1)
 
 long diag_ioctl_sys_delay(unsigned int cmd, unsigned long arg);
 long diag_ioctl_sys_cost(unsigned int cmd, unsigned long arg);
@@ -110,6 +111,8 @@ long diag_ioctl_rw_top(unsigned int cmd, unsigned long arg);
 long diag_ioctl_fs_shm(unsigned int cmd, unsigned long arg);
 long diag_ioctl_fs_orphan(unsigned int cmd, unsigned long arg);
 long diag_ioctl_fs_cache(unsigned int cmd, unsigned long arg);
+long diag_ioctl_mm_leak(unsigned int cmd, unsigned long arg);
+long diag_ioctl_pupil_task(unsigned int cmd, unsigned long arg);
 
 struct diag_ioctl_test {
 	int in;
@@ -123,6 +126,13 @@ struct diag_ioctl_dump_param {
 	int __user *user_ptr_len;
 	size_t __user user_buf_len;
 	void __user *user_buf;
+};
+
+struct diag_ioctl_dump_param_cycle {
+	int __user *user_ptr_len;
+	size_t __user user_buf_len;
+	void __user *user_buf;
+	size_t __user cycle;
 };
 
 #define DIAG_IOCTL_TEST_IOCTL _IOWR(DIAG_IOCTL_TYPE_TEST, 1, struct diag_ioctl_test)

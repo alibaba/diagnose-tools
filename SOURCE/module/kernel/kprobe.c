@@ -361,7 +361,49 @@ int kprobe_syscall(struct pt_regs *regs, long id)
 
 long diag_ioctl_kprobe(unsigned int cmd, unsigned long arg)
 {
-	return -EINVAL;
+	int ret = 0;
+	struct diag_kprobe_settings settings;
+	struct diag_ioctl_dump_param dump_param;
+
+	switch (cmd) {
+	case CMD_KPROBE_SET:
+		if (kprobe_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, (void *)arg, sizeof(struct diag_kprobe_settings));
+			if (!ret) {
+				if (settings.cpus[0]) {
+					str_to_cpumask(settings.cpus, &kprobe_cpumask);
+				} else {
+					kprobe_cpumask = *cpu_possible_mask;
+				}
+				kprobe_settings = settings;
+			}
+		}
+		break;
+	case CMD_KPROBE_SETTINGS:
+		memset(&settings, 0, sizeof(settings));
+		settings = kprobe_settings;
+		cpumask_to_str(&kprobe_cpumask, settings.cpus, 255);
+		ret = copy_to_user((void *)arg, &settings, sizeof(struct diag_kprobe_settings));
+		break;
+	case CMD_KPROBE_DUMP:
+		ret = copy_from_user(&dump_param, (void *)arg, sizeof(struct diag_ioctl_dump_param));
+
+		if (!kprobe_alloced) {
+			ret = -EINVAL;
+		} else if (!ret) {
+			ret = copy_to_user_variant_buffer(&kprobe_variant_buffer,
+					dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len);
+			record_dump_cmd("kprobe");
+		}
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
 }
 
 int diag_kprobe_init(void)

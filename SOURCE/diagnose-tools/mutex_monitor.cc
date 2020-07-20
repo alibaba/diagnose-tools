@@ -64,12 +64,14 @@ static void do_activate(const char *arg)
 		settings.threshold = 1000;
 	}
 
-	ret = -ENOSYS;
-	syscall(DIAG_MUTEX_MONITOR_SET, &ret, &settings, sizeof(struct diag_mutex_monitor_settings));
+	ret = diag_call_ioctl(DIAG_IOCTL_MUTEX_MONITOR_SET, (long)&settings);	
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
 	printf("    阀值(ms)：\t%d\n", settings.threshold);
 	printf("    输出级别：\t%d\n", settings.verbose);
 	printf("    STYLE：\t%d\n", settings.style);
+	
+	if (ret)
+		return;
 
 	ret = diag_activate("mutex-monitor");
 	if (ret == 1) {
@@ -119,8 +121,7 @@ static void do_settings(const char *arg)
 	struct params_parser parse(arg);
 	enable_json = parse.int_value("json");
 
-	ret = -ENOSYS;
-	syscall(DIAG_MUTEX_MONITOR_SETTINGS, &ret, &settings, sizeof(struct diag_mutex_monitor_settings));
+	ret = diag_call_ioctl(DIAG_IOCTL_MUTEX_MONITOR_SETTINGS, (long)&settings);
 
 	if (1 == enable_json) {
 		return print_settings_in_json(&settings, ret);
@@ -189,20 +190,25 @@ static void do_dump(void)
 	static char variant_buf[1024 * 1024];
 	int len;
 	int ret = 0;
+	struct diag_ioctl_dump_param dump_param = {
+		.user_ptr_len = &len,
+		.user_buf_len = 1024 * 1024,
+		.user_buf = variant_buf,
+	};
 
-	ret = -ENOSYS;
-	syscall(DIAG_MUTEX_MONITOR_DUMP, &ret, &len, variant_buf, 1024 * 1024);
-	if (ret == 0 && len > 0) {
+	memset(variant_buf, 0, 1024 * 1024);
+	ret = diag_call_ioctl(DIAG_IOCTL_MUTEX_MONITOR_DUMP, (long)&dump_param);
+	if (ret == 0) {
 		do_extract(variant_buf, len);
 	}
 }
 
 static void do_test(void)
 {
-	int ret;
+	int test;
 
-	ret = -ENOSYS;
-	syscall(DIAG_MUTEX_MONITOR_TEST, &ret, 1500);
+	test = 1500;
+	diag_call_ioctl(DIAG_IOCTL_MUTEX_MONITOR_TEST, (long)&test);
 }
 
 static int sls_extract(void *buf, unsigned int len, void *)
@@ -258,13 +264,18 @@ static void do_sls(char *arg)
 	int ret;
 	int len;
 	static char variant_buf[1024 * 1024];
+	struct diag_ioctl_dump_param dump_param = {
+		.user_ptr_len = &len,
+		.user_buf_len = 1024 * 1024,
+		.user_buf = variant_buf,
+	};
 
 	ret = log_config(arg, sls_file, &syslog_enabled);
 	if (ret != 1)
 		return;
 
 	while (1) {
-		syscall(DIAG_MUTEX_MONITOR_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+		ret = diag_call_ioctl(DIAG_IOCTL_MUTEX_MONITOR_DUMP, (long)&dump_param);
 		if (ret == 0 && len > 0) {
 			extract_variant_buffer(variant_buf, len, sls_extract, NULL);
 		}

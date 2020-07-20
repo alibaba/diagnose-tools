@@ -551,7 +551,58 @@ int mutex_monitor_syscall(struct pt_regs *regs, long id)
 
 long diag_ioctl_mutex_monitor(unsigned int cmd, unsigned long arg)
 {
-	return -EINVAL;
+	int i, ms;
+	int ret = 0;
+	struct diag_mutex_monitor_settings settings;
+	struct diag_ioctl_dump_param dump_param;
+	static DEFINE_MUTEX(lock);
+
+	switch (cmd) {
+	case CMD_MUTEX_MONITOR_SET:
+		if (mutex_monitor_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, (void *)arg, sizeof(struct diag_mutex_monitor_settings));
+			if (!ret) {
+				mutex_monitor_settings = settings;
+			}
+		}
+		break;
+	case CMD_MUTEX_MONITOR_SETTINGS:
+		settings = mutex_monitor_settings;
+		ret = copy_to_user((void *)arg, &settings, sizeof(struct diag_mutex_monitor_settings));
+		break;
+	case CMD_MUTEX_MONITOR_DUMP:
+		ret = copy_from_user(&dump_param, (void *)arg, sizeof(struct diag_ioctl_dump_param));
+
+		if (!mutex_monitor_alloced) {
+			ret = -EINVAL;
+		} else if (!ret) {
+			ret = copy_to_user_variant_buffer(&mutex_monitor_variant_buffer,
+					dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len);
+			record_dump_cmd("mutex-monitor");
+		}
+		break;
+	case CMD_MUTEX_MONITOR_TEST:
+		ret = copy_from_user(&ms, (void *)arg, sizeof(int));
+
+		if (!ret) {
+			if (ms <= 0 || ms > 20000) {
+				ret = -EINVAL;
+			} else {
+				mutex_lock(&lock);
+				for (i = 0; i < ms; i++)
+					mdelay(1);
+				mutex_unlock(&lock);
+			}
+		}
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
 }
 
 static int lookup_syms(void)
