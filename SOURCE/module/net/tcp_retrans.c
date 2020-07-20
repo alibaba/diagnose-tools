@@ -187,7 +187,8 @@ __maybe_unused static struct diag_tcp_retrans *__find_alloc_desc(struct diag_tcp
 }
 
 #if !defined(CENTOS_3_10_862) && !defined(CENTOS_3_10_957) \
-	&& !defined(CENTOS_3_10_1062) && !defined(CENTOS_3_10_1127)
+	&& !defined(CENTOS_3_10_1062) && !defined(CENTOS_3_10_1127) \
+	&& !defined(ALIOS_7U)
 int diag_tcp_retrans_init(void)
 {
 	return 0;
@@ -196,7 +197,7 @@ int diag_tcp_retrans_init(void)
 void diag_tcp_retrans_exit(void)
 {
 }
-#else
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(5, 3, 0)
 __maybe_unused static void trace_retransmit_synack(struct sock *sk, struct request_sock *req)
 {
 	unsigned long flags;
@@ -301,6 +302,514 @@ __maybe_unused static void trace_retransmit_skb(struct sock *sk, struct sk_buff 
 	}
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
+static void trace_tcp_retransmit_synack_hit(void *__data,
+		struct sock *sk, struct request_sock *req)
+{
+	trace_retransmit_synack(sk, req);
+}
+static void trace_tcp_retransmit_skb_hit(void *__data,
+		struct sock *sk, struct sk_buff *skb)
+{
+	trace_retransmit_skb(sk, skb);
+}
+
+static int __activate_tcp_retrans(void)
+{
+	int ret = 0;
+
+	ret = alloc_diag_variant_buffer(&tcp_retrans_variant_buffer);
+	if (ret)
+		goto out_variant_buffer;
+	tcp_retrans_alloced = 1;
+
+	hook_tracepoint("tcp_retransmit_synack", trace_tcp_retransmit_synack_hit, NULL);
+	hook_tracepoint("tcp_retransmit_skb", trace_tcp_retransmit_skb_hit, NULL);
+
+	atomic64_set(&diag_alloc_count, 0);
+	clean_data();
+
+	return 1;
+out_variant_buffer:
+	return 0;
+}
+
+static void __deactivate_tcp_retrans(void)
+{
+	unhook_tracepoint("tcp_retransmit_synack", trace_tcp_retransmit_synack_hit, NULL);
+	unhook_tracepoint("tcp_retransmit_skb", trace_tcp_retransmit_skb_hit, NULL);
+
+	synchronize_sched();
+	msleep(20);
+	while (atomic64_read(&diag_nr_running) > 0)
+	{
+		msleep(10);
+	}
+
+	clean_data();
+}
+
+static int lookup_syms(void)
+{
+	return 0;
+}
+
+static void jump_init(void)
+{
+}
+#elif LINUX_VERSION_CODE > KERNEL_VERSION(4, 9, 0)
+#if !defined(ALIOS_3000_010) && !defined(ALIOS_3000_012) \
+	&& !defined(ALIOS_3000_013) && !defined(ALIOS_3000_014) \
+  && !defined(ALIOS_3000_015) && !defined(ALIOS_3000_016) \
+	&& !defined(ALIOS_3000_018) && !defined(ALIOS_3000_018_ECSVM)
+int *orig_sysctl_tcp_retrans_collapse;
+#endif
+static void (*orig_tcp_adjust_pcount)(struct sock *sk, const struct sk_buff *skb, int decr);
+#if defined(ALIOS_3000_013) || defined(ALIOS_3000_014) \
+  || defined(ALIOS_3000_015) || defined(ALIOS_3000_016) \
+	|| defined(ALIOS_3000_018) || defined(ALIOS_3000_018_ECSVM)
+static int (*orig___tcp_transmit_skb)(struct sock *sk, struct sk_buff *skb,
+		int clone_it, gfp_t gfp_mask, u32 rcv_nxt);
+#else
+static int (*orig_tcp_transmit_skb)(struct sock *sk, struct sk_buff *skb, int clone_it,
+		gfp_t gfp_mask);
+#endif
+int (*orig_tcp_trim_head)(struct sock *sk, struct sk_buff *skb, u32 len);
+int (*orig_tcp_fragment)(struct sock *sk, struct sk_buff *skb, u32 len,
+		unsigned int mss_now, gfp_t gfp);
+unsigned int (*orig_tcp_current_mss)(struct sock *sk);
+void (*orig_tcp_skb_collapse_tstamp)(struct sk_buff *skb,
+		const struct sk_buff *next_skb);
+
+DEFINE_ORIG_FUNC(int, tcp_rtx_synack, 2,
+		const struct sock *, sk, struct request_sock *, req);
+DEFINE_ORIG_FUNC(int, __tcp_retransmit_skb, 3,
+		struct sock *, sk, struct sk_buff *, skb, int, segs);
+
+/* Thanks to skb fast clones, we can detect if a prior transmit of
+ * a packet is still in a qdisc or driver queue.
+ * In this case, there is very little point doing a retransmit !
+ */
+static bool skb_still_in_host_queue(const struct sock *sk,
+		const struct sk_buff *skb)
+{
+	if (unlikely(skb_fclone_busy(sk, skb))) {
+		NET_INC_STATS(sock_net(sk),
+				LINUX_MIB_TCPSPURIOUS_RTX_HOSTQUEUES);
+		return true;
+	}
+	return false;
+}
+
+/* Initialize TSO segments for a packet. */
+static void tcp_set_skb_tso_segs(struct sk_buff *skb, unsigned int mss_now)
+{
+	if (skb->len <= mss_now || skb->ip_summed == CHECKSUM_NONE) {
+		/* Avoid the costly divide in the normal
+		 * non-TSO case.
+		 */
+		tcp_skb_pcount_set(skb, 1);
+		TCP_SKB_CB(skb)->tcp_gso_size = 0;
+	} else {
+		tcp_skb_pcount_set(skb, DIV_ROUND_UP(skb->len, mss_now));
+		TCP_SKB_CB(skb)->tcp_gso_size = mss_now;
+	}
+}
+
+/* Check if coalescing SKBs is legal. */
+static bool tcp_can_collapse(const struct sock *sk, const struct sk_buff *skb)
+{
+	if (tcp_skb_pcount(skb) > 1)
+		return false;
+	/* TODO: SACK collapsing could be used to remove this condition */
+	if (skb_shinfo(skb)->nr_frags != 0)
+		return false;
+	if (skb_cloned(skb))
+		return false;
+	if (skb == tcp_send_head(sk))
+		return false;
+	/* Some heurestics for collapsing over SACK'd could be invented */
+	if (TCP_SKB_CB(skb)->sacked & TCPCB_SACKED_ACKED)
+		return false;
+
+	return true;
+}
+
+/* Collapses two adjacent SKB's during retransmission. */
+static void tcp_collapse_retrans(struct sock *sk, struct sk_buff *skb)
+{
+	struct tcp_sock *tp = tcp_sk(sk);
+	struct sk_buff *next_skb = tcp_write_queue_next(sk, skb);
+	int skb_size, next_skb_size;
+
+	skb_size = skb->len;
+	next_skb_size = next_skb->len;
+
+	BUG_ON(tcp_skb_pcount(skb) != 1 || tcp_skb_pcount(next_skb) != 1);
+
+	tcp_highest_sack_replace(sk, next_skb, skb);
+
+	tcp_unlink_write_queue(next_skb, sk);
+
+	skb_copy_from_linear_data(next_skb, skb_put(skb, next_skb_size),
+			next_skb_size);
+
+	if (next_skb->ip_summed == CHECKSUM_PARTIAL)
+		skb->ip_summed = CHECKSUM_PARTIAL;
+
+	if (skb->ip_summed != CHECKSUM_PARTIAL)
+		skb->csum = csum_block_add(skb->csum, next_skb->csum, skb_size);
+
+	/* Update sequence range on original skb. */
+	TCP_SKB_CB(skb)->end_seq = TCP_SKB_CB(next_skb)->end_seq;
+
+	/* Merge over control information. This moves PSH/FIN etc. over */
+	TCP_SKB_CB(skb)->tcp_flags |= TCP_SKB_CB(next_skb)->tcp_flags;
+
+	/* All done, get rid of second SKB and account for it so
+	 * packet counting does not break.
+	 */
+	TCP_SKB_CB(skb)->sacked |= TCP_SKB_CB(next_skb)->sacked & TCPCB_EVER_RETRANS;
+	TCP_SKB_CB(skb)->eor = TCP_SKB_CB(next_skb)->eor;
+
+	/* changed transmit queue under us so clear hints */
+	tcp_clear_retrans_hints_partial(tp);
+	if (next_skb == tp->retransmit_skb_hint)
+		tp->retransmit_skb_hint = skb;
+
+	orig_tcp_adjust_pcount(sk, next_skb, tcp_skb_pcount(next_skb));
+
+	orig_tcp_skb_collapse_tstamp(skb, next_skb);
+
+	sk_wmem_free_skb(sk, next_skb);
+}
+
+/* Collapse packets in the retransmit queue to make to create
+ * less packets on the wire. This is only done on retransmission.
+ */
+static void tcp_retrans_try_collapse(struct sock *sk, struct sk_buff *to,
+		int space)
+{
+	struct tcp_sock *tp = tcp_sk(sk);
+	struct sk_buff *skb = to, *tmp;
+	bool first = true;
+
+#if defined(ALIOS_3000_010) || defined(ALIOS_3000_012) \
+  || defined(ALIOS_3000_013) || defined(ALIOS_3000_014) \
+  || defined(ALIOS_3000_015) || defined(ALIOS_3000_016) \
+	|| defined(ALIOS_3000_018) || defined(ALIOS_3000_018_ECSVM)
+	if (!sock_net(sk)->ipv4.sysctl_tcp_retrans_collapse)
+#else
+		if (!*orig_sysctl_tcp_retrans_collapse)
+#endif
+			return;
+	if (TCP_SKB_CB(skb)->tcp_flags & TCPHDR_SYN)
+		return;
+
+	tcp_for_write_queue_from_safe(skb, tmp, sk) {
+		if (!tcp_can_collapse(sk, skb))
+			break;
+
+		if (!tcp_skb_can_collapse_to(to))
+			break;
+
+		space -= skb->len;
+
+		if (first) {
+			first = false;
+			continue;
+		}
+
+		if (space < 0)
+			break;
+		/* Punt if not enough space exists in the first SKB for
+		 * the data in the second
+		 */
+		if (skb->len > skb_availroom(to))
+			break;
+
+		if (after(TCP_SKB_CB(skb)->end_seq, tcp_wnd_end(tp)))
+			break;
+
+		tcp_collapse_retrans(sk, to);
+	}
+}
+
+static void tcp_ecn_clear_syn(struct sock *sk, struct sk_buff *skb)
+{
+	if (sock_net(sk)->ipv4.sysctl_tcp_ecn_fallback)
+		/* tp->ecn_flags are cleared at a later point in time when
+		 * SYN ACK is ultimatively being received.
+		 */
+		TCP_SKB_CB(skb)->tcp_flags &= ~(TCPHDR_ECE | TCPHDR_CWR);
+}
+
+#if defined(ALIOS_3000_013) || defined(ALIOS_3000_014) \
+  || defined(ALIOS_3000_015) || defined(ALIOS_3000_016) \
+	|| defined(ALIOS_3000_018) || defined(ALIOS_3000_018_ECSVM)
+static int orig_tcp_transmit_skb(struct sock *sk, struct sk_buff *skb, int clone_it,
+		gfp_t gfp_mask)
+{
+	return orig___tcp_transmit_skb(sk, skb, clone_it, gfp_mask,
+			tcp_sk(sk)->rcv_nxt);
+}
+#endif
+
+/* This retransmits one SKB.  Policy decisions and retransmit queue
+ * state updates are done by the caller.  Returns non-zero if an
+ * error occurred which prevented the send.
+ */
+int diag___tcp_retransmit_skb(struct sock *sk, struct sk_buff *skb, int segs)
+{
+	struct inet_connection_sock *icsk = inet_csk(sk);
+	struct tcp_sock *tp = tcp_sk(sk);
+	unsigned int cur_mss;
+	int diff, len, err;
+
+	atomic64_inc_return(&diag_nr_tcp_retransmit_skb);
+	/* Inconclusive MTU probe */
+	if (icsk->icsk_mtup.probe_size)
+		icsk->icsk_mtup.probe_size = 0;
+
+	/* Do not sent more than we queued. 1/4 is reserved for possible
+	 * copying overhead: fragmentation, tunneling, mangling etc.
+	 */
+	if (atomic_read(&sk->sk_wmem_alloc) >
+			min_t(u32, sk->sk_wmem_queued + (sk->sk_wmem_queued >> 2),
+				sk->sk_sndbuf))
+		return -EAGAIN;
+
+	if (skb_still_in_host_queue(sk, skb))
+		return -EBUSY;
+
+	if (before(TCP_SKB_CB(skb)->seq, tp->snd_una)) {
+		if (before(TCP_SKB_CB(skb)->end_seq, tp->snd_una))
+			BUG();
+		if (orig_tcp_trim_head(sk, skb, tp->snd_una - TCP_SKB_CB(skb)->seq))
+			return -ENOMEM;
+	}
+
+	if (inet_csk(sk)->icsk_af_ops->rebuild_header(sk))
+		return -EHOSTUNREACH; /* Routing failure or similar. */
+
+	cur_mss = orig_tcp_current_mss(sk);
+
+	/* If receiver has shrunk his window, and skb is out of
+	 * new window, do not retransmit it. The exception is the
+	 * case, when window is shrunk to zero. In this case
+	 * our retransmit serves as a zero window probe.
+	 */
+	if (!before(TCP_SKB_CB(skb)->seq, tcp_wnd_end(tp)) &&
+			TCP_SKB_CB(skb)->seq != tp->snd_una)
+		return -EAGAIN;
+
+	len = cur_mss * segs;
+	if (skb->len > len) {
+		if (orig_tcp_fragment(sk, skb, len, cur_mss, GFP_ATOMIC))
+			return -ENOMEM; /* We'll try again later. */
+	} else {
+		if (skb_unclone(skb, GFP_ATOMIC))
+			return -ENOMEM;
+
+		diff = tcp_skb_pcount(skb);
+		tcp_set_skb_tso_segs(skb, cur_mss);
+		diff -= tcp_skb_pcount(skb);
+		if (diff)
+			orig_tcp_adjust_pcount(sk, skb, diff);
+		if (skb->len < cur_mss)
+			tcp_retrans_try_collapse(sk, skb, cur_mss);
+	}
+
+	/* RFC3168, section 6.1.1.1. ECN fallback */
+	if ((TCP_SKB_CB(skb)->tcp_flags & TCPHDR_SYN_ECN) == TCPHDR_SYN_ECN)
+		tcp_ecn_clear_syn(sk, skb);
+
+	/* make sure skb->data is aligned on arches that require it
+	 * and check if ack-trimming & collapsing extended the headroom
+	 * beyond what csum_start can cover.
+	 */
+	if (unlikely((NET_IP_ALIGN && ((unsigned long)skb->data & 3)) ||
+				skb_headroom(skb) >= 0xFFFF)) {
+		struct sk_buff *nskb;
+
+		nskb = __pskb_copy(skb, MAX_TCP_HEADER, GFP_ATOMIC);
+		err = nskb ? orig_tcp_transmit_skb(sk, nskb, 0, GFP_ATOMIC) :
+			-ENOBUFS;
+		if (!err)
+			skb_mstamp_get(&skb->skb_mstamp);
+	} else {
+		err = orig_tcp_transmit_skb(sk, skb, 1, GFP_ATOMIC);
+	}
+
+	if (likely(!err)) {
+		segs = tcp_skb_pcount(skb);
+
+		TCP_SKB_CB(skb)->sacked |= TCPCB_EVER_RETRANS;
+		/* Update global TCP statistics. */
+		TCP_ADD_STATS(sock_net(sk), TCP_MIB_RETRANSSEGS, segs);
+		if (TCP_SKB_CB(skb)->tcp_flags & TCPHDR_SYN)
+			__NET_INC_STATS(sock_net(sk), LINUX_MIB_TCPSYNRETRANS);
+		tp->total_retrans += segs;
+
+		/* launch */
+		trace_retransmit_skb(sk, skb);
+	}
+	return err;
+}
+
+int diag_tcp_rtx_synack(const struct sock *sk, struct request_sock *req)
+{
+	const struct tcp_request_sock_ops *af_ops = tcp_rsk(req)->af_specific;
+	struct flowi fl;
+	int res;
+
+	tcp_rsk(req)->txhash = net_tx_rndhash();
+	res = af_ops->send_synack(sk, NULL, &fl, req, NULL, TCP_SYNACK_NORMAL);
+	if (!res) {
+		__TCP_INC_STATS(sock_net(sk), TCP_MIB_RETRANSSEGS);
+		__NET_INC_STATS(sock_net(sk), LINUX_MIB_TCPSYNRETRANS);
+		if (unlikely(tcp_passive_fastopen(sk)))
+			tcp_sk(sk)->total_retrans++;
+		/* launch */
+		trace_retransmit_synack((struct sock *)sk, req);
+	}
+	atomic64_inc_return(&diag_nr_tcp_rtx_synack);
+	return res;
+}
+
+int new_tcp_rtx_synack(const struct sock *sk, struct request_sock *req)
+{
+	int ret;
+
+	atomic64_inc_return(&diag_nr_running);
+	ret = diag_tcp_rtx_synack(sk, req);
+	atomic64_dec_return(&diag_nr_running);
+
+	return ret;
+}
+
+int new___tcp_retransmit_skb(struct sock *sk, struct sk_buff *skb, int segs)
+{
+	int ret;
+
+	atomic64_inc_return(&diag_nr_running);
+	ret = diag___tcp_retransmit_skb(sk, skb, segs);
+	atomic64_dec_return(&diag_nr_running);
+
+	return ret;
+}
+
+static struct kprobe kprobe_tcp_ack;
+
+static int kprobe_tcp_ack_pre(struct kprobe *p, struct pt_regs *regs)
+{
+	//struct sock *sk = (void *)ORIG_PARAM1(regs);
+	//struct sk_buff *skb = (void *)ORIG_PARAM2(regs);
+	int flag = ORIG_PARAM3(regs);
+	int is_dupack = 0;
+
+	is_dupack = !(flag & (FLAG_SND_UNA_ADVANCED | FLAG_NOT_DUP));
+	if (is_dupack) {
+		atomic64_inc_return(&diag_tcp_dupack);
+	}
+
+	return 0;
+}
+
+static struct kprobe kprobe_tcp_send_dupack;
+static int kprobe_tcp_send_dupack_pre(struct kprobe *p, struct pt_regs *regs)
+{
+	//struct sock *sk = (void *)ORIG_PARAM1(regs);
+	//struct sk_buff *skb = (void *)ORIG_PARAM2(regs);
+
+	atomic64_inc_return(&diag_tcp_send_dupack);
+
+	return 0;
+}
+
+static int __activate_tcp_retrans(void)
+{
+	int ret = 0;
+
+	ret = alloc_diag_variant_buffer(&tcp_retrans_variant_buffer);
+	if (ret)
+		goto out_variant_buffer;
+	tcp_retrans_alloced = 1;
+
+	JUMP_CHECK(tcp_rtx_synack);
+	JUMP_CHECK(__tcp_retransmit_skb);
+
+	clean_data();
+	atomic64_set(&diag_alloc_count, 0);
+	get_online_cpus();
+	mutex_lock(orig_text_mutex);
+	JUMP_INSTALL(tcp_rtx_synack);
+	JUMP_INSTALL(__tcp_retransmit_skb);
+	mutex_unlock(orig_text_mutex);
+	put_online_cpus();
+	hook_kprobe(&kprobe_tcp_ack, "tcp_ack",
+			kprobe_tcp_ack_pre, NULL);
+	hook_kprobe(&kprobe_tcp_send_dupack, "tcp_send_dupack",
+			kprobe_tcp_send_dupack_pre, NULL);
+
+	return 1;
+out_variant_buffer:
+	return 0;
+}
+
+static void __deactivate_tcp_retrans(void)
+{
+	get_online_cpus();
+	mutex_lock(orig_text_mutex);
+	JUMP_REMOVE(tcp_rtx_synack);
+	JUMP_REMOVE(__tcp_retransmit_skb);
+	mutex_unlock(orig_text_mutex);
+	put_online_cpus();
+	unhook_kprobe(&kprobe_tcp_ack);
+	unhook_kprobe(&kprobe_tcp_send_dupack);
+
+	synchronize_sched();
+	msleep(20);
+	while (atomic64_read(&diag_nr_running) > 0)
+	{
+		msleep(10);
+	}
+
+	clean_data();
+}
+
+static int lookup_syms(void)
+{
+#if !defined(ALIOS_3000_010) && !defined(ALIOS_3000_012) \
+  && !defined(ALIOS_3000_013) && !defined(ALIOS_3000_014) \
+  && !defined(ALIOS_3000_015) && !defined(ALIOS_3000_016) \
+	&& !defined(ALIOS_3000_018) && !defined(ALIOS_3000_018_ECSVM)
+	LOOKUP_SYMS(sysctl_tcp_retrans_collapse);
+#endif
+	LOOKUP_SYMS(tcp_trim_head);
+	LOOKUP_SYMS(tcp_fragment);
+	LOOKUP_SYMS(tcp_current_mss);
+	LOOKUP_SYMS(tcp_skb_collapse_tstamp);
+	LOOKUP_SYMS(tcp_adjust_pcount);
+	LOOKUP_SYMS(tcp_rtx_synack);
+	LOOKUP_SYMS(__tcp_retransmit_skb);
+#if defined(ALIOS_3000_013) || defined(ALIOS_3000_014) \
+  || defined(ALIOS_3000_015) || defined(ALIOS_3000_016) \
+	|| defined(ALIOS_3000_018) || defined(ALIOS_3000_018_ECSVM)
+	LOOKUP_SYMS(__tcp_transmit_skb);
+#else
+	LOOKUP_SYMS(tcp_transmit_skb);
+#endif
+
+	return 0;
+}
+
+static void jump_init(void)
+{
+	JUMP_INIT(tcp_rtx_synack);
+	JUMP_INIT(__tcp_retransmit_skb);
+}
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
 int *orig_sysctl_tcp_retrans_collapse;
 static int (*orig_tcp_init_tso_segs)(const struct sock *sk, struct sk_buff *skb,
 		unsigned int mss_now);
@@ -658,6 +1167,7 @@ static void jump_init(void)
 	JUMP_INIT(tcp_rtx_synack);
 	JUMP_INIT(__tcp_retransmit_skb);
 }
+#endif
 
 static void do_dump(void)
 {
@@ -777,7 +1287,7 @@ long diag_ioctl_tcp_retrans(unsigned int cmd, unsigned long arg)
 		ret = -ENOSYS;
 		break;
 	}
-sss
+
 	return ret;
 }
 
