@@ -124,11 +124,11 @@ uprobe() {
 	#eval "$diag_ uprobe --comm=sleep --activate=file=/usr/bin/sleep,offset=4848 --settings"
 	#sleep .2
 	#eval "$diag_ uprobe --report --deactivate"
-	addr="`objdump -s -d /usr/diagnose-tools/bin/uprobe.out  | grep "<mytest3>:" | awk '{printf $1}' | tr '[a-z]' '[A-Z]'`"
+	addr="`objdump -s -d /usr/bin/diagnose-tools  | grep "<mytest3>:" | awk '{printf $1}' | tr '[a-z]' '[A-Z]'`"
 	offset=`echo "obase=10; ibase=16; $addr - 400000" | bc`
 	
 	eval "$diag_ uprobe --deactivate --activate='verbose=1 file=/usr/diagnose-tools/bin/uprobe.out offset=$offset' --settings"
-	/usr/diagnose-tools/bin/uprobe.out &
+	/usr/bin/diagnose-tools test-run-trace --type=2 &
 	sleep 2
 	eval "$diag_ uprobe --report --deactivate"
 }
