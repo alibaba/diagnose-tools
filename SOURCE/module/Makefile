@@ -32,6 +32,10 @@ ifneq ($(findstring el7.x86_64,$(KERNEL_BUILD_PATH)),)
 		DIAG_EXTRA_CFLAGS += -DCENTOS_3_10_693
 	endif
 
+	ifneq ($(findstring 3.10.0-862.el7.x86_64,$(KERNEL_BUILD_PATH)),)
+		DIAG_EXTRA_CFLAGS += -DCENTOS_3_10_862 -DCENTOS_7U
+	endif
+
 	ifneq ($(findstring 3.10.0-957,$(KERNEL_BUILD_PATH)),)
 		DIAG_EXTRA_CFLAGS += -DCENTOS_3_10_957
 	endif
@@ -104,10 +108,6 @@ endif
 ifneq ($(findstring alios7.aarch64,$(KERNEL_BUILD_PATH)),)
 	DIAG_EXTRA_CFLAGS += -DDIAG_ARM64
 endif
-
-#ifneq ($(findstring 3.10.0-862.el7.x86_64,$(KERNEL_BUILD_PATH)),)
-#	DIAG_EXTRA_CFLAGS += -DCENTOS_3_10_862 -DCENTOS_7U
-#endif
 
 #ifneq ($(findstring 3.10.0-957.el7.x86_64,$(KERNEL_BUILD_PATH)),)
 #	DIAG_EXTRA_CFLAGS += -DCENTOS_3_10_957 -DCENTOS_7U

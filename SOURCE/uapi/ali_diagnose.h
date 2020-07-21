@@ -84,8 +84,7 @@ err:
 #define DIAG_IOCTL_TYPE_FS_CACHE (DIAG_IOCTL_TYPE_SYS_COST + 1)
 #define DIAG_IOCTL_TYPE_HIGH_ORDER (DIAG_IOCTL_TYPE_FS_CACHE + 1)
 #define DIAG_IOCTL_TYPE_D (DIAG_IOCTL_TYPE_HIGH_ORDER + 1)
-#define DIAG_IOCTL_TYPE_PUPIL_TASK (DIAG_IOCTL_TYPE_D + 1)
-#define DIAG_IOCTL_TYPE_END (DIAG_IOCTL_TYPE_PUPIL_TASK + 1)
+#define DIAG_IOCTL_TYPE_END (DIAG_IOCTL_TYPE_D + 1)
 
 long diag_ioctl_sys_delay(unsigned int cmd, unsigned long arg);
 long diag_ioctl_sys_cost(unsigned int cmd, unsigned long arg);
