@@ -485,31 +485,6 @@ void __weak diag_utilization_exit(void)
 	//
 }
 
-int __weak mutex_monitor_syscall(struct pt_regs *regs, long id)
-{
-	return -ENOSYS;
-}
-
-int __weak perf_syscall(struct pt_regs *regs, long id)
-{
-	return -ENOSYS;
-}
-
-int __weak exec_monitor_syscall(struct pt_regs *regs, long id)
-{
-	return -ENOSYS;
-}
-
-int __weak kprobe_syscall(struct pt_regs *regs, long id)
-{
-	return -ENOSYS;
-}
-
-int __weak mm_leak_syscall(struct pt_regs *regs, long id)
-{
-	return -ENOSYS;
-}
-
 int __weak activate_run_trace(void)
 {
 	return -EINVAL;
@@ -700,11 +675,6 @@ int __weak deactivate_drop_packet(void)
 	return -EINVAL;
 }
 
-int __weak sched_delay_syscall(struct pt_regs *regs, long id)
-{
-	return -ENOSYS;
-}
-
 int __weak activate_sched_delay(void)
 {
 	return -EINVAL;
@@ -713,11 +683,6 @@ int __weak activate_sched_delay(void)
 int __weak deactivate_sched_delay(void)
 {
 	return -EINVAL;
-}
-
-int __weak reboot_syscall(struct pt_regs *regs, long id)
-{
-	return -ENOSYS;
 }
 
 int __weak activate_reboot(void)
@@ -740,11 +705,6 @@ void __weak diag_xby_test_exit(void)
 	//
 }
 
-int __weak fs_orphan_syscall(struct pt_regs *regs, long id)
-{
-	return -ENOSYS;
-}
-
 int __weak activate_fs_orphan(void)
 {
 	return -EINVAL;
@@ -762,11 +722,6 @@ int __weak diag_fs_orphan_init(void)
 
 void __weak diag_fs_orphan_exit(void)
 {
-}
-
-int __weak ping_delay_syscall(struct pt_regs *regs, long id)
-{
-	return -ENOSYS;
 }
 
 int __weak activate_ping_delay(void)
@@ -788,11 +743,6 @@ void __weak diag_ping_delay_exit(void)
 {
 }
 
-int __weak uprobe_syscall(struct pt_regs *regs, long id)
-{
-	return -ENOSYS;
-}
-
 int __weak activate_uprobe(void)
 {
 	return -EINVAL;
@@ -812,11 +762,6 @@ void __weak diag_uprobe_exit(void)
 {
 }
 
-int __weak fs_cache_syscall(struct pt_regs *regs, long id)
-{
-	return -ENOSYS;
-}
-
 int __weak activate_fs_cache(void)
 {
 	return -EINVAL;
@@ -834,11 +779,6 @@ int __weak diag_fs_cache_init(void)
 
 void __weak diag_fs_cache_exit(void)
 {
-}
-
-int __weak high_order_syscall(struct pt_regs *regs, long id)
-{
-	return -ENOSYS;
 }
 
 int __weak activate_high_order(void)

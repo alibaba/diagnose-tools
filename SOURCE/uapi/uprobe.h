@@ -12,12 +12,6 @@
 #ifndef UAPI_UPROBE_H
 #define UAPI_UPROBE_H
 
-int uprobe_syscall(struct pt_regs *regs, long id);
-
-#define DIAG_UPROBE_SET (DIAG_BASE_SYSCALL_UPROBE)
-#define DIAG_UPROBE_SETTINGS (DIAG_UPROBE_SET + 1)
-#define DIAG_UPROBE_DUMP (DIAG_UPROBE_SETTINGS + 1)
-
 #define CMD_UPROBE_DUMP (0)
 #define CMD_UPROBE_SET (CMD_UPROBE_DUMP + 1)
 #define CMD_UPROBE_SETTINGS (CMD_UPROBE_SET + 1)

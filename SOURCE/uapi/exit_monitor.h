@@ -14,12 +14,6 @@
 
 #include <linux/ioctl.h>
 
-//#define DIAG_EXIT_MONITOR_ACTIVATE (DIAG_BASE_SYSCALL_EXIT_MONITOR)
-//#define DIAG_EXIT_MONITOR_DEACTIVATE (DIAG_EXIT_MONITOR_ACTIVATE + 1)
-#define DIAG_EXIT_MONITOR_SET (DIAG_BASE_SYSCALL_EXIT_MONITOR)
-#define DIAG_EXIT_MONITOR_SETTINGS (DIAG_EXIT_MONITOR_SET + 1)
-#define DIAG_EXIT_MONITOR_DUMP (DIAG_EXIT_MONITOR_SETTINGS + 1)
-
 struct diag_exit_monitor_settings {
 	unsigned int activated;
 	unsigned int verbose;
