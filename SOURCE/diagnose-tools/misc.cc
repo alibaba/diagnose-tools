@@ -372,7 +372,7 @@ void write_syslog(int enabled, const char mod[], struct timeval *tv, unsigned lo
 
 	str_log.append(ss.str());
 	str_log.append(root.toStyledString());
-	syslog(LOG_DEBUG,str_log.c_str());
+	syslog(LOG_DEBUG, "%s", str_log.c_str());
 
 	return;
 }

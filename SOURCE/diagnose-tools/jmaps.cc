@@ -314,10 +314,11 @@ int open_file(int pid, const char *subdir)
 void touch_file(const char *fn)
 {
     int fd;
+    ssize_t __attribute__ ((unused)) size;
 
     fd = open(fn, O_WRONLY|O_CREAT, 0666);
     if (fd >= 0) {
-        write(fd, "\n", 1);
+        size = write(fd, "\n", 1);
         close(fd);
     } else {
         CHECK_PRINT(fd, "touch_file: %s\n", fn);
@@ -583,6 +584,7 @@ std::string read_file(const char *fn)
     int fd;
     struct stat st;
     std::string ret;
+    ssize_t __attribute__ ((unused)) size;
 
     fd = open(fn, 0);
     if (fd < 0)
@@ -590,7 +592,7 @@ std::string read_file(const char *fn)
 
     fstat(fd, &st);
     ret.resize(st.st_size);
-    read(fd, (char *)ret.data(), st.st_size);
+    size = read(fd, (char *)ret.data(), st.st_size);
     close(fd);
 
     return ret;

@@ -106,17 +106,17 @@ static int usage(int argc, char **argv)
 
 static int do_install(int argc, char **argv)
 {
-	system("\\cp -f /usr/diagnose-tools/libperfmap.so /tmp");
-	system("/usr/diagnose-tools/diagnose-tools.sh install");
+	int ret;
 
-	return 0;
+	ret = system("\\cp -f /usr/diagnose-tools/libperfmap.so /tmp");
+	ret = system("/usr/diagnose-tools/diagnose-tools.sh install");
+
+	return ret;
 }
 
 static int do_uninstall(int argc, char **argv)
 {
-	system("/usr/diagnose-tools/diagnose-tools.sh uninstall");
-
-	return 0;
+	return	system("/usr/diagnose-tools/diagnose-tools.sh uninstall");
 }
 
 int do_flame(int argc, char *argv[])
@@ -130,6 +130,7 @@ int do_flame(int argc, char *argv[])
 	char *input = NULL;
 	char *output = NULL;
 	char cmd[1024];
+	int __attribute__ ((unused)) ret;
 
 	while (1) {
 		int option_index = -1;
@@ -160,7 +161,7 @@ int do_flame(int argc, char *argv[])
 	sprintf(cmd, "cat %s | awk \'{if (substr($1,1,1) == \"#\") {print substr($0, 3)}}\' " \
 		"| c++filt | /usr/diagnose-tools/flame-graph/stackcollapse.pl " \
 		"| /usr/diagnose-tools/flame-graph/flamegraph.pl > %s", input, output);
-	system(cmd);
+	ret = system(cmd);
 
 	return 0;
 }
