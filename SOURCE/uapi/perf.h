@@ -14,14 +14,6 @@
 
 #include <linux/ioctl.h>
 
-int perf_syscall(struct pt_regs *regs, long id);
-
-//#define DIAG_PERF_ACTIVATE (DIAG_BASE_SYSCALL_PERF)
-//#define DIAG_PERF_DEACTIVATE (DIAG_PERF_ACTIVATE + 1)
-#define DIAG_PERF_SET (DIAG_BASE_SYSCALL_PERF)
-#define DIAG_PERF_SETTINGS (DIAG_PERF_SET + 1)
-#define DIAG_PERF_DUMP (DIAG_PERF_SETTINGS + 1)
-
 struct diag_perf_settings {
 	unsigned int activated;
 	unsigned int style;

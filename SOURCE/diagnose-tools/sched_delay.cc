@@ -315,7 +315,7 @@ static void do_sls(char *arg)
 
 	java_attach_once();
 	while (1) {
-		ret = diag_call_ioctl(DIAG_SCHED_DELAY_DUMP, (long)&dump_param);
+		ret = diag_call_ioctl(DIAG_IOCTL_SCHED_DELAY_DUMP, (long)&dump_param);
 		if (ret == 0 && len > 0) {
 			/**
 			 * 10 min

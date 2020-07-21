@@ -751,31 +751,26 @@ void cpumask_to_str(struct cpumask *cpumask, char *buf, int len);
 
 int activate_ping_delay(void);
 int deactivate_ping_delay(void);
-int ping_delay_syscall(struct pt_regs *regs, long id);
 int diag_ping_delay_init(void);
 void diag_ping_delay_exit(void);
 
 int activate_uprobe(void);
 int deactivate_uprobe(void);
-int uprobe_syscall(struct pt_regs *regs, long id);
 int diag_uprobe_init(void);
 void diag_uprobe_exit(void);
 
 int activate_sys_cost(void);
 int deactivate_sys_cost(void);
-int sys_cost_syscall(struct pt_regs *regs, long id);
 int diag_sys_cost_init(void);
 void diag_sys_cost_exit(void);
 
 int activate_fs_cache(void);
 int deactivate_fs_cache(void);
-int fs_cache_syscall(struct pt_regs *regs, long id);
 int diag_fs_cache_init(void);
 void diag_fs_cache_exit(void);
 
 int activate_high_order(void);
 int deactivate_high_order(void);
-int high_order_syscall(struct pt_regs *regs, long id);
 int diag_high_order_init(void);
 void diag_high_order_exit(void);
 void record_dump_cmd(char *module);

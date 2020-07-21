@@ -417,68 +417,6 @@ int deactivate_fs_cache(void)
 	return 0;
 }
 
-int fs_cache_syscall(struct pt_regs *regs, long id)
-{
-	int __user *user_ptr_len;
-	size_t __user user_buf_len;
-	void __user *user_buf;
-	int ret = 0;
-	struct diag_fs_cache_settings settings;
-	void *inode_addr;
-
-	switch (id) {
-	case DIAG_FS_CACHE_SET:
-		user_buf = (void __user *)SYSCALL_PARAM1(regs);
-		user_buf_len = (size_t)SYSCALL_PARAM2(regs);
-
-		if (user_buf_len != sizeof(struct diag_fs_cache_settings)) {
-			ret = -EINVAL;
-		} else if (fs_cache_settings.activated) {
-			ret = -EBUSY;
-		} else {
-			ret = copy_from_user(&settings, user_buf, user_buf_len);
-			if (!ret) {
-				fs_cache_settings = settings;
-			}
-		}
-		break;
-	case DIAG_FS_CACHE_SETTINGS:
-		user_buf = (void __user *)SYSCALL_PARAM1(regs);
-		user_buf_len = (size_t)SYSCALL_PARAM2(regs);
-
-		if (user_buf_len != sizeof(struct diag_fs_cache_settings)) {
-			ret = -EINVAL;
-		} else {
-			settings = fs_cache_settings;
-			ret = copy_to_user(user_buf, &settings, user_buf_len);
-		}
-		break;
-	case DIAG_FS_CACHE_DUMP:
-		user_ptr_len = (void __user *)SYSCALL_PARAM1(regs);
-		user_buf = (void __user *)SYSCALL_PARAM2(regs);
-		user_buf_len = (size_t)SYSCALL_PARAM3(regs);
-
-		if (!fs_cache_alloced) {
-			ret = -EINVAL;
-		} else {
-			do_dump();
-			ret = copy_to_user_variant_buffer(&fs_cache_variant_buffer,
-					user_ptr_len, user_buf, user_buf_len);
-			record_dump_cmd("fs-cache");
-		}
-		break;
-	case DIAG_FS_CACHE_DROP:
-		inode_addr = (void *)SYSCALL_PARAM1(regs);
-		do_drop(inode_addr);
-		break;
-	default:
-		ret = -ENOSYS;
-		break;
-	}
-
-	return ret;
-}
-
 long diag_ioctl_fs_cache(unsigned int cmd, unsigned long arg)
 {
 	int ret = 0;
