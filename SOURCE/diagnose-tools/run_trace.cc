@@ -948,7 +948,7 @@ __attribute__((unused)) static void sls_test(void)
 {
 	int i;
 	struct timeval delay;
-	int ret;
+	int __attribute__ ((unused)) ret;
 	int ms = 100;
 
 	do_activate("");
@@ -1014,7 +1014,7 @@ static void do_sls(char *arg)
 static void do_test(void)
 {
 	int i = 0;
-	int ret;
+	int __attribute__ ((unused)) ret;
 	struct timeval delay;
 	int ms = 100;
 

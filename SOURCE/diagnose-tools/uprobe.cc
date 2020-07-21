@@ -103,31 +103,31 @@ static void do_activate(const char *arg)
 	}
 
 	param_name = parse.string_value("param1-name");
-	strncpy(settings.params[0].param_name, param_name.c_str(), 255);
+	memcpy(settings.params[0].param_name, param_name.c_str(), 255);
 	settings.params[0].param_idx = parse.int_value("param1-index");
 	settings.params[0].type = parse.int_value("param1-type");
 	settings.params[0].size = parse.int_value("param1-size");
 
 	param_name = parse.string_value("param2-name");
-	strncpy(settings.params[1].param_name, param_name.c_str(), 255);
+	memcpy(settings.params[1].param_name, param_name.c_str(), 255);
 	settings.params[1].param_idx = parse.int_value("param2-index");
 	settings.params[1].type = parse.int_value("param2-type");
 	settings.params[1].size = parse.int_value("param3-size");
 
 	param_name = parse.string_value("param3-name");
-	strncpy(settings.params[2].param_name, param_name.c_str(), 255);
+	memcpy(settings.params[2].param_name, param_name.c_str(), 255);
 	settings.params[2].param_idx = parse.int_value("param3-index");
 	settings.params[2].type = parse.int_value("param3-type");
 	settings.params[2].size = parse.int_value("param3-size");
 
 	param_name = parse.string_value("param4-name");
-	strncpy(settings.params[3].param_name, param_name.c_str(), 255);
+	memcpy(settings.params[3].param_name, param_name.c_str(), 255);
 	settings.params[3].param_idx = parse.int_value("param4-index");
 	settings.params[3].type = parse.int_value("param4-type");
 	settings.params[3].size = parse.int_value("param4-size");
 
 	param_name = parse.string_value("param5-name");
-	strncpy(settings.params[4].param_name, param_name.c_str(), 255);
+	memcpy(settings.params[4].param_name, param_name.c_str(), 255);
 	settings.params[4].param_idx = parse.int_value("param5-index");
 	settings.params[4].type = parse.int_value("param5-type");
 	settings.params[4].size = parse.int_value("param5-size");

@@ -350,7 +350,7 @@ static void write_log(const char *src_file, char *dest_file)
 
 		if (1 == syslog_enabled)
 		{
-			syslog(LOG_DEBUG, tp.c_str());
+			syslog(LOG_DEBUG, "%s", tp.c_str());
 		}
 	}
 
@@ -392,10 +392,10 @@ static void do_sls(char *arg)
 
 			extract_variant_buffer(variant_buf, len, sls_extract, NULL);
 
-			system("python /usr/diagnose-tools/flame-graph/encode.py /tmp/perf.txt | /usr/diagnose-tools/flame-graph/stackcollapse.pl > /tmp/flame.txt");
+			ret = system("python /usr/diagnose-tools/flame-graph/encode.py /tmp/perf.txt | /usr/diagnose-tools/flame-graph/stackcollapse.pl > /tmp/flame.txt");
 
 			buf.append("python /usr/diagnose-tools/flame-graph/decode.py /tmp/flame.txt > /tmp/perf_stripped.txt");
-			system(buf.c_str());
+			ret = system(buf.c_str());
 
 			write_log("/tmp/perf_stripped.txt", store_file);
 			system("echo \"\"> /tmp/perf.txt");
