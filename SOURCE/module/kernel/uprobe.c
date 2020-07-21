@@ -295,14 +295,15 @@ static void jump_init(void)
 long diag_ioctl_uprobe(unsigned int cmd, unsigned long arg)
 {
 	int ret = 0;
-	struct diag_uprobe_settings settings;
-	struct diag_ioctl_dump_param dump_param;
+	static struct diag_uprobe_settings settings;
+	static struct diag_ioctl_dump_param dump_param;
 
 	switch (cmd) {
 		case CMD_UPROBE_SET:
 			if (uprobe_settings.activated) {
 				ret = -EBUSY;
 			} else {
+				memset(&settings, 0, sizeof(struct diag_uprobe_settings));
 				ret = copy_from_user(&settings, (void *)arg, sizeof(settings));
 				if (!ret) {
 					if (settings.cpus[0]) {
@@ -315,6 +316,7 @@ long diag_ioctl_uprobe(unsigned int cmd, unsigned long arg)
 			}
 			break;
 		case CMD_UPROBE_SETTINGS:
+			memset(&settings, 0, sizeof(struct diag_uprobe_settings));
 			settings = uprobe_settings;
 			if (diag_uprobe.register_status) {
 				settings.offset = diag_uprobe.offset;
@@ -324,11 +326,12 @@ long diag_ioctl_uprobe(unsigned int cmd, unsigned long arg)
 			ret = copy_to_user((void *)arg, &settings, sizeof(settings));
 			break;
 		case CMD_UPROBE_DUMP:
+			memset(&dump_param, 0, sizeof(struct diag_ioctl_dump_param));
 			ret = copy_from_user(&dump_param, (void *)arg, sizeof(struct diag_ioctl_dump_param));
 
 			if (!kern_uprobe_alloced) {
 				ret = -EINVAL;
-			} else {
+			} else if (!ret) {
 				ret = copy_to_user_variant_buffer(&kern_uprobe_variant_buffer,
 						dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len);
 				record_dump_cmd("uprobe");
