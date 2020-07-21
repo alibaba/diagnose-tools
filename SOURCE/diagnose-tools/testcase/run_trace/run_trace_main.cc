@@ -17,25 +17,27 @@ void usage_test_run_trace(void)
 	printf("        --count loop count\n");
 }
 
-static __attribute__ ((noinline))  void mytest3(void)
-{
-        sleep(1);
-}
+extern "C" {
+	static __attribute__ ((noinline))  void mytest3(void)
+	{
+			sleep(1);
+	}
 
-static __attribute__ ((noinline))  void mytest2(void)
-{
-        mytest3();
-}
+	static __attribute__ ((noinline))  void mytest2(void)
+	{
+			mytest3();
+	}
 
-static __attribute__ ((noinline))  void mytest1(void)
-{
-        mytest2();
-}
+	static __attribute__ ((noinline))  void mytest1(void)
+	{
+			mytest2();
+	}
 
-static __attribute__ ((noinline))  void mytest(void)
-{
-	mytest1();
-	sleep(1);
+	static __attribute__ ((noinline))  void mytest(void)
+	{
+		mytest1();
+		sleep(1);
+	}
 }
 
 int test_run_trace_main(int argc, char *argv[])
