@@ -45,6 +45,7 @@ int test_run_trace_main(int argc, char *argv[])
 	int i, count = 2, type = 0, threshold = 1234;
 	int fp = 0;
 	int c;
+	ssize_t __attribute__ ((unused)) size;
 	static struct option long_options[] = {
 			{"help",     no_argument, 0,  0 },
 			{"type",     required_argument, 0,  0 },
@@ -85,7 +86,7 @@ int test_run_trace_main(int argc, char *argv[])
 		} else if (type == 1) {
 			fp = open("/proc/ali-linux/diagnose/kern/run-trace-settings", O_WRONLY);
 			if (fp != -1) {
-				write(fp, "start 1234", 11);
+				size = write(fp, "start 1234", 11);
 				close(fp);
 			}
 		} else if (type == 2) {
@@ -101,7 +102,7 @@ int test_run_trace_main(int argc, char *argv[])
 		} else if (type == 1) {
 			fp = open("/proc/ali-linux/diagnose/kern/run-trace-settings", O_WRONLY);
 			if (fp != -1) {
-				write(fp, "stop", 5);
+				size = write(fp, "stop", 5);
 				close(fp);
 			}
 		} else if (type == 2) {
