@@ -38,7 +38,7 @@ struct diagnose_func {
 
 static int report_version(int argc, char **argv)
 {
-	printf("diagnose-tools tools version 2.0-rc1\n");
+	printf("diagnose-tools tools version 2.0-rc2\n");
 	exit(0);
 }
 
