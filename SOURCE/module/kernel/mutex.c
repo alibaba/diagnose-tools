@@ -619,6 +619,8 @@ static int lookup_syms(void)
 	if (orig___mutex_unlock_slowpath == NULL)
 		orig___mutex_unlock_slowpath = (void *)__kallsyms_lookup_name("__mutex_unlock_slowpath.isra.18");
 	if (orig___mutex_unlock_slowpath == NULL)
+		orig___mutex_unlock_slowpath = (void *)__kallsyms_lookup_name("__mutex_unlock_slowpath.isra.17");
+	if (orig___mutex_unlock_slowpath == NULL)
 		orig___mutex_unlock_slowpath = (void *)__kallsyms_lookup_name("__mutex_unlock_slowpath");
 	if (orig___mutex_unlock_slowpath == NULL)
 		return -EINVAL;
