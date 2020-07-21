@@ -22,7 +22,7 @@ SRCS = $(wildcard *.cc) $(wildcard testcase/pi/*.cc) $(wildcard testcase/memcpy/
 OBJS=$(SRCS:.cc=.o)
 
 all: $(TARGET)
-	strip diagnose-tools
+	strip --strip-debug diagnose-tools
 
 $(TARGET): $(OBJS)
 	$(CXX) $(OBJS) $(LDFLAGS) -o $@
