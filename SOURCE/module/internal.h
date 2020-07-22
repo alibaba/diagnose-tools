@@ -237,6 +237,15 @@ extern int diag_get_symbol_count(char *symbol);
 
 extern u64 timer_sampling_period_ms;
 
+
+#if KERNEL_VERSION(5, 0, 0) <= LINUX_VERSION_CODE
+struct stack_trace {
+	unsigned int nr_entries, max_entries;
+	unsigned long *entries;
+	int skip;	/* input argument: How many entries to skip */
+};
+#endif
+
 struct diag_percpu_context;
 struct task_struct;
 

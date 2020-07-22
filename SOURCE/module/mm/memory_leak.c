@@ -323,9 +323,7 @@ static void do_dump(void)
 long diag_ioctl_mm_leak(unsigned int cmd, unsigned long arg)
 {
 	unsigned int verbose;
-	size_t size;
 	int ret = 0;
-	unsigned long cycle;
 	struct diag_mm_leak_settings settings;
 	struct diag_ioctl_dump_param_cycle dump_param;
 
@@ -344,14 +342,16 @@ long diag_ioctl_mm_leak(unsigned int cmd, unsigned long arg)
 	case CMD_MM_LEAK_DUMP:
 		ret = copy_from_user(&dump_param, (void *)arg, sizeof(struct diag_ioctl_dump_param_cycle));
 
-		if (dump_param.cycle) {
-			last_dump_addr = 0;
-		}
 		if (!mm_leak_alloced) {
 			ret = -EINVAL;
 		} else if (!ret) {
+			if (dump_param.cycle) {
+				last_dump_addr = 0;
+			}
+
 			do_dump();
-			ret = copy_to_user_variant_buffer(&mm_leak_variant_buffer, dump_param.ptr_len, dump_param.buf, dump_param.size);
+			ret = copy_to_user_variant_buffer(&mm_leak_variant_buffer, 
+				dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len);
 			record_dump_cmd("mm-leak");
 		}
 		break;
