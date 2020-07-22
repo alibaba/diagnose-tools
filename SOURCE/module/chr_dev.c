@@ -79,6 +79,9 @@ static long diag_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             ret = DIAG_VERSION;
         }
         break;
+    case DIAG_IOCTL_TYPE_PUPIL:
+        ret = diag_ioctl_pupil_task(nr, arg);
+        break;
     case DIAG_IOCTL_TYPE_SYS_DELAY:
         ret = diag_ioctl_sys_delay(nr, arg);
         break;
