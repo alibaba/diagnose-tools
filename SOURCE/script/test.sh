@@ -24,7 +24,7 @@ declare -a __all_case=(["1"]="sys-delay" ["2"]="sys-cost" ["3"]="sched-delay" \
 			["16"]="alloc-top" ["17"]="high-order"\
 			["18"]="drop-packet" ["19"]="tcp-retrans" ["20"]="ping-delay" \
 			["21"]="rw-top" ["22"]="fs-shm" ["23"]="fs-orphan" \
-			["24"]="fs-cache" ["999"]="kern-demo" )
+			["24"]="fs-cache" ["25"]="task-info" ["999"]="kern-demo" )
 
 sys_delay() {
 	eval "$DIAG_CMD sys-delay --deactivate --activate='style=0' --test --report --deactivate --settings"
@@ -239,6 +239,10 @@ fs_orphan() {
 
 fs_cache() {
 	eval "$DIAG_CMD fs-cache --deactivate --activate --report --settings"
+}
+
+task_info() {
+	eval "$DIAG_CMD task-info --pid=1 --report"
 }
 
 call_sub_cmd() {

@@ -20,10 +20,6 @@ struct pupil_task_info {
 	struct timeval tv;
 };
 
-#define DIAG_PUPIL_TASK_DUMP (DIAG_BASE_SYSCALL_PUPIL)
-#define DIAG_PUPIL_TASK_PID (DIAG_PUPIL_TASK_DUMP + 1)
-#define DIAG_PUPIL_TASK_TGID (DIAG_PUPIL_TASK_PID + 1)
-
 struct pupil_task_detail {
 	int et_type;
 	struct timeval tv;

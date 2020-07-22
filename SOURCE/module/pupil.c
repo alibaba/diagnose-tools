@@ -945,7 +945,7 @@ static int get_task_info(int type, int nid)
 	struct task_struct *tsk;
 	int ret;
 	unsigned long flags;
-	pid_t id = (pid_t)nid;;
+	pid_t id = (pid_t)nid;
 
 	ret = alloc_diag_variant_buffer(&pupil_variant_buffer);
 	if (ret)
