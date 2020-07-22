@@ -398,7 +398,7 @@ static void do_sls(char *arg)
 			ret = system(buf.c_str());
 
 			write_log("/tmp/perf_stripped.txt", store_file);
-			system("echo \"\"> /tmp/perf.txt");
+			ret = system("echo \"\"> /tmp/perf.txt");
 		}
 
 		sleep(10);

@@ -12,6 +12,8 @@
 #ifndef UAPI_UPROBE_H
 #define UAPI_UPROBE_H
 
+#include <linux/ioctl.h>
+
 #define CMD_UPROBE_DUMP (0)
 #define CMD_UPROBE_SET (CMD_UPROBE_DUMP + 1)
 #define CMD_UPROBE_SETTINGS (CMD_UPROBE_SET + 1)
