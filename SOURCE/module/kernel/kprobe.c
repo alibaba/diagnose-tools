@@ -40,6 +40,7 @@
 #include "uapi/kprobe.h"
 
 static atomic64_t diag_nr_running = ATOMIC64_INIT(0);
+static atomic64_t diag_nr_count = ATOMIC64_INIT(0);
 
 struct diag_kprobe_settings kprobe_settings;
 
@@ -169,6 +170,16 @@ static int kprobe_pre(struct kprobe *p, struct pt_regs *regs)
 
 			diag_task_raw_stack(current, &raw_detail->raw_stack);
 			diag_variant_buffer_spin_lock(&kprobe_variant_buffer, flags);
+
+			if (kprobe_settings.count > 0) {
+				if (atomic64_inc_return(&diag_nr_count) <= kprobe_settings.count) {
+					diag_variant_buffer_spin_unlock(&kprobe_variant_buffer, flags);
+					return 0;
+				} else {
+					atomic64_set(&diag_nr_count, 0);
+				}
+			}
+
 			diag_variant_buffer_reserve(&kprobe_variant_buffer, sizeof(struct kprobe_raw_stack_detail));
 			diag_variant_buffer_write_nolock(&kprobe_variant_buffer, raw_detail, sizeof(struct kprobe_raw_stack_detail));
 			diag_variant_buffer_seal(&kprobe_variant_buffer);
@@ -186,6 +197,16 @@ static int kprobe_pre(struct kprobe *p, struct pt_regs *regs)
 			diag_task_user_stack(current, &detail->user_stack);
 
 			diag_variant_buffer_spin_lock(&kprobe_variant_buffer, flags);
+
+			if (kprobe_settings.count > 0) {
+				if (atomic64_inc_return(&diag_nr_count) <= kprobe_settings.count) {
+					diag_variant_buffer_spin_unlock(&kprobe_variant_buffer, flags);
+					return 0;
+				} else {
+					atomic64_set(&diag_nr_count, 0);
+				}
+			}
+
 			diag_variant_buffer_reserve(&kprobe_variant_buffer, sizeof(struct kprobe_detail));
 			diag_variant_buffer_write_nolock(&kprobe_variant_buffer, detail, sizeof(struct kprobe_detail));
 			diag_variant_buffer_seal(&kprobe_variant_buffer);
@@ -272,6 +293,9 @@ static void __deactivate_kprobe(void)
 
 int activate_kprobe(void)
 {
+	if (!kprobe_settings.activated && kprobe_settings.count)
+		atomic64_set(&diag_nr_count, 0);
+
 	if (!kprobe_settings.activated)
 		kprobe_settings.activated = __activate_kprobe();
 
