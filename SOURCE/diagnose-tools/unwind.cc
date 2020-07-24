@@ -267,7 +267,7 @@ struct eh_frame_hdr {
 	 * } binary_search_table[fde_count];
 	 */
 	char data[0];
-} __packed;
+} __attribute__((__packed__));
 
 int dso_data_fd(vma* dso)
 {

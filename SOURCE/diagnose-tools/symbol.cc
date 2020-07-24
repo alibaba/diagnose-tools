@@ -331,6 +331,9 @@ vma* symbol_parser::find_vma(pid_t pid, size_t pc)
     if (vmit == it->second.end() || vmit->second.end < pc) {
         return NULL;
     }
+    if (vmit != it->second.begin()) {
+        --vmit;
+    }
     return &vmit->second;
 }
 
