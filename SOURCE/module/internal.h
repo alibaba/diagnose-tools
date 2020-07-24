@@ -417,8 +417,6 @@ struct diag_percpu_context {
 	struct perf_detail perf_detail;
 	struct sys_delay_detail sys_delay_detail;
 	struct sched_delay_dither sched_delay_dither;
-	struct kprobe_detail kprobe_detail;
-	struct kprobe_raw_stack_detail kprobe_raw_stack_detail;
 
 	struct {
 		struct uprobe_detail uprobe_detail;
@@ -439,7 +437,11 @@ struct diag_percpu_context {
 	} rw_top;
 
 	struct utilization_detail utilization_detail;
-	unsigned int count;
+	struct {
+		struct kprobe_detail kprobe_detail;
+		struct kprobe_raw_stack_detail kprobe_raw_stack_detail;
+		unsigned int sample_step;
+	} kprobe;
 };
 
 extern struct diag_percpu_context *diag_percpu_context[NR_CPUS];
