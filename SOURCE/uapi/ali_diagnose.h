@@ -49,8 +49,8 @@ err:
 }
 #endif
 
-#define XBY_VERSION					"diagnose-tools 2.0-rc2"
-#define DIAG_VERSION		((2 << 24) | (0 << 16) | 0x0002)
+#define XBY_VERSION					"diagnose-tools 2.0-rc3"
+#define DIAG_VERSION		((2 << 24) | (0 << 16) | 0x0003)
 
 #define DIAG_DEV_NAME "diagnose-tools"
 
