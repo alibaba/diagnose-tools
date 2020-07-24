@@ -147,6 +147,7 @@ static int need_trace(struct task_struct *tsk, struct pt_regs *regs)
 static int kprobe_pre(struct kprobe *p, struct pt_regs *regs)
 {
 	unsigned long flags;
+	unsigned int count;
 
 	atomic64_inc_return(&diag_nr_running);
 	if (!need_trace(current, regs)) {
@@ -169,10 +170,28 @@ static int kprobe_pre(struct kprobe *p, struct pt_regs *regs)
 
 			diag_task_raw_stack(current, &raw_detail->raw_stack);
 			diag_variant_buffer_spin_lock(&kprobe_variant_buffer, flags);
-			diag_variant_buffer_reserve(&kprobe_variant_buffer, sizeof(struct kprobe_raw_stack_detail));
-			diag_variant_buffer_write_nolock(&kprobe_variant_buffer, raw_detail, sizeof(struct kprobe_raw_stack_detail));
-			diag_variant_buffer_seal(&kprobe_variant_buffer);
+
+			if (kprobe_settings.count > 0) {
+				count = diag_percpu_context[smp_processor_id()]->count;
+
+				if (count <= kprobe_settings.count) {
+					count += 1;
+					diag_percpu_context[smp_processor_id()]->count = count;
+				} else {
+					diag_percpu_context[smp_processor_id()]->count = 0;	
+					diag_variant_buffer_reserve(&kprobe_variant_buffer, sizeof(struct kprobe_raw_stack_detail));
+					diag_variant_buffer_write_nolock(&kprobe_variant_buffer, raw_detail, sizeof(struct kprobe_raw_stack_detail));
+					diag_variant_buffer_seal(&kprobe_variant_buffer);
+				}
+
+			} else if (kprobe_settings.count == 0) {
+				diag_variant_buffer_reserve(&kprobe_variant_buffer, sizeof(struct kprobe_raw_stack_detail));
+				diag_variant_buffer_write_nolock(&kprobe_variant_buffer, raw_detail, sizeof(struct kprobe_raw_stack_detail));
+				diag_variant_buffer_seal(&kprobe_variant_buffer);
+			}
+
 			diag_variant_buffer_spin_unlock(&kprobe_variant_buffer, flags);
+
 		} else {
 			struct kprobe_detail *detail;
 
@@ -186,9 +205,26 @@ static int kprobe_pre(struct kprobe *p, struct pt_regs *regs)
 			diag_task_user_stack(current, &detail->user_stack);
 
 			diag_variant_buffer_spin_lock(&kprobe_variant_buffer, flags);
-			diag_variant_buffer_reserve(&kprobe_variant_buffer, sizeof(struct kprobe_detail));
-			diag_variant_buffer_write_nolock(&kprobe_variant_buffer, detail, sizeof(struct kprobe_detail));
-			diag_variant_buffer_seal(&kprobe_variant_buffer);
+
+			if (kprobe_settings.count > 0) {
+				count = diag_percpu_context[smp_processor_id()]->count;
+
+				if (count <= kprobe_settings.count) {
+					count += 1;
+					diag_percpu_context[smp_processor_id()]->count = count;
+				} else {
+					diag_percpu_context[smp_processor_id()]->count = 0;	
+					diag_variant_buffer_reserve(&kprobe_variant_buffer, sizeof(struct kprobe_raw_stack_detail));
+					diag_variant_buffer_write_nolock(&kprobe_variant_buffer, detail, sizeof(struct kprobe_raw_stack_detail));
+					diag_variant_buffer_seal(&kprobe_variant_buffer);
+				}
+
+			} else if (kprobe_settings.count == 0) {
+				diag_variant_buffer_reserve(&kprobe_variant_buffer, sizeof(struct kprobe_raw_stack_detail));
+				diag_variant_buffer_write_nolock(&kprobe_variant_buffer, detail, sizeof(struct kprobe_raw_stack_detail));
+				diag_variant_buffer_seal(&kprobe_variant_buffer);
+			}
+
 			diag_variant_buffer_spin_unlock(&kprobe_variant_buffer, flags);
 		}
 		

@@ -439,6 +439,7 @@ struct diag_percpu_context {
 	} rw_top;
 
 	struct utilization_detail utilization_detail;
+	unsigned int count;
 };
 
 extern struct diag_percpu_context *diag_percpu_context[NR_CPUS];

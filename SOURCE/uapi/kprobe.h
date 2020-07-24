@@ -24,6 +24,7 @@ struct diag_kprobe_settings {
 	char func[255];
 	unsigned long dump_style;
 	unsigned long raw_stack;
+	unsigned int count;
 };
 
 struct kprobe_detail {

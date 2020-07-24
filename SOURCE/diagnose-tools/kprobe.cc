@@ -67,6 +67,7 @@ static void do_activate(const char *arg)
 	settings.pid = parse.int_value("pid");
 	settings.dump_style = parse.int_value("dump-style");
 	settings.raw_stack = parse.int_value("raw-stack");
+	settings.count = parse.int_value("count");
 
 	str = parse.string_value("comm");
 	if (str.length() > 0) {
