@@ -159,7 +159,7 @@ static int kprobe_pre(struct kprobe *p, struct pt_regs *regs)
 		if (kprobe_settings.raw_stack) {
 			struct kprobe_raw_stack_detail *raw_detail;
 
-			raw_detail = &diag_percpu_context[smp_processor_id()]->kprobe_raw_stack_detail;
+			raw_detail = &diag_percpu_context[smp_processor_id()]->kprobe.kprobe_raw_stack_detail;
 			raw_detail->et_type = et_kprobe_raw_detail;
 			do_gettimeofday(&raw_detail->tv);
 			raw_detail->proc_chains.chains[0][0] = 0;
@@ -195,7 +195,7 @@ static int kprobe_pre(struct kprobe *p, struct pt_regs *regs)
 		} else {
 			struct kprobe_detail *detail;
 
-			detail = &diag_percpu_context[smp_processor_id()]->kprobe_detail;
+			detail = &diag_percpu_context[smp_processor_id()]->kprobe.kprobe_detail;
 			detail->et_type = et_kprobe_detail;
 			do_gettimeofday(&detail->tv);
 			detail->proc_chains.chains[0][0] = 0;
@@ -233,7 +233,7 @@ static int kprobe_pre(struct kprobe *p, struct pt_regs *regs)
 		int i = 0;
 		struct kprobe_detail *detail;
 
-		detail = &diag_percpu_context[smp_processor_id()]->kprobe_detail;
+		detail = &diag_percpu_context[smp_processor_id()]->kprobe.kprobe_detail;
 		detail->et_type = et_kprobe_detail;
 		do_gettimeofday(&detail->tv);
 		detail->proc_chains.chains[0][0] = 0;
