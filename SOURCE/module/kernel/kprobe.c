@@ -171,20 +171,20 @@ static int kprobe_pre(struct kprobe *p, struct pt_regs *regs)
 			diag_task_raw_stack(current, &raw_detail->raw_stack);
 			diag_variant_buffer_spin_lock(&kprobe_variant_buffer, flags);
 
-			if (kprobe_settings.count > 0) {
-				count = diag_percpu_context[smp_processor_id()]->count;
+			if (kprobe_settings.sample_step > 0) {
+				count = diag_percpu_context[smp_processor_id()]->kprobe.sample_step;
 
-				if (count <= kprobe_settings.count) {
+				if (count <= kprobe_settings.sample_step) {
 					count += 1;
-					diag_percpu_context[smp_processor_id()]->count = count;
+					diag_percpu_context[smp_processor_id()]->kprobe.sample_step = count;
 				} else {
-					diag_percpu_context[smp_processor_id()]->count = 0;	
+					diag_percpu_context[smp_processor_id()]->kprobe.sample_step = 0;	
 					diag_variant_buffer_reserve(&kprobe_variant_buffer, sizeof(struct kprobe_raw_stack_detail));
 					diag_variant_buffer_write_nolock(&kprobe_variant_buffer, raw_detail, sizeof(struct kprobe_raw_stack_detail));
 					diag_variant_buffer_seal(&kprobe_variant_buffer);
 				}
 
-			} else if (kprobe_settings.count == 0) {
+			} else if (kprobe_settings.sample_step == 0) {
 				diag_variant_buffer_reserve(&kprobe_variant_buffer, sizeof(struct kprobe_raw_stack_detail));
 				diag_variant_buffer_write_nolock(&kprobe_variant_buffer, raw_detail, sizeof(struct kprobe_raw_stack_detail));
 				diag_variant_buffer_seal(&kprobe_variant_buffer);
@@ -206,20 +206,20 @@ static int kprobe_pre(struct kprobe *p, struct pt_regs *regs)
 
 			diag_variant_buffer_spin_lock(&kprobe_variant_buffer, flags);
 
-			if (kprobe_settings.count > 0) {
-				count = diag_percpu_context[smp_processor_id()]->count;
+			if (kprobe_settings.sample_step > 0) {
+				count = diag_percpu_context[smp_processor_id()]->kprobe.sample_step;
 
-				if (count <= kprobe_settings.count) {
+				if (count <= kprobe_settings.sample_step) {
 					count += 1;
-					diag_percpu_context[smp_processor_id()]->count = count;
+					diag_percpu_context[smp_processor_id()]->kprobe.sample_step = count;
 				} else {
-					diag_percpu_context[smp_processor_id()]->count = 0;	
+					diag_percpu_context[smp_processor_id()]->kprobe.sample_step = 0;	
 					diag_variant_buffer_reserve(&kprobe_variant_buffer, sizeof(struct kprobe_raw_stack_detail));
 					diag_variant_buffer_write_nolock(&kprobe_variant_buffer, detail, sizeof(struct kprobe_raw_stack_detail));
 					diag_variant_buffer_seal(&kprobe_variant_buffer);
 				}
 
-			} else if (kprobe_settings.count == 0) {
+			} else if (kprobe_settings.sample_step == 0) {
 				diag_variant_buffer_reserve(&kprobe_variant_buffer, sizeof(struct kprobe_raw_stack_detail));
 				diag_variant_buffer_write_nolock(&kprobe_variant_buffer, detail, sizeof(struct kprobe_raw_stack_detail));
 				diag_variant_buffer_seal(&kprobe_variant_buffer);

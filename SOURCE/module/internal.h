@@ -439,7 +439,9 @@ struct diag_percpu_context {
 	} rw_top;
 
 	struct utilization_detail utilization_detail;
-	unsigned int count;
+	struct {
+		unsigned int sample_step;
+	} kprobe;
 };
 
 extern struct diag_percpu_context *diag_percpu_context[NR_CPUS];
