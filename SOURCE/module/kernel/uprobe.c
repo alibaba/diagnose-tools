@@ -185,6 +185,7 @@ void diag_save_user_params(struct pt_regs *regs,
 static int kern_uprobe_handler(struct uprobe_consumer *self, struct pt_regs *regs)
 {
 	unsigned long flags;
+	int sample = 1;
 
 	if (!need_trace(current, regs)) {
 		return 0;
@@ -192,41 +193,55 @@ static int kern_uprobe_handler(struct uprobe_consumer *self, struct pt_regs *reg
 
 	atomic64_inc_return(&diag_nr_running);
 
+	if (uprobe_settings.sample_step > 0) {
+		int count = diag_percpu_context[smp_processor_id()]->uprobe.sample_step;
+
+		if (count <= uprobe_settings.sample_step) {
+			count += 1;
+			diag_percpu_context[smp_processor_id()]->uprobe.sample_step = count;
+			sample = 0;
+		}
+	}
+
 	if (kern_uprobe_raw_stack) {
 		struct uprobe_raw_stack_detail *raw_detail;
-
-		raw_detail = &diag_percpu_context[smp_processor_id()]->uprobe.uprobe_raw_stack_detail;
-		raw_detail->et_type = et_uprobe_raw_detail;
-		do_gettimeofday(&raw_detail->tv);
-		raw_detail->proc_chains.chains[0][0] = 0;
-		dump_proc_chains_simple(current, &raw_detail->proc_chains);
-		diag_task_brief(current, &raw_detail->task);
-		diag_task_user_stack(current, &raw_detail->user_stack);
-		diag_task_raw_stack(current, &raw_detail->raw_stack);
-		diag_save_user_params(regs, uprobe_settings.params, raw_detail->values);
 	
-		diag_variant_buffer_spin_lock(&kern_uprobe_variant_buffer, flags);
-		diag_variant_buffer_reserve(&kern_uprobe_variant_buffer, sizeof(struct uprobe_raw_stack_detail));
-		diag_variant_buffer_write_nolock(&kern_uprobe_variant_buffer, raw_detail, sizeof(struct uprobe_raw_stack_detail));
-		diag_variant_buffer_seal(&kern_uprobe_variant_buffer);
-		diag_variant_buffer_spin_unlock(&kern_uprobe_variant_buffer, flags);
+		if (sample) {
+			raw_detail = &diag_percpu_context[smp_processor_id()]->uprobe.uprobe_raw_stack_detail;
+			raw_detail->et_type = et_uprobe_raw_detail;
+			do_gettimeofday(&raw_detail->tv);
+			raw_detail->proc_chains.chains[0][0] = 0;
+			dump_proc_chains_simple(current, &raw_detail->proc_chains);
+			diag_task_brief(current, &raw_detail->task);
+			diag_task_user_stack(current, &raw_detail->user_stack);
+			diag_task_raw_stack(current, &raw_detail->raw_stack);
+			diag_save_user_params(regs, uprobe_settings.params, raw_detail->values);
+	
+			diag_variant_buffer_spin_lock(&kern_uprobe_variant_buffer, flags);
+			diag_variant_buffer_reserve(&kern_uprobe_variant_buffer, sizeof(struct uprobe_raw_stack_detail));
+			diag_variant_buffer_write_nolock(&kern_uprobe_variant_buffer, raw_detail, sizeof(struct uprobe_raw_stack_detail));
+			diag_variant_buffer_seal(&kern_uprobe_variant_buffer);
+			diag_variant_buffer_spin_unlock(&kern_uprobe_variant_buffer, flags);
+		}
 	} else {
 		struct uprobe_detail *detail;
 
-		detail = &diag_percpu_context[smp_processor_id()]->uprobe.uprobe_detail;
-		detail->et_type = et_uprobe_detail;
-		do_gettimeofday(&detail->tv);
-		detail->proc_chains.chains[0][0] = 0;
-		dump_proc_chains_simple(current, &detail->proc_chains);
-		diag_task_brief(current, &detail->task);
-		diag_task_user_stack(current, &detail->user_stack);
-		diag_save_user_params(regs, uprobe_settings.params, detail->values);
+		if (sample) {
+			detail = &diag_percpu_context[smp_processor_id()]->uprobe.uprobe_detail;
+			detail->et_type = et_uprobe_detail;
+			do_gettimeofday(&detail->tv);
+			detail->proc_chains.chains[0][0] = 0;
+			dump_proc_chains_simple(current, &detail->proc_chains);
+			diag_task_brief(current, &detail->task);
+			diag_task_user_stack(current, &detail->user_stack);
+			diag_save_user_params(regs, uprobe_settings.params, detail->values);
 
-		diag_variant_buffer_spin_lock(&kern_uprobe_variant_buffer, flags);
-		diag_variant_buffer_reserve(&kern_uprobe_variant_buffer, sizeof(struct uprobe_detail));
-		diag_variant_buffer_write_nolock(&kern_uprobe_variant_buffer, detail, sizeof(struct uprobe_detail));
-		diag_variant_buffer_seal(&kern_uprobe_variant_buffer);
-		diag_variant_buffer_spin_unlock(&kern_uprobe_variant_buffer, flags);
+			diag_variant_buffer_spin_lock(&kern_uprobe_variant_buffer, flags);
+			diag_variant_buffer_reserve(&kern_uprobe_variant_buffer, sizeof(struct uprobe_detail));
+			diag_variant_buffer_write_nolock(&kern_uprobe_variant_buffer, detail, sizeof(struct uprobe_detail));
+			diag_variant_buffer_seal(&kern_uprobe_variant_buffer);
+			diag_variant_buffer_spin_unlock(&kern_uprobe_variant_buffer, flags);
+		}
 	}
 
 	atomic64_dec_return(&diag_nr_running);
