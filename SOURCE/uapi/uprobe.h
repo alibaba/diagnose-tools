@@ -63,6 +63,7 @@ struct diag_uprobe_settings {
 	int fd;
 	unsigned int offset;
 	struct diag_uprobe_param_define params[DIAG_UPROBE_MAX_PARAMS];
+	unsigned int sample_step;
 };
 
 struct uprobe_detail {
