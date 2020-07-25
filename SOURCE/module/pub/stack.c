@@ -664,7 +664,7 @@ static int diagnose_task_raw_stack_remote(struct task_struct *tsk,
 	ret = orig_access_remote_vm(mm, (unsigned long)from, to, n, 0);
 	mmput(mm);
 
-	return ret;
+	return ret < 0 ? ret : 0;
 }
 
 #else

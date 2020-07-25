@@ -939,7 +939,7 @@ static void save_task_info(struct task_struct *tsk, struct pupil_task_detail *de
 	diag_task_raw_stack(tsk, &detail->raw_stack);
 }
 
-static int get_task_info(int type, int nid)
+static int get_task_info(int nid)
 {
 	static struct pupil_task_detail detail;
 	struct task_struct *tsk;
@@ -962,32 +962,18 @@ static int get_task_info(int type, int nid)
 		return ret;
 	}
 
-	if (type == 0) {
-		save_task_info(tsk, &detail);
-
-		diag_variant_buffer_spin_lock(&pupil_variant_buffer, flags);
-		diag_variant_buffer_reserve(&pupil_variant_buffer,
-				sizeof(struct pupil_task_detail));
-		diag_variant_buffer_write_nolock(&pupil_variant_buffer,
-				&detail, sizeof(struct pupil_task_detail));
-		diag_variant_buffer_seal(&pupil_variant_buffer);
-		diag_variant_buffer_spin_unlock(&pupil_variant_buffer, flags);
-	} else {
-		struct task_struct *thread = tsk;
-
-		while_each_thread(tsk, thread) {
-			save_task_info(thread, &detail);
-
-			diag_variant_buffer_spin_lock(&pupil_variant_buffer, flags);
-			diag_variant_buffer_reserve(&pupil_variant_buffer,
-					sizeof(struct pupil_task_detail));
-			diag_variant_buffer_write_nolock(&pupil_variant_buffer,
-					&detail, sizeof(struct pupil_task_detail));
-			diag_variant_buffer_seal(&pupil_variant_buffer);
-			diag_variant_buffer_spin_unlock(&pupil_variant_buffer, flags);
-		}
-	}
+	get_task_struct(tsk);
 	rcu_read_unlock();
+	save_task_info(tsk, &detail);
+	put_task_struct(tsk);
+
+	diag_variant_buffer_spin_lock(&pupil_variant_buffer, flags);
+	diag_variant_buffer_reserve(&pupil_variant_buffer,
+			sizeof(struct pupil_task_detail));
+	diag_variant_buffer_write_nolock(&pupil_variant_buffer,
+			&detail, sizeof(struct pupil_task_detail));
+	diag_variant_buffer_seal(&pupil_variant_buffer);
+	diag_variant_buffer_spin_unlock(&pupil_variant_buffer, flags);
 
 	return ret;
 }
@@ -1013,14 +999,7 @@ long diag_ioctl_pupil_task(unsigned int cmd, unsigned long arg)
 		ret = copy_from_user(&id, (void *)arg, sizeof(int));
 
 		if (!ret) {
-			ret = get_task_info(0, id);
-		}
-		break;
-	case CMD_PUPIL_TASK_TGID:
-		ret = copy_from_user(&id, (void *)arg, sizeof(int));
-
-		if (!ret) {
-			ret = get_task_info(1, id);
+			ret = get_task_info(id);
 		}
 		break;
 	default:

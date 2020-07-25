@@ -35,7 +35,6 @@ void usage_pupil(void)
 	printf("    task-info dump task-info\n");
 	printf("        --help task-info help info\n");
 	printf("        --pid thread id intend to dump\n");
-	printf("        --tgid process group intend to dump\n");
 }
 
 static void do_pid(char *arg)
@@ -50,23 +49,6 @@ static void do_pid(char *arg)
 	}
 
 	ret = diag_call_ioctl(DIAG_IOCTL_PUPIL_TASK_PID, (long)&pid);
-	if (ret) {
-		printf("	获取线程信息错误： %d\n", ret);
-	}
-}
-
-static void do_tgid(char *arg)
-{
-	int tgid = 0;
-	int ret;
-
-	sscanf(optarg, "%d", &tgid);
-	if (tgid <= 0) {
-		usage_pupil();
-		return;
-	}
-
-	ret = diag_call_ioctl(DIAG_IOCTL_PUPIL_TASK_TGID, (long)&tgid);
 	if (ret) {
 		printf("	获取线程信息错误： %d\n", ret);
 	}
@@ -149,7 +131,6 @@ int pupil_task_info(int argc, char *argv[])
 			{"help",     no_argument, 0,  0 },
 			{"report",     optional_argument, 0,  0 },
 			{"pid",     required_argument, 0,  0 },
-			{"tgid",     required_argument, 0,  0 },
 			{0,         0,                 0,  0 }
 		};
 	int c;
@@ -171,9 +152,6 @@ int pupil_task_info(int argc, char *argv[])
 			break;
 		case 2:
 			do_pid(optarg);
-			break;
-		case 3:
-			do_tgid(optarg);
 			break;
 		default:
 			usage_pupil();
