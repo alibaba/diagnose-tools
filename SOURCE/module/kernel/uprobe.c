@@ -196,10 +196,12 @@ static int kern_uprobe_handler(struct uprobe_consumer *self, struct pt_regs *reg
 	if (uprobe_settings.sample_step > 0) {
 		int count = diag_percpu_context[smp_processor_id()]->uprobe.sample_step;
 
-		if (count <= uprobe_settings.sample_step) {
+		if (count < uprobe_settings.sample_step) {
 			count += 1;
 			diag_percpu_context[smp_processor_id()]->uprobe.sample_step = count;
 			sample = 0;
+		} else {
+			diag_percpu_context[smp_processor_id()]->uprobe.sample_step = 0;
 		}
 	}
 

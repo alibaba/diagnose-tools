@@ -158,10 +158,12 @@ static int kprobe_pre(struct kprobe *p, struct pt_regs *regs)
 	if (kprobe_settings.sample_step > 0) {
 		int count = diag_percpu_context[smp_processor_id()]->kprobe.sample_step;
 
-		if (count <= kprobe_settings.sample_step) {
+		if (count < kprobe_settings.sample_step) {
 			count += 1;
 			diag_percpu_context[smp_processor_id()]->kprobe.sample_step = count;
 			sample = 0;
+		} else {
+			diag_percpu_context[smp_processor_id()]->kprobe.sample_step = 0;
 		}
 	}
 
