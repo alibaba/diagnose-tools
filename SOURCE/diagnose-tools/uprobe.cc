@@ -90,6 +90,7 @@ static void do_activate(const char *arg)
 	settings.verbose = parse.int_value("verbose");
 	settings.tgid = parse.int_value("tgid");
 	settings.verbose = parse.int_value("verbose");
+	settings.sample_step = parse.int_value("sample-step");
 	
 	str = parse.string_value("comm");
 	if (str.length() > 0) {

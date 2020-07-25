@@ -421,6 +421,7 @@ struct diag_percpu_context {
 	struct {
 		struct uprobe_detail uprobe_detail;
 		struct uprobe_raw_stack_detail uprobe_raw_stack_detail;
+		unsigned int sample_step;
 	} uprobe;
 
 	struct {
