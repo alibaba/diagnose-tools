@@ -179,6 +179,32 @@ int reboot_syscall(struct pt_regs *regs, long id)
 	return ret;
 }
 
+long diag_ioctl_reboot(unsigned int cmd, unsigned long arg)
+{
+	unsigned int verbose;
+	int ret = 0;
+	struct diag_reboot_settings settings;
+
+	switch (cmd) {
+	case CMD_REBOOT_VERBOSE:
+		ret = copy_from_user(&verbose, (void *)arg, sizeof(unsigned int));
+		if (!ret) {
+			reboot_verbose = verbose;
+		}
+		break;
+	case CMD_REBOOT_SETTINGS:
+		settings.activated = reboot_activated;
+		settings.verbose = reboot_verbose;
+		ret = copy_to_user((void *)arg, &settings, sizeof(struct diag_reboot_settings));
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
+}
+
 int diag_reboot_init(void)
 {
 	if (lookup_syms())

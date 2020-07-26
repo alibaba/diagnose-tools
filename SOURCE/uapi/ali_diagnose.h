@@ -112,6 +112,7 @@ long diag_ioctl_fs_orphan(unsigned int cmd, unsigned long arg);
 long diag_ioctl_fs_cache(unsigned int cmd, unsigned long arg);
 long diag_ioctl_mm_leak(unsigned int cmd, unsigned long arg);
 long diag_ioctl_pupil_task(unsigned int cmd, unsigned long arg);
+long diag_ioctl_reboot(unsigned int cmd, unsigned long arg);
 
 struct diag_ioctl_test {
 	int in;
