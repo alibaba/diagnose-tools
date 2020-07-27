@@ -919,3 +919,8 @@ long __weak diag_ioctl_fs_cache(unsigned int cmd, unsigned long arg)
 {
 	return -EINVAL;
 }
+
+long __weak diag_ioctl_reboot(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
