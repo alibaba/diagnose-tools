@@ -628,6 +628,7 @@ static int get_entries(struct unwind_info *ui, unwind_entry_cb_t cb,
 	unw_cursor_t c;
 	entry_cb_arg_t *cb_arg = (entry_cb_arg_t *)arg;
 	int ret;
+	int loops = 0;
 
 	addr_space = unw_create_addr_space(&accessors, 0);
 	if (!addr_space) {
@@ -645,6 +646,10 @@ static int get_entries(struct unwind_info *ui, unwind_entry_cb_t cb,
 		unw_get_reg(&c, UNW_REG_IP, &ip); //get IP from current step;
 		cb_arg->arg = &c;
 		ret = entry(ip, ui->pid, ui->pid_ns, cb, cb_arg);
+
+		loops++;
+		if (loops >= 50)
+			break;
 	}
 
 	unw_destroy_addr_space(addr_space);
