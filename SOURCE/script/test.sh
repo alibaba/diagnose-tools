@@ -252,6 +252,10 @@ cpu_loop() {
 	done
 }
 
+reboot() {
+	eval "$DIAG_CMD reboot --settings"
+}
+
 call_sub_cmd() {
 	func=$1
 	func=${func//-/_}
