@@ -260,7 +260,7 @@ static void do_dump(void)
 		detail.f_inode = inode_info->f_inode;
 		detail.f_size = inode_info->f_size;
 		detail.cache_nr_pages = inode_info->cache_nr_pages;
-		diag_inode_full_name(inode_info->f_inode, detail.path_name, DIAG_PATH_LEN);
+		diag_inode_short_name(inode_info->f_inode, detail.path_name, DIAG_PATH_LEN);
 		if (detail.path_name[0] == 0) {
 			strncpy(detail.path_name, inode_info->path_name, DIAG_PATH_LEN);
 		}
