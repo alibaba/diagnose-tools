@@ -304,8 +304,8 @@ ssize_t dso__data_read_offset(vma *dso, u64 offset, u8 *data, ssize_t size)
     do {
         ssize_t ret;
         ret = dso_read(dso, offset, p, size);
-        if (ret < 0) {
-            return ret;
+        if (ret <= 0) {
+            return -1;
         }
         if (ret > size) {
             return -1;
@@ -326,7 +326,7 @@ ssize_t dso__data_read_addr(vma *map,
 	if (map->name.size() > 0 && map->name[0] != '/')
 		return 0;
 
-    offset = addr - map->start + map->offset;
+	offset = addr - map->start + map->offset;
 	return dso__data_read_offset(map, offset, data, size);
 }
 
