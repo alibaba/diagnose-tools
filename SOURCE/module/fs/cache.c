@@ -141,7 +141,7 @@ static int trace_inode(struct inode *inode)
 	if (info) {
 		inode_buf[inode_count] = info;
 		inode_count++;
-		diag_inode_short_name(inode, info->path_name, DIAG_PATH_LEN);
+		diag_inode_full_name(inode, info->path_name, DIAG_PATH_LEN);
 	}
 
 	return 0;
