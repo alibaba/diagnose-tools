@@ -71,7 +71,8 @@ static void do_verbose(char *arg)
 		return;
 
 	ret = -ENOSYS;
-	ret = diag_call_ioctl(DIAG_IOCTL_REBOOT_VERBOSE, verbose);
+	//ret = diag_call_ioctl(DIAG_IOCTL_REBOOT_VERBOSE, verbose);
+	syscall(DIAG_REBOOT_VERBOSE, &ret, verbose);
 	printf("set verbose for reboot: %d, ret is %d\n", verbose, ret);
 }
 
@@ -103,7 +104,8 @@ static void do_settings(const char *arg)
 
 	memset(&settings, 0, sizeof(struct diag_reboot_settings));
 	ret = -ENOSYS;
-	ret = diag_call_ioctl(DIAG_IOCTL_REBOOT_SETTINGS, (long)&settings);
+	//ret = diag_call_ioctl(DIAG_IOCTL_REBOOT_SETTINGS, (long)&settings);
+	syscall(DIAG_REBOOT_SETTINGS, &ret, &settings, sizeof(struct diag_reboot_settings));
 
 	if (1 == enable_json) {
 		return print_settings_in_json(&settings, ret);
