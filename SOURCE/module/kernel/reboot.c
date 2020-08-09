@@ -145,12 +145,46 @@ static void jump_init(void)
 {
 }
 
+int reboot_syscall(struct pt_regs *regs, long id)
+{
+	unsigned int verbose;
+	int ret = 0;
+	struct diag_reboot_settings settings;
+	void __user *buf;
+	size_t size;
+
+	switch (id) {
+	case DIAG_REBOOT_VERBOSE:
+		verbose = (unsigned int)SYSCALL_PARAM1(regs);
+		reboot_verbose = verbose;
+		break;
+	case DIAG_REBOOT_SETTINGS:
+		buf = (void __user *)SYSCALL_PARAM1(regs);
+		size = (size_t)SYSCALL_PARAM2(regs);
+
+		memset(&settings, 0, sizeof(settings));
+		if (size != sizeof(struct diag_reboot_settings)) {
+			ret = -EINVAL;
+		} else {
+			settings.activated = reboot_activated;
+			settings.verbose = reboot_verbose;
+			ret = copy_to_user(buf, &settings, size);
+		}
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
+}
+
 long diag_ioctl_reboot(unsigned int cmd, unsigned long arg)
 {
 	unsigned int verbose;
 	int ret = 0;
 	struct diag_reboot_settings settings;
-printk("xby-debugs: %d\n", cmd);
+	printk("xby-debugs: %d\n", cmd);
 	switch (cmd) {
 	case CMD_REBOOT_VERBOSE:
 		ret = copy_from_user(&verbose, (void *)arg, sizeof(unsigned int));
