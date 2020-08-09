@@ -66,7 +66,12 @@ static void do_activate(const char *arg)
 		settings.devname[254] = 0;
 	}
 
-	ret = diag_call_ioctl(DIAG_IOCTL_FS_ORPHAN_SET, (long)&settings);
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_FS_ORPHAN_SET, (long)&settings);
+	} else {
+		syscall(DIAG_FS_ORPHAN_SET, &ret, &settings, sizeof(struct diag_fs_orphan_settings));
+	}
+
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
 	printf("    输出级别：%d\n", settings.verbose);
 	printf("    DEV：%s\n", settings.devname);
@@ -114,7 +119,11 @@ static void do_settings(const char *arg)
 	struct params_parser parse(arg);
 	enable_json = parse.int_value("json");
 
-	ret = diag_call_ioctl(DIAG_IOCTL_FS_ORPHAN_SETTINGS, (long)&settings);
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_FS_ORPHAN_SETTINGS, (long)&settings);
+	} else {
+		syscall(DIAG_FS_ORPHAN_SETTINGS, &ret, &settings, sizeof(struct diag_fs_orphan_settings));
+	}
 
 	if (1 == enable_json) {
 		return print_settings_in_json(&settings, ret);
@@ -230,7 +239,12 @@ static void do_dump(void)
 		.user_buf = variant_buf,
 	};
 
-	ret = diag_call_ioctl(DIAG_IOCTL_FS_ORPHAN_DUMP, (long)&dump_param);
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_FS_ORPHAN_DUMP, (long)&dump_param);
+	} else {
+		syscall(DIAG_FS_ORPHAN_DUMP, &ret, &len, variant_buf, 10 * 1024 * 1024);
+	}
+
 	if (ret == 0) {
 		do_extract(variant_buf, len);
 	}
@@ -251,7 +265,12 @@ static void do_sls(char *arg)
 	if (ret != 1)
 		return;
 
-	ret = diag_call_ioctl(DIAG_IOCTL_FS_ORPHAN_DUMP, (long)&dump_param);
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_FS_ORPHAN_DUMP, (long)&dump_param);
+	} else {
+		syscall(DIAG_FS_ORPHAN_DUMP, &ret, &len, variant_buf, 10 * 1024 * 1024);
+	}
+
 	if (ret == 0 && len > 0) {
 		gettimeofday(&sls_tv, NULL);
 		sls_id = sls_tv.tv_sec;

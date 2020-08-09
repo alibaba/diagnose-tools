@@ -705,6 +705,11 @@ void __weak diag_xby_test_exit(void)
 	//
 }
 
+int __weak fs_orphan_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
+}
+
 int __weak activate_fs_orphan(void)
 {
 	return -EINVAL;
