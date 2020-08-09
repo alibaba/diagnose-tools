@@ -784,6 +784,7 @@ void diag_sys_cost_exit(void);
 
 int activate_fs_cache(void);
 int deactivate_fs_cache(void);
+int fs_cache_syscall(struct pt_regs *regs, long id);
 int diag_fs_cache_init(void);
 void diag_fs_cache_exit(void);
 
