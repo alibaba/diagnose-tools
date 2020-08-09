@@ -67,6 +67,7 @@ static DEFINE_SEMAPHORE(controller_sem);
 
 struct diag_percpu_context *diag_percpu_context[NR_CPUS];
 unsigned long diag_ignore_jump_check = 0;
+unsigned long open_syscall = 0;
 
 static ssize_t controller_file_read(struct diag_trace_file *trace_file,
 		struct file *file, char __user *buf, size_t size, loff_t *ppos)
@@ -226,6 +227,8 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 
 		up(&controller_sem);
 		printk("diagnose-tools %s %s\n", cmd, func);
+	} else if (strcmp(cmd, "syscall") == 0) {
+		open_syscall = 1;
 	}
 
 	return count;
@@ -275,6 +278,46 @@ static int symbol_walk_callback(void *data, const char *name,
 	}
 
 	return 0;
+}
+
+static void diag_cb_sys_enter(void *data, struct pt_regs *regs, long id)
+{
+	if (id >= DIAG_BASE_SYSCALL) {
+		int ret = -ENOSYS;
+
+		down(&controller_sem);
+		if (id == DIAG_VERSION) {
+			ret = DIAG_VERSION;
+		} else if (id >= DIAG_BASE_SYSCALL_REBOOT
+		   && id < DIAG_BASE_SYSCALL_REBOOT + DIAG_SYSCALL_INTERVAL) {
+			ret = reboot_syscall(regs, id);
+		}
+
+		up(&controller_sem);
+		if (ret != -ENOSYS) {
+			__user int *ret_ptr = (void *)ORIG_PARAM1(regs);
+
+			if (ret_ptr) {
+				ret = copy_to_user(ret_ptr, &ret, sizeof(int));
+			}
+		}
+	}
+}
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
+static void trace_sys_enter_hit(struct pt_regs *regs, long id)
+#else
+static void trace_sys_enter_hit(void *__data, struct pt_regs *regs, long id)
+#endif
+{
+	if (open_syscall == 0)
+		return
+	atomic64_inc_return(&diag_nr_running);
+	diag_cb_sys_enter(NULL, regs, id);
+	//cb_sys_enter_run_trace(NULL, regs, id);
+	//cb_sys_enter_sys_delay(NULL, regs, id);
+	//cb_sys_enter_sys_cost(NULL, regs, id);
+	atomic64_dec_return(&diag_nr_running);
 }
 
 static int __init diagnosis_init(void)
@@ -349,7 +392,7 @@ static int __init diagnosis_init(void)
 	if (ret)
 		goto out_dev;
 
-	//hook_tracepoint("sys_enter", trace_sys_enter_hit, NULL);
+	hook_tracepoint("sys_enter", trace_sys_enter_hit, NULL);
 	printk("diagnose-tools in diagnosis_init\n");
 
 	return 0;
@@ -393,7 +436,7 @@ static void __exit diagnosis_exit(void)
 	msleep(20);
 
 	diag_dev_cleanup();
-	//unhook_tracepoint("sys_enter", trace_sys_enter_hit, NULL);
+	unhook_tracepoint("sys_enter", trace_sys_enter_hit, NULL);
 	synchronize_sched();
 
 	/**
