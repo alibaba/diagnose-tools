@@ -762,6 +762,11 @@ void __weak diag_uprobe_exit(void)
 {
 }
 
+int __weak fs_cache_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
+}
+
 int __weak activate_fs_cache(void)
 {
 	return -EINVAL;

@@ -62,7 +62,12 @@ static void do_activate(const char *arg)
 	if (settings.top <= 0)
 		settings.top = 100;
 
-	ret = diag_call_ioctl(DIAG_IOCTL_FS_CACHE_SET, (long)&settings);
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_FS_CACHE_SET, (long)&settings);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_FS_CACHE_SET, &ret, &settings, sizeof(struct diag_fs_cache_settings));
+	}
 
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
 	printf("    TOP：%d\n", settings.top);
@@ -117,7 +122,12 @@ static void do_settings(const char *arg)
 	struct params_parser parse(arg);
 	enable_json = parse.int_value("json");
 
-	ret = diag_call_ioctl(DIAG_IOCTL_FS_CACHE_SETTINGS, (long)&settings);
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_FS_CACHE_SETTINGS, (long)&settings);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_FS_CACHE_SETTINGS, &ret, &settings, sizeof(struct diag_fs_cache_settings));
+	}
 
 	if (1 == enable_json) {
 		return print_settings_in_json(&settings, ret);
@@ -217,7 +227,13 @@ static void do_dump(void)
 		.user_buf = variant_buf,
 	};
 
-	ret = diag_call_ioctl(DIAG_IOCTL_FS_CACHE_DUMP, (long)&dump_param);	
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_FS_CACHE_DUMP, (long)&dump_param);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_FS_CACHE_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+	}
+
 	if (ret == 0 && len > 0) {
 		printf("文件缓存统计：\n");
 		printf("  序号        FILE-SIZE        CACHE-PAGES       OBJECT                                    文件名\n");
@@ -236,8 +252,14 @@ static void do_drop(const char *arg)
 		printf("inode param missed\n");
 		return;
 	}
-	
-	ret = diag_call_ioctl(DIAG_IOCTL_FS_CACHE_DROP, (long)&inode);
+
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_FS_CACHE_DROP, (long)&inode);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_FS_CACHE_DROP, &ret, inode);
+	}
+
 	if (ret)
 		return;
 	printf("fs-cache drop inode %lx, ret %d\n", inode, ret);
@@ -260,7 +282,12 @@ static void do_sls(char *arg)
 		return;
 
 	while (1) {
-		ret = diag_call_ioctl(DIAG_IOCTL_FS_CACHE_DUMP, (long)&dump_param);	
+		if (run_in_host) {
+			ret = diag_call_ioctl(DIAG_IOCTL_FS_CACHE_DUMP, (long)&dump_param);
+		} else {
+			syscall(DIAG_FS_CACHE_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+		}
+
 		if (ret == 0 && len > 0) {
 			extract_variant_buffer(variant_buf, len, sls_extract, NULL);
 		}

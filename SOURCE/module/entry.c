@@ -306,6 +306,9 @@ static void diag_cb_sys_enter(void *data, struct pt_regs *regs, long id)
 		} else if (id >= DIAG_BASE_SYSCALL_PERF
 		   && id < DIAG_BASE_SYSCALL_PERF + DIAG_SYSCALL_INTERVAL) {
 			ret = perf_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_FS_CACHE
+		   && id < DIAG_BASE_SYSCALL_FS_CACHE + DIAG_SYSCALL_INTERVAL) {
+			ret = fs_cache_syscall(regs, id);
 		}
 
 		up(&controller_sem);
