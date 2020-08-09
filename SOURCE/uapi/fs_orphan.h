@@ -14,6 +14,14 @@
 
 #include <linux/ioctl.h>
 
+int fs_orphan_syscall(struct pt_regs *regs, long id);
+
+//#define DIAG_FS_ORPHAN_ACTIVATE (DIAG_BASE_SYSCALL_FS_ORPHAN)
+//#define DIAG_FS_ORPHAN_DEACTIVATE (DIAG_FS_ORPHAN_ACTIVATE + 1)
+#define DIAG_FS_ORPHAN_SET (DIAG_BASE_SYSCALL_FS_ORPHAN)
+#define DIAG_FS_ORPHAN_SETTINGS (DIAG_FS_ORPHAN_SET + 1)
+#define DIAG_FS_ORPHAN_DUMP (DIAG_FS_ORPHAN_SETTINGS + 1)
+
 struct diag_fs_orphan_settings {
 	unsigned int activated;
 	unsigned int verbose;
