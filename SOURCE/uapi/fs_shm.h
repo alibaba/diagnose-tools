@@ -14,6 +14,14 @@
 
 #include <linux/ioctl.h>
 
+int fs_shm_syscall(struct pt_regs *regs, long id);
+
+//#define DIAG_FS_SHM_ACTIVATE (DIAG_BASE_SYSCALL_FS_SHM)
+//#define DIAG_FS_SHM_DEACTIVATE (DIAG_FS_SHM_ACTIVATE + 1)
+#define DIAG_FS_SHM_SET (DIAG_BASE_SYSCALL_FS_SHM)
+#define DIAG_FS_SHM_SETTINGS (DIAG_FS_SHM_SET + 1)
+#define DIAG_FS_SHM_DUMP (DIAG_FS_SHM_SETTINGS + 1)
+
 struct diag_fs_shm_settings {
 	unsigned int activated;
 	unsigned int verbose;

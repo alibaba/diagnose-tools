@@ -485,6 +485,11 @@ void __weak diag_utilization_exit(void)
 	//
 }
 
+int __weak fs_shm_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
+}
+
 int __weak activate_run_trace(void)
 {
 	return -EINVAL;
