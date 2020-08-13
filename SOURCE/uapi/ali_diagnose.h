@@ -47,6 +47,8 @@ err:
 
 	return ret;
 }
+
+extern unsigned long run_in_host;
 #endif
 
 #define XBY_VERSION					"diagnose-tools 2.1-rc1"
