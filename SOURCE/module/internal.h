@@ -751,6 +751,8 @@ int deactivate_reboot(void);
 int activate_fs_orphan(void);
 int deactivate_fs_orphan(void);
 
+int perf_syscall(struct pt_regs *regs, long id);
+
 void diag_task_brief(struct task_struct *tsk, struct diag_task_detail *detail);
 void printk_task_brief(struct diag_task_detail *detail);
 void diag_task_kern_stack(struct task_struct *tsk, struct diag_kern_stack_detail *detail);
