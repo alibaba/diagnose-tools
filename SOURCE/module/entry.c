@@ -303,6 +303,9 @@ static void diag_cb_sys_enter(void *data, struct pt_regs *regs, long id)
 		} else if (id >= DIAG_BASE_SYSCALL_REBOOT
 		   && id < DIAG_BASE_SYSCALL_REBOOT + DIAG_SYSCALL_INTERVAL) {
 			ret = reboot_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_PERF
+		   && id < DIAG_BASE_SYSCALL_PERF + DIAG_SYSCALL_INTERVAL) {
+			ret = perf_syscall(regs, id);
 		}
 
 		up(&controller_sem);
