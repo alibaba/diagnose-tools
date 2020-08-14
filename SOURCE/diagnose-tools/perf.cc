@@ -37,7 +37,6 @@
 using namespace std;
 
 static char sls_file[256];
-static int run_in_container = 0;
 static int report_reverse = 0;
 static int syslog_enabled;
 
@@ -216,7 +215,7 @@ static int perf_extract(void *buf, unsigned int len, void *)
 					seq);
 			printf("#*        0xffffffffffffff %s (UNKNOWN)\n",
 					detail->task.comm);
-			diag_printf_user_stack(run_in_container ? detail->task.container_tgid : detail->task.tgid,
+			diag_printf_user_stack(run_in_host ? detail->task.tgid : detail->task.container_tgid,
 					detail->task.container_tgid,
 					detail->task.comm,
 					&detail->user_stack, 0, report_reverse);
@@ -229,7 +228,7 @@ static int perf_extract(void *buf, unsigned int len, void *)
 					detail->task.pid,
 					seq);
 			diag_printf_kern_stack(&detail->kern_stack, report_reverse);
-			diag_printf_user_stack(run_in_container ? detail->task.container_tgid : detail->task.tgid,
+			diag_printf_user_stack(run_in_host ? detail->task.tgid : detail->task.container_tgid,
 					detail->task.container_tgid,
 					detail->task.comm,
 					&detail->user_stack, 0, report_reverse);
@@ -264,7 +263,6 @@ static void do_dump(const char *arg)
 	};
 
 	report_reverse = parse.int_value("reverse");
-	run_in_container = parse.int_value("container");
 
 	memset(variant_buf, 0, 50 * 1024 * 1024);
 	if (run_in_host) {
