@@ -14,6 +14,8 @@
 
 #include <linux/ioctl.h>
 
+int drop_packet_syscall(struct pt_regs *regs, long id);
+
 enum pk_direction {
 	IN,
 	OUT
@@ -53,6 +55,10 @@ static __attribute__((unused)) const char *packet_steps_str[TRACK_COUNT] = {
 	"TCP_V4_RCV",
 	"SEND_SKB",
 };
+
+#define DIAG_DROP_PACKET_SET (DIAG_BASE_SYSCALL_DROP_PACKET)
+#define DIAG_DROP_PACKET_SETTINGS (DIAG_DROP_PACKET_SET + 1)
+#define DIAG_DROP_PACKET_DUMP (DIAG_DROP_PACKET_SETTINGS + 1)
 
 #define DIAG_IPPROTO_TCP 6
 #define DIAG_IPPROTO_UDP 17

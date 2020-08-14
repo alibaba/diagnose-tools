@@ -14,6 +14,16 @@
 
 #include <linux/ioctl.h>
 
+int utilization_syscall(struct pt_regs *regs, long id);
+
+//#define DIAG_UTILIZATION_ACTIVATE (DIAG_BASE_SYSCALL_UTILIZATION)
+//#define DIAG_UTILIZATION_DEACTIVATE (DIAG_UTILIZATION_ACTIVATE + 1)
+#define DIAG_UTILIZATION_SET (DIAG_BASE_SYSCALL_UTILIZATION)
+#define DIAG_UTILIZATION_SETTINGS (DIAG_UTILIZATION_SET + 1)
+#define DIAG_UTILIZATION_DUMP (DIAG_UTILIZATION_SETTINGS + 1)
+#define DIAG_UTILIZATION_ISOLATE (DIAG_UTILIZATION_DUMP + 1)
+#define DIAG_UTILIZATION_SAMPLE (DIAG_UTILIZATION_ISOLATE + 1)
+
 struct diag_utilization_settings {
 	unsigned int activated;
 	unsigned int verbose;

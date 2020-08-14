@@ -14,6 +14,15 @@
 
 #include <linux/ioctl.h>
 
+int high_order_syscall(struct pt_regs *regs, long id);
+
+//#define DIAG_HIGH_ORDER_ACTIVATE (DIAG_BASE_SYSCALL_HIGH_ORDER)
+//#define DIAG_HIGH_ORDER_DEACTIVATE (DIAG_HIGH_ORDER_ACTIVATE + 1)
+#define DIAG_HIGH_ORDER_SET (DIAG_BASE_SYSCALL_HIGH_ORDER)
+#define DIAG_HIGH_ORDER_SETTINGS (DIAG_HIGH_ORDER_SET + 1)
+#define DIAG_HIGH_ORDER_DUMP (DIAG_HIGH_ORDER_SETTINGS + 1)
+#define DIAG_HIGH_ORDER_TEST (DIAG_HIGH_ORDER_DUMP + 1)
+
 struct diag_high_order_settings {
 	unsigned int activated;
 	unsigned int verbose;

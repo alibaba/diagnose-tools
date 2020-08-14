@@ -769,6 +769,7 @@ void cpumask_to_str(struct cpumask *cpumask, char *buf, int len);
 
 int activate_ping_delay(void);
 int deactivate_ping_delay(void);
+int ping_delay_syscall(struct pt_regs *regs, long id);
 int diag_ping_delay_init(void);
 void diag_ping_delay_exit(void);
 
@@ -790,6 +791,7 @@ void diag_fs_cache_exit(void);
 
 int activate_high_order(void);
 int deactivate_high_order(void);
+int high_order_syscall(struct pt_regs *regs, long id);
 int diag_high_order_init(void);
 void diag_high_order_exit(void);
 void record_dump_cmd(char *module);

@@ -2047,6 +2047,63 @@ static void do_dump(void)
 	mutex_unlock(&file_mutex);
 }
 
+int rw_top_syscall(struct pt_regs *regs, long id)
+{
+	int __user *user_ptr_len;
+	size_t __user user_buf_len;
+	void __user *user_buf;
+	int ret = 0;
+	struct diag_rw_top_settings settings;
+
+	switch (id) {
+	case DIAG_RW_TOP_SET:
+		user_buf = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM2(regs);
+
+		if (user_buf_len != sizeof(struct diag_rw_top_settings)) {
+			ret = -EINVAL;
+		} else if (rw_top_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, user_buf, user_buf_len);
+			if (!ret) {
+				rw_top_settings = settings;
+			}
+		}
+		break;
+	case DIAG_RW_TOP_SETTINGS:
+		user_buf = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM2(regs);
+
+		if (user_buf_len != sizeof(struct diag_rw_top_settings)) {
+			ret = -EINVAL;
+		} else {
+			settings = rw_top_settings;
+			ret = copy_to_user(user_buf, &settings, user_buf_len);
+		}
+		break;
+	case DIAG_RW_TOP_DUMP:
+		user_ptr_len = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf = (void __user *)SYSCALL_PARAM2(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM3(regs);
+
+		if (!rw_top_alloced) {
+			ret = -EINVAL;
+		} else {
+			do_dump();
+			ret = copy_to_user_variant_buffer(&rw_top_variant_buffer,
+					user_ptr_len, user_buf, user_buf_len);
+			record_dump_cmd("rw-top");
+		}
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
+}
+
 long diag_ioctl_rw_top(unsigned int cmd, unsigned long arg)
 {
 	int ret = 0;

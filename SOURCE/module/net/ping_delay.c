@@ -1976,6 +1976,63 @@ static ssize_t dump_data(void)
 	return 0;
 }
 
+int ping_delay_syscall(struct pt_regs *regs, long id)
+{
+	int __user *user_ptr_len;
+	size_t __user user_buf_len;
+	void __user *user_buf;
+	int ret = 0;
+	struct diag_ping_delay_settings settings;
+
+	switch (id) {
+	case DIAG_PING_DELAY_SET:
+		user_buf = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM2(regs);
+
+		if (user_buf_len != sizeof(struct diag_ping_delay_settings)) {
+			ret = -EINVAL;
+		} else if (ping_delay_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, user_buf, user_buf_len);
+			if (!ret) {
+				ping_delay_settings = settings;
+			}
+		}
+		break;
+	case DIAG_PING_DELAY_SETTINGS:
+		user_buf = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM2(regs);
+
+		if (user_buf_len != sizeof(struct diag_ping_delay_settings)) {
+			ret = -EINVAL;
+		} else {
+			settings = ping_delay_settings;
+			ret = copy_to_user(user_buf, &settings, user_buf_len);
+		}
+		break;
+	case DIAG_PING_DELAY_DUMP:
+		user_ptr_len = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf = (void __user *)SYSCALL_PARAM2(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM3(regs);
+
+		if (!ping_delay_alloced) {
+			ret = -EINVAL;
+		} else {
+			dump_data();
+			ret = copy_to_user_variant_buffer(&ping_delay_variant_buffer,
+					user_ptr_len, user_buf, user_buf_len);
+			record_dump_cmd("ping-delay");
+		}
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
+}
+
 long diag_ioctl_ping_delay(unsigned int cmd, unsigned long arg)
 {
 	int ret = 0;

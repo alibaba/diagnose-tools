@@ -13,6 +13,13 @@
 #define UAPI_TCP_RETRANS_H
 
 #include <linux/ioctl.h>
+int tcp_retrans_syscall(struct pt_regs *regs, long id);
+
+//#define DIAG_TCP_RETRANS_ACTIVATE (DIAG_BASE_SYSCALL_TCP_RETRANS)
+//#define DIAG_TCP_RETRANS_DEACTIVATE (DIAG_TCP_RETRANS_ACTIVATE + 1)
+#define DIAG_TCP_RETRANS_SET (DIAG_BASE_SYSCALL_TCP_RETRANS)
+#define DIAG_TCP_RETRANS_SETTINGS (DIAG_TCP_RETRANS_SET + 1)
+#define DIAG_TCP_RETRANS_DUMP (DIAG_TCP_RETRANS_SETTINGS + 1)
 
 struct diag_tcp_retrans_settings {
 	unsigned int activated;
