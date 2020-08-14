@@ -525,9 +525,26 @@ void diag_sls_inode(struct diag_inode_detail *inode, Json::Value &root)
 	root["block_bytes"] = Json::Value(inode->inode_block_bytes);
 }
 
+int diag_syscall(const char func[])
+{
+	ofstream os;
+
+	os.open("/proc/ali-linux/diagnose/controller", std::ios::out);
+	if (os.is_open()) {
+		os << "syscall " << func << endl;
+		os.close();
+	} else {
+		return 0;
+	}
+
+	return 1;
+}
+
 int diag_activate(const char func[])
 {
 	ofstream os;
+	if ( !strcmp(func, "reboot"))
+		diag_syscall("on");
 
 	os.open("/proc/ali-linux/diagnose/controller", std::ios::out);
 	if (os.is_open()) {

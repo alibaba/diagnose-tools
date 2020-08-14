@@ -14,6 +14,14 @@
 
 #include <linux/ioctl.h>
 
+int rw_top_syscall(struct pt_regs *regs, long id);
+
+//#define DIAG_RW_TOP_ACTIVATE (DIAG_BASE_SYSCALL_RW_TOP)
+//#define DIAG_RW_TOP_DEACTIVATE (DIAG_RW_TOP_ACTIVATE + 1)
+#define DIAG_RW_TOP_SET (DIAG_BASE_SYSCALL_RW_TOP)
+#define DIAG_RW_TOP_SETTINGS (DIAG_RW_TOP_SET + 1)
+#define DIAG_RW_TOP_DUMP (DIAG_RW_TOP_SETTINGS + 1)
+
 struct diag_rw_top_settings {
 	unsigned int activated;
 	unsigned int verbose;

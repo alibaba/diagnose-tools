@@ -14,6 +14,15 @@
 
 #include <linux/ioctl.h>
 
+int mutex_monitor_syscall(struct pt_regs *regs, long id);
+
+//#define DIAG_MUTEX_MONITOR_ACTIVATE (DIAG_BASE_SYSCALL_MUTEX_MONITOR)
+//#define DIAG_MUTEX_MONITOR_DEACTIVATE (DIAG_MUTEX_MONITOR_ACTIVATE + 1)
+#define DIAG_MUTEX_MONITOR_SET (DIAG_BASE_SYSCALL_MUTEX_MONITOR)
+#define DIAG_MUTEX_MONITOR_SETTINGS (DIAG_MUTEX_MONITOR_SET + 1)
+#define DIAG_MUTEX_MONITOR_DUMP (DIAG_MUTEX_MONITOR_SETTINGS + 1)
+#define DIAG_MUTEX_MONITOR_TEST (DIAG_MUTEX_MONITOR_DUMP + 1)
+
 struct diag_mutex_monitor_settings {
 	unsigned int activated;
 	unsigned int verbose;

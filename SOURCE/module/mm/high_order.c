@@ -158,6 +158,68 @@ int deactivate_high_order(void)
 	return 0;
 }
 
+int high_order_syscall(struct pt_regs *regs, long id)
+{
+	int __user *user_ptr_len;
+	size_t __user user_buf_len;
+	void __user *user_buf;
+	int ret = 0;
+	struct diag_high_order_settings settings;
+	unsigned long addr;
+
+	switch (id) {
+	case DIAG_HIGH_ORDER_SET:
+		user_buf = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM2(regs);
+
+		if (user_buf_len != sizeof(struct diag_high_order_settings)) {
+			ret = -EINVAL;
+		} else if (high_order_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, user_buf, user_buf_len);
+			if (!ret) {
+				high_order_settings = settings;
+			}
+		}
+		break;
+	case DIAG_HIGH_ORDER_SETTINGS:
+		user_buf = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM2(regs);
+
+		if (user_buf_len != sizeof(struct diag_high_order_settings)) {
+			ret = -EINVAL;
+		} else {
+			settings = high_order_settings;
+			ret = copy_to_user(user_buf, &settings, user_buf_len);
+		}
+		break;
+	case DIAG_HIGH_ORDER_DUMP:
+		user_ptr_len = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf = (void __user *)SYSCALL_PARAM2(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM3(regs);
+
+		if (!high_order_alloced) {
+			ret = -EINVAL;
+		} else {
+			ret = copy_to_user_variant_buffer(&high_order_variant_buffer,
+					user_ptr_len, user_buf, user_buf_len);
+			record_dump_cmd("high-order");
+		}
+		break;
+	case DIAG_HIGH_ORDER_TEST:
+		addr = __get_free_pages(GFP_KERNEL, 3);
+		if (addr)
+			free_pages(addr, 3);
+		ret = 0;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
+}
+
 long diag_ioctl_high_order(unsigned int cmd, unsigned long arg)
 {
 	int ret = 0;

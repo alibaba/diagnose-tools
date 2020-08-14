@@ -14,6 +14,10 @@
 
 #include <linux/ioctl.h>
 
+#define DIAG_PING_DELAY_SET (DIAG_BASE_SYSCALL_PING_DELAY)
+#define DIAG_PING_DELAY_SETTINGS (DIAG_PING_DELAY_SET + 1)
+#define DIAG_PING_DELAY_DUMP (DIAG_PING_DELAY_SETTINGS + 1)
+
 enum ping_delay_packet_step
 {
 	PD_ETH_RECV,

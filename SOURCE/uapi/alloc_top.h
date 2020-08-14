@@ -14,6 +14,14 @@
 
 #include <linux/ioctl.h>
 
+int alloc_top_syscall(struct pt_regs *regs, long id);
+
+//#define DIAG_ALLOC_TOP_ACTIVATE (DIAG_BASE_SYSCALL_ALLOC_TOP)
+//#define DIAG_ALLOC_TOP_DEACTIVATE (DIAG_ALLOC_TOP_ACTIVATE + 1)
+#define DIAG_ALLOC_TOP_SET (DIAG_BASE_SYSCALL_ALLOC_TOP)
+#define DIAG_ALLOC_TOP_SETTINGS (DIAG_ALLOC_TOP_SET + 1)
+#define DIAG_ALLOC_TOP_DUMP (DIAG_ALLOC_TOP_SETTINGS + 1)
+
 struct diag_alloc_top_settings {
 	unsigned int activated;
 	unsigned int verbose;

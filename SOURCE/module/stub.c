@@ -485,6 +485,46 @@ void __weak diag_utilization_exit(void)
 	//
 }
 
+int __weak exit_monitor_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
+}
+
+int __weak mutex_monitor_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
+}
+
+int __weak rw_top_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
+}
+
+int __weak tcp_retrans_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
+}
+
+int __weak utilization_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
+}
+
+int __weak alloc_top_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
+}
+
+int __weak drop_packet_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
+}
+
+int __weak exec_monitor_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
+}
+
 int __weak fs_shm_syscall(struct pt_regs *regs, long id)
 {
 	return -ENOSYS;
@@ -734,6 +774,11 @@ void __weak diag_fs_orphan_exit(void)
 {
 }
 
+int __weak ping_delay_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
+}
+
 int __weak activate_ping_delay(void)
 {
 	return -EINVAL;
@@ -794,6 +839,11 @@ int __weak diag_fs_cache_init(void)
 
 void __weak diag_fs_cache_exit(void)
 {
+}
+
+int __weak high_order_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
 }
 
 int __weak activate_high_order(void)

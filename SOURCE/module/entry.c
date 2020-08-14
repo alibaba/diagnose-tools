@@ -306,15 +306,45 @@ static void diag_cb_sys_enter(void *data, struct pt_regs *regs, long id)
 		} else if (id >= DIAG_BASE_SYSCALL_PERF
 		   && id < DIAG_BASE_SYSCALL_PERF + DIAG_SYSCALL_INTERVAL) {
 			ret = perf_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_EXIT_MONITOR
+		   && id < DIAG_BASE_SYSCALL_EXIT_MONITOR + DIAG_SYSCALL_INTERVAL) {
+			ret = exit_monitor_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_TCP_RETRANS
+		   && id < DIAG_BASE_SYSCALL_TCP_RETRANS + DIAG_SYSCALL_INTERVAL) {
+			ret = tcp_retrans_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_MUTEX_MONITOR
+		   && id < DIAG_BASE_SYSCALL_MUTEX_MONITOR + DIAG_SYSCALL_INTERVAL) {
+			ret = mutex_monitor_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_UTILIZATION
+		   && id < DIAG_BASE_SYSCALL_UTILIZATION + DIAG_SYSCALL_INTERVAL) {
+			ret = utilization_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_EXEC_MONITOR
+		   && id < DIAG_BASE_SYSCALL_EXEC_MONITOR + DIAG_SYSCALL_INTERVAL) {
+			ret = exec_monitor_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_ALLOC_TOP
+		   && id < DIAG_BASE_SYSCALL_ALLOC_TOP + DIAG_SYSCALL_INTERVAL) {
+			ret = alloc_top_syscall(regs, id);
 		} else if (id >= DIAG_BASE_SYSCALL_FS_ORPHAN
 		   && id < DIAG_BASE_SYSCALL_FS_ORPHAN + DIAG_SYSCALL_INTERVAL) {
 			ret = fs_orphan_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_RW_TOP
+		   && id < DIAG_BASE_SYSCALL_RW_TOP + DIAG_SYSCALL_INTERVAL) {
+			ret = rw_top_syscall(regs, id);
 		} else if (id >= DIAG_BASE_SYSCALL_FS_SHM
 		   && id < DIAG_BASE_SYSCALL_FS_SHM + DIAG_SYSCALL_INTERVAL) {
 			ret = fs_shm_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_DROP_PACKET
+		   && id < DIAG_BASE_SYSCALL_DROP_PACKET + DIAG_SYSCALL_INTERVAL) {
+			ret = drop_packet_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_PING_DELAY
+		   && id < DIAG_BASE_SYSCALL_PING_DELAY + DIAG_SYSCALL_INTERVAL) {
+			ret = ping_delay_syscall(regs, id);
 		} else if (id >= DIAG_BASE_SYSCALL_FS_CACHE
 		   && id < DIAG_BASE_SYSCALL_FS_CACHE + DIAG_SYSCALL_INTERVAL) {
 			ret = fs_cache_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_HIGH_ORDER
+		   && id < DIAG_BASE_SYSCALL_HIGH_ORDER + DIAG_SYSCALL_INTERVAL) {
+			ret = high_order_syscall(regs, id);
 		}
 
 		up(&controller_sem);
