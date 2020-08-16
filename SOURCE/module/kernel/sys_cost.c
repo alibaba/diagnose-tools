@@ -275,6 +275,72 @@ static void do_dump(void *info)
 	diag_variant_buffer_spin_unlock(&sys_cost_variant_buffer, flags);
 }
 
+int sys_cost_syscall(struct pt_regs *regs, long id)
+{
+	int __user *user_ptr_len;
+	size_t __user user_buf_len;
+	void __user *user_buf;
+	int ret = 0;
+	struct diag_sys_cost_settings settings;
+	int cpu;
+
+	switch (id) {
+	case DIAG_SYS_COST_SET:
+		user_buf = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM2(regs);
+
+		if (user_buf_len != sizeof(struct diag_sys_cost_settings)) {
+			ret = -EINVAL;
+		} else if (sys_cost_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, user_buf, user_buf_len);
+			if (!ret) {
+				sys_cost_settings = settings;
+			}
+		}
+		break;
+	case DIAG_SYS_COST_SETTINGS:
+		user_buf = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM2(regs);
+
+		memset(&settings, 0, sizeof(settings));
+		if (user_buf_len != sizeof(struct diag_sys_cost_settings)) {
+			ret = -EINVAL;
+		} else {
+			settings = sys_cost_settings;
+			ret = copy_to_user(user_buf, &settings, user_buf_len);
+		}
+		break;
+	case DIAG_SYS_COST_DUMP:
+		user_ptr_len = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf = (void __user *)SYSCALL_PARAM2(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM3(regs);
+
+		for_each_possible_cpu(cpu) {
+			if (cpu == smp_processor_id()) {
+				do_dump(NULL);
+			} else {
+				smp_call_function_single(cpu, do_dump, NULL, 1);
+			}
+		}
+		
+		if (!sys_cost_alloced) {
+			ret = -EINVAL;
+		} else {
+			ret = copy_to_user_variant_buffer(&sys_cost_variant_buffer,
+					user_ptr_len, user_buf, user_buf_len);
+			record_dump_cmd("sys-cost");
+		}
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
+}
+
 long diag_ioctl_sys_cost(unsigned int cmd, unsigned long arg)
 {
 	int ret = 0;

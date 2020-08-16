@@ -115,6 +115,78 @@ int deactivate_irq_delay(void)
 	return 0;
 }
 
+int irq_delay_syscall(struct pt_regs *regs, long id)
+{
+	int __user *user_ptr_len;
+	size_t __user user_buf_len;
+	void __user *user_buf;
+	unsigned long flags;
+	int i, ms;
+	int ret = 0;
+	struct diag_irq_delay_settings settings;
+
+	switch (id) {
+	case DIAG_IRQ_DELAY_SET:
+		user_buf = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM2(regs);
+
+		if (user_buf_len != sizeof(struct diag_irq_delay_settings)) {
+			ret = -EINVAL;
+		} else if (irq_delay_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, user_buf, user_buf_len);
+			if (!ret) {
+				irq_delay_settings = settings;
+			}
+		}
+		break;
+	case DIAG_IRQ_DELAY_SETTINGS:
+		user_buf = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM2(regs);
+
+		if (user_buf_len != sizeof(struct diag_irq_delay_settings)) {
+			ret = -EINVAL;
+		} else {
+			settings.activated = irq_delay_settings.activated;
+			settings.verbose = irq_delay_settings.verbose;
+			settings.threshold = irq_delay_settings.threshold;
+			ret = copy_to_user(user_buf, &settings, user_buf_len);
+		}
+		break;
+	case DIAG_IRQ_DELAY_DUMP:
+		user_ptr_len = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf = (void __user *)SYSCALL_PARAM2(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM3(regs);
+
+		if (!irq_delay_alloced) {
+			ret = -EINVAL;
+		} else {
+			ret = copy_to_user_variant_buffer(&irq_delay_variant_buffer,
+					user_ptr_len, user_buf, user_buf_len);
+			record_dump_cmd("irq-delay");
+		}
+		break;
+	case DIAG_IRQ_DELAY_TEST:
+		ms = SYSCALL_PARAM1(regs);
+		
+		if (ms <= 0 || ms > 1000) {
+			ret = -EINVAL;
+		} else {
+			local_irq_save(flags);
+			for (i = 0; i < ms; i++)
+				mdelay(1);
+			local_irq_restore(flags);
+		}
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
+}
+
 long diag_ioctl_irq_delay(unsigned int cmd, unsigned long arg)
 {
 	unsigned long flags;

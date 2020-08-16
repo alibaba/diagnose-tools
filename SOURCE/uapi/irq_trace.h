@@ -14,6 +14,14 @@
 
 #include <linux/ioctl.h>
 
+int irq_trace_syscall(struct pt_regs *regs, long id);
+
+//#define DIAG_IRQ_TRACE_ACTIVATE (DIAG_BASE_SYSCALL_IRQ_TRACE)
+//#define DIAG_IRQ_TRACE_DEACTIVATE (DIAG_IRQ_TRACE_ACTIVATE + 1)
+#define DIAG_IRQ_TRACE_SET (DIAG_BASE_SYSCALL_IRQ_TRACE)
+#define DIAG_IRQ_TRACE_SETTINGS (DIAG_IRQ_TRACE_SET + 1)
+#define DIAG_IRQ_TRACE_DUMP (DIAG_IRQ_TRACE_SETTINGS + 1)
+
 struct diag_irq_trace_settings {
 	unsigned int activated;
 	unsigned int verbose;

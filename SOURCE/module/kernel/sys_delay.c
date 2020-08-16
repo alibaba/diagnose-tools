@@ -395,6 +395,67 @@ static int do_test(int ms)
 	return 0;
 }
 
+int sys_delay_syscall(struct pt_regs *regs, long id)
+{
+	int __user *user_ptr_len;
+	size_t __user user_buf_len;
+	void __user *user_buf;
+	int ms = 0;
+	int ret = 0;
+	struct diag_sys_delay_settings settings;
+
+	switch (id) {
+	case DIAG_SYS_DELAY_SET:
+		user_buf = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM2(regs);
+
+		if (user_buf_len != sizeof(struct diag_sys_delay_settings)) {
+			ret = -EINVAL;
+		} else if (sys_delay_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, user_buf, user_buf_len);
+			if (!ret) {
+				sys_delay_settings = settings;
+			}
+		}
+		break;
+	case DIAG_SYS_DELAY_SETTINGS:
+		user_buf = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM2(regs);
+
+		if (user_buf_len != sizeof(struct diag_sys_delay_settings)) {
+			ret = -EINVAL;
+		} else {
+			settings = sys_delay_settings;
+			ret = copy_to_user(user_buf, &settings, user_buf_len);
+		}
+		break;
+	case DIAG_SYS_DELAY_DUMP:
+		user_ptr_len = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf = (void __user *)SYSCALL_PARAM2(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM3(regs);
+
+		if (!sys_delay_alloced) {
+			ret = -EINVAL;
+		} else {
+			ret = copy_to_user_variant_buffer(&sys_delay_variant_buffer,
+					user_ptr_len, user_buf, user_buf_len);
+			record_dump_cmd("sys-delay");
+		}
+		break;
+	case DIAG_SYS_DELAY_TEST:
+		ms = SYSCALL_PARAM1(regs);
+		ret = do_test(ms);
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
+}
+
 long diag_ioctl_sys_delay(unsigned int cmd, unsigned long arg)
 {
 	long ret = -EINVAL;

@@ -67,7 +67,6 @@ static DEFINE_SEMAPHORE(controller_sem);
 
 struct diag_percpu_context *diag_percpu_context[NR_CPUS];
 unsigned long diag_ignore_jump_check = 0;
-unsigned long open_syscall = 0;
 
 static ssize_t controller_file_read(struct diag_trace_file *trace_file,
 		struct file *file, char __user *buf, size_t size, loff_t *ppos)
@@ -300,9 +299,15 @@ static void diag_cb_sys_enter(void *data, struct pt_regs *regs, long id)
 		down(&controller_sem);
 		if (id == DIAG_VERSION) {
 			ret = DIAG_VERSION;
-		} else if (id >= DIAG_BASE_SYSCALL_REBOOT
-		   && id < DIAG_BASE_SYSCALL_REBOOT + DIAG_SYSCALL_INTERVAL) {
-			ret = reboot_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_PUPIL
+		   && id < DIAG_BASE_SYSCALL_PUPIL + DIAG_SYSCALL_INTERVAL) {
+			ret = pupil_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_RUN_TRACE
+		   && id < DIAG_BASE_SYSCALL_RUN_TRACE + DIAG_SYSCALL_INTERVAL) {
+			ret = run_trace_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_LOAD_MONITOR
+		   && id < DIAG_BASE_SYSCALL_LOAD_MONITOR + DIAG_SYSCALL_INTERVAL) {
+			ret = load_monitor_syscall(regs, id);
 		} else if (id >= DIAG_BASE_SYSCALL_PERF
 		   && id < DIAG_BASE_SYSCALL_PERF + DIAG_SYSCALL_INTERVAL) {
 			ret = perf_syscall(regs, id);
@@ -312,15 +317,33 @@ static void diag_cb_sys_enter(void *data, struct pt_regs *regs, long id)
 		} else if (id >= DIAG_BASE_SYSCALL_TCP_RETRANS
 		   && id < DIAG_BASE_SYSCALL_TCP_RETRANS + DIAG_SYSCALL_INTERVAL) {
 			ret = tcp_retrans_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_SYS_DELAY
+		   && id < DIAG_BASE_SYSCALL_SYS_DELAY + DIAG_SYSCALL_INTERVAL) {
+			ret = sys_delay_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_IRQ_DELAY
+		   && id < DIAG_BASE_SYSCALL_IRQ_DELAY + DIAG_SYSCALL_INTERVAL) {
+			ret = irq_delay_syscall(regs, id);
 		} else if (id >= DIAG_BASE_SYSCALL_MUTEX_MONITOR
 		   && id < DIAG_BASE_SYSCALL_MUTEX_MONITOR + DIAG_SYSCALL_INTERVAL) {
 			ret = mutex_monitor_syscall(regs, id);
 		} else if (id >= DIAG_BASE_SYSCALL_UTILIZATION
 		   && id < DIAG_BASE_SYSCALL_UTILIZATION + DIAG_SYSCALL_INTERVAL) {
 			ret = utilization_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_IRQ_STATS
+		   && id < DIAG_BASE_SYSCALL_IRQ_STATS + DIAG_SYSCALL_INTERVAL) {
+			ret = irq_stats_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_IRQ_TRACE
+		   && id < DIAG_BASE_SYSCALL_IRQ_TRACE + DIAG_SYSCALL_INTERVAL) {
+			ret = irq_trace_syscall(regs, id);
 		} else if (id >= DIAG_BASE_SYSCALL_EXEC_MONITOR
 		   && id < DIAG_BASE_SYSCALL_EXEC_MONITOR + DIAG_SYSCALL_INTERVAL) {
 			ret = exec_monitor_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_KPROBE
+		   && id < DIAG_BASE_SYSCALL_KPROBE + DIAG_SYSCALL_INTERVAL) {
+			ret = kprobe_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_MM_LEAK
+		   && id < DIAG_BASE_SYSCALL_MM_LEAK + DIAG_SYSCALL_INTERVAL) {
+			ret = mm_leak_syscall(regs, id);
 		} else if (id >= DIAG_BASE_SYSCALL_ALLOC_TOP
 		   && id < DIAG_BASE_SYSCALL_ALLOC_TOP + DIAG_SYSCALL_INTERVAL) {
 			ret = alloc_top_syscall(regs, id);
@@ -336,9 +359,21 @@ static void diag_cb_sys_enter(void *data, struct pt_regs *regs, long id)
 		} else if (id >= DIAG_BASE_SYSCALL_DROP_PACKET
 		   && id < DIAG_BASE_SYSCALL_DROP_PACKET + DIAG_SYSCALL_INTERVAL) {
 			ret = drop_packet_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_SCHED_DELAY
+		   && id < DIAG_BASE_SYSCALL_SCHED_DELAY + DIAG_SYSCALL_INTERVAL) {
+			ret = sched_delay_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_REBOOT
+		   && id < DIAG_BASE_SYSCALL_REBOOT + DIAG_SYSCALL_INTERVAL) {
+			ret = reboot_syscall(regs, id);
 		} else if (id >= DIAG_BASE_SYSCALL_PING_DELAY
 		   && id < DIAG_BASE_SYSCALL_PING_DELAY + DIAG_SYSCALL_INTERVAL) {
 			ret = ping_delay_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_UPROBE
+		   && id < DIAG_BASE_SYSCALL_UPROBE + DIAG_SYSCALL_INTERVAL) {
+			ret = uprobe_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_SYS_COST
+		   && id < DIAG_BASE_SYSCALL_SYS_COST + DIAG_SYSCALL_INTERVAL) {
+			ret = sys_cost_syscall(regs, id);
 		} else if (id >= DIAG_BASE_SYSCALL_FS_CACHE
 		   && id < DIAG_BASE_SYSCALL_FS_CACHE + DIAG_SYSCALL_INTERVAL) {
 			ret = fs_cache_syscall(regs, id);

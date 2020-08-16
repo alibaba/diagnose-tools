@@ -133,7 +133,13 @@ static void do_activate(const char *arg)
 	settings.params[4].type = parse.int_value("param5-type");
 	settings.params[4].size = parse.int_value("param5-size");
 
-	ret = diag_call_ioctl(DIAG_IOCTL_UPROBE_SET,(long)&settings);
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_UPROBE_SET,(long)&settings);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_UPROBE_SET, &ret, &settings, sizeof(struct diag_uprobe_settings));
+	}
+
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
 	printf("    进程ID：%d\n", settings.tgid);
 	printf("    线程ID：%d\n", settings.pid);
@@ -205,7 +211,12 @@ static void do_settings(const char *arg)
 	enable_json = parse.int_value("json");
 
 	memset(&settings, 0, sizeof(struct diag_uprobe_settings));
-	ret = diag_call_ioctl(DIAG_IOCTL_UPROBE_SETTINGS, (long)&settings);
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_UPROBE_SETTINGS, (long)&settings);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_UPROBE_SETTINGS, &ret, &settings, sizeof(struct diag_uprobe_settings));
+	}
 
 	if (1 == enable_json) {
 		return print_settings_in_json(&settings, ret);
@@ -414,7 +425,12 @@ static void do_dump(void)
 	};
 
 	memset(variant_buf, 0, 40* 1024 * 1024);
-	ret = diag_call_ioctl(DIAG_IOCTL_UPROBE_DUMP,(long)&dump_param);
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_UPROBE_DUMP,(long)&dump_param);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_UPROBE_DUMP, &ret, &len, variant_buf, 40 * 1024 * 1024);
+	}
 
 	if (ret == 0 && len > 0) {
 		do_extract(variant_buf, len);
@@ -437,7 +453,12 @@ static void do_sls(char *arg)
 		return;
 
 	while (1) {
-		ret = diag_call_ioctl(DIAG_IOCTL_UPROBE_DUMP,(long)&dump_param);
+		if (run_in_host) {
+			ret = diag_call_ioctl(DIAG_IOCTL_UPROBE_DUMP,(long)&dump_param);
+		} else {
+			syscall(DIAG_UPROBE_DUMP, &ret, &len, variant_buf, 40 * 1024 * 1024);
+		}
+
 		if (ret == 0 && len > 0) {
 			extract_variant_buffer(variant_buf, len, sls_extract, NULL);
 		}

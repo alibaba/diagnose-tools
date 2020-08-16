@@ -320,6 +320,59 @@ static void do_dump(void)
 	rcu_read_unlock();
 }
 
+int mm_leak_syscall(struct pt_regs *regs, long id)
+{
+	unsigned int verbose;
+	int __user *ptr_len;
+	void __user *buf;
+	size_t size;
+	int ret = 0;
+	unsigned long cycle;
+	struct diag_mm_leak_settings settings;
+
+	switch (id) {
+	case DIAG_MM_LEAK_VERBOSE:
+		verbose = (unsigned int)SYSCALL_PARAM1(regs);
+		mm_leak_verbose = verbose;
+		break;
+	case DIAG_MM_LEAK_SETTINGS:
+		buf = (void __user *)SYSCALL_PARAM1(regs);
+		size = (size_t)SYSCALL_PARAM2(regs);
+
+		if (size != sizeof(struct diag_mm_leak_settings)) {
+			ret = -EINVAL;
+		} else {
+			settings.activated = mm_leak_activated;
+			settings.verbose = mm_leak_verbose;
+			ret = copy_to_user(buf, &settings, size);
+		}
+		break;
+	case DIAG_MM_LEAK_DUMP:
+		ptr_len = (void __user *)SYSCALL_PARAM1(regs);
+		buf = (void __user *)SYSCALL_PARAM2(regs);
+		size = (size_t)SYSCALL_PARAM3(regs);
+		cycle = SYSCALL_PARAM3(regs);
+
+		if (cycle) {
+			last_dump_addr = 0;
+		}
+		if (!mm_leak_alloced) {
+			ret = -EINVAL;
+		} else {
+			do_dump();
+			ret = copy_to_user_variant_buffer(&mm_leak_variant_buffer, ptr_len, buf, size);
+			record_dump_cmd("mm-leak");
+		}
+
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
+}
+
 long diag_ioctl_mm_leak(unsigned int cmd, unsigned long arg)
 {
 	unsigned int verbose;

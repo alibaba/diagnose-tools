@@ -14,6 +14,14 @@
 
 #include <linux/ioctl.h>
 
+int kprobe_syscall(struct pt_regs *regs, long id);
+
+//#define DIAG_KPROBE_ACTIVATE (DIAG_BASE_SYSCALL_KPROBE)
+//#define DIAG_KPROBE_DEACTIVATE (DIAG_KPROBE_ACTIVATE + 1)
+#define DIAG_KPROBE_SET (DIAG_BASE_SYSCALL_KPROBE)
+#define DIAG_KPROBE_SETTINGS (DIAG_KPROBE_SET + 1)
+#define DIAG_KPROBE_DUMP (DIAG_KPROBE_SETTINGS + 1)
+
 struct diag_kprobe_settings {
 	unsigned int activated;
 	unsigned int verbose;
