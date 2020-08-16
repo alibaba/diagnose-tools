@@ -490,12 +490,37 @@ int __weak exit_monitor_syscall(struct pt_regs *regs, long id)
 	return -ENOSYS;
 }
 
+int __weak pupil_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
+}
+
+int __weak irq_delay_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
+}
+
+int __weak load_monitor_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
+}
+
 int __weak mutex_monitor_syscall(struct pt_regs *regs, long id)
 {
 	return -ENOSYS;
 }
 
+int __weak run_trace_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
+}
+
 int __weak rw_top_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
+}
+
+int __weak sys_delay_syscall(struct pt_regs *regs, long id)
 {
 	return -ENOSYS;
 }
@@ -526,6 +551,26 @@ int __weak exec_monitor_syscall(struct pt_regs *regs, long id)
 }
 
 int __weak fs_shm_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
+}
+
+int __weak irq_stats_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
+}
+
+int __weak irq_trace_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
+}
+
+int __weak kprobe_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
+}
+
+int __weak mm_leak_syscall(struct pt_regs *regs, long id)
 {
 	return -ENOSYS;
 }
@@ -718,6 +763,11 @@ int __weak activate_drop_packet(void)
 int __weak deactivate_drop_packet(void)
 {
 	return -EINVAL;
+}
+
+int __weak sched_delay_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
 }
 
 int __weak activate_sched_delay(void)

@@ -1101,6 +1101,104 @@ static int do_uprobe(unsigned long tgid, unsigned long fd_start, unsigned long o
 	return ret;
 }
 
+int run_trace_syscall(struct pt_regs *regs, long id)
+{
+	int __user *user_ptr_len;
+	size_t __user user_buf_len;
+	void __user *user_buf;
+	int ret = 0;
+	struct diag_run_trace_settings settings;
+	unsigned long offset_start;
+	unsigned long offset_stop;
+	unsigned long tgid;
+	unsigned long fd_start, fd_stop;
+	unsigned int threshold;
+	int pid;
+	unsigned int syscall;
+
+	switch (id) {
+	case DIAG_RUN_TRACE_SET:
+		user_buf = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM2(regs);
+
+		if (user_buf_len != sizeof(struct diag_run_trace_settings)) {
+			ret = -EINVAL;
+		} else if (run_trace_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, user_buf, user_buf_len);
+			if ((settings.timer_us && settings.timer_us < 10)
+				  || (settings.buf_size_k && (settings.buf_size_k < 200 || settings.buf_size_k > 10 * 1024))) {
+				ret = -EINVAL;
+			}
+			if (!ret) {
+				run_trace_settings = settings;
+			}
+		}
+		break;
+	case DIAG_RUN_TRACE_SETTINGS:
+		user_buf = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM2(regs);
+
+		if (user_buf_len != sizeof(struct diag_run_trace_settings)) {
+			ret = -EINVAL;
+		} else {
+			settings = run_trace_settings;
+			settings.threads_count = atomic64_read(&settings_threads_count);
+			settings.syscall_count = atomic64_read(&settings_syscall_count);
+			ret = copy_to_user(user_buf, &settings, user_buf_len);
+		}
+		break;
+	case DIAG_RUN_TRACE_START:
+		threshold = (unsigned int)SYSCALL_PARAM1(regs);
+		down_read(&run_trace_sem);
+		ret = start_run_trace(current, threshold, 0);
+		up_read(&run_trace_sem);
+		break;
+	case DIAG_RUN_TRACE_STOP:
+		stop_run_trace(current, 0);
+		ret = 0;
+		break;
+	case DIAG_RUN_TRACE_MONITOR_SYSCALL:
+		pid = (unsigned int)SYSCALL_PARAM1(regs);
+		syscall = (unsigned int)SYSCALL_PARAM2(regs);
+		threshold = (unsigned int)SYSCALL_PARAM3(regs);
+		ret = run_trace_set_syscall(pid, syscall, threshold);
+		break;
+	case DIAG_RUN_TRACE_CLEAR_SYSCALL:
+		pid = (unsigned int)SYSCALL_PARAM1(regs);
+		ret = run_trace_clear_syscall(pid);
+		break;
+	case DIAG_RUN_TRACE_DUMP:
+		user_ptr_len = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf = (void __user *)SYSCALL_PARAM2(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM3(regs);
+		if (!run_trace_alloced) {
+			ret = -EINVAL;
+		} else {
+			ret = copy_to_user_variant_buffer(&run_trace_variant_buffer,
+					user_ptr_len, user_buf, user_buf_len);
+			record_dump_cmd("run-trace");
+		}
+		
+		break;
+	case DIAG_RUN_TRACE_UPROBE:
+		tgid = SYSCALL_PARAM1(regs);
+		fd_start = SYSCALL_PARAM2(regs);
+		offset_start = SYSCALL_PARAM3(regs);
+		fd_stop = SYSCALL_PARAM4(regs);
+		offset_stop = SYSCALL_PARAM5(regs);
+
+		ret = do_uprobe(tgid, fd_start, offset_start, fd_stop, offset_stop);
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
+}
+
 long diag_ioctl_run_trace(unsigned int cmd, unsigned long arg)
 {
 	int ret = 0;

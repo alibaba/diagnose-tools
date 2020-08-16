@@ -466,6 +466,66 @@ static void dump_data(void)
 	}
 }
 
+int irq_stats_syscall(struct pt_regs *regs, long id)
+{
+	int __user *user_ptr_len;
+	size_t __user user_buf_len;
+	void __user *user_buf;
+	int ret = 0;
+	struct diag_irq_stats_settings settings;
+
+	mutex_lock(&irq_stats_mutex);
+
+	switch (id) {
+	case DIAG_IRQ_STATS_SET:
+		user_buf = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM2(regs);
+
+		if (user_buf_len != sizeof(struct diag_irq_stats_settings)) {
+			ret = -EINVAL;
+		} else if (irq_stats_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, user_buf, user_buf_len);
+			if (!ret) {
+				irq_stats_settings = settings;
+			}
+		}
+		break;
+	case DIAG_IRQ_STATS_SETTINGS:
+		user_buf = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM2(regs);
+
+		if (user_buf_len != sizeof(struct diag_irq_stats_settings)) {
+			ret = -EINVAL;
+		} else {
+			settings = irq_stats_settings;
+			ret = copy_to_user(user_buf, &settings, user_buf_len);
+		}
+		break;
+	case DIAG_IRQ_STATS_DUMP:
+		user_ptr_len = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf = (void __user *)SYSCALL_PARAM2(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM3(regs);
+
+		if (!irq_stats_alloced) {
+			ret = -EINVAL;
+		} else {
+			dump_data();
+			ret = copy_to_user_variant_buffer(&irq_stats_variant_buffer,
+					user_ptr_len, user_buf, user_buf_len);
+			record_dump_cmd("irq-stats");
+		}
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	mutex_unlock(&irq_stats_mutex);
+	return ret;
+}
+
 long diag_ioctl_irq_stats(unsigned int cmd, unsigned long arg)
 {
 	int ret = 0;

@@ -313,6 +313,69 @@ static void jump_init(void)
 {
 }
 
+int kprobe_syscall(struct pt_regs *regs, long id)
+{
+	int __user *user_ptr_len;
+	size_t __user user_buf_len;
+	void __user *user_buf;
+	int ret = 0;
+	struct diag_kprobe_settings settings;
+
+	switch (id) {
+	case DIAG_KPROBE_SET:
+		user_buf = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM2(regs);
+
+		if (user_buf_len != sizeof(struct diag_kprobe_settings)) {
+			ret = -EINVAL;
+		} else if (kprobe_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, user_buf, user_buf_len);
+			if (!ret) {
+				if (settings.cpus[0]) {
+					str_to_cpumask(settings.cpus, &kprobe_cpumask);
+				} else {
+					kprobe_cpumask = *cpu_possible_mask;
+				}
+				kprobe_settings = settings;
+			}
+		}
+		break;
+	case DIAG_KPROBE_SETTINGS:
+		user_buf = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM2(regs);
+
+		memset(&settings, 0, sizeof(settings));
+		if (user_buf_len != sizeof(struct diag_kprobe_settings)) {
+			ret = -EINVAL;
+		} else {
+			settings = kprobe_settings;
+			cpumask_to_str(&kprobe_cpumask, settings.cpus, 255);
+			ret = copy_to_user(user_buf, &settings, user_buf_len);
+		}
+		break;
+	case DIAG_KPROBE_DUMP:
+		user_ptr_len = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf = (void __user *)SYSCALL_PARAM2(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM3(regs);
+
+		if (!kprobe_alloced) {
+			ret = -EINVAL;
+		} else {
+			ret = copy_to_user_variant_buffer(&kprobe_variant_buffer,
+					user_ptr_len, user_buf, user_buf_len);
+			record_dump_cmd("kprobe");
+		}
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
+}
+
 long diag_ioctl_kprobe(unsigned int cmd, unsigned long arg)
 {
 	int ret = 0;

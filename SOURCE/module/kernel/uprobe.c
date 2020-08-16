@@ -309,6 +309,73 @@ static void jump_init(void)
 {
 }
 
+int uprobe_syscall(struct pt_regs *regs, long id)
+{
+	int __user *user_ptr_len;
+	size_t __user user_buf_len;
+	void __user *user_buf;
+	int ret = 0;
+	static struct diag_uprobe_settings settings;
+
+	switch (id) {
+	case DIAG_UPROBE_SET:
+		user_buf = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM2(regs);
+
+		if (user_buf_len != sizeof(struct diag_uprobe_settings)) {
+			ret = -EINVAL;
+		} else if (uprobe_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, user_buf, user_buf_len);
+			if (!ret) {
+				if (settings.cpus[0]) {
+					str_to_cpumask(settings.cpus, &kern_uprobe_cpumask);
+				} else {
+					kern_uprobe_cpumask = *cpu_possible_mask;
+				}
+				uprobe_settings = settings;
+			}
+		}
+		break;
+	case DIAG_UPROBE_SETTINGS:
+		user_buf = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM2(regs);
+
+		memset(&settings, 0, sizeof(settings));
+		if (user_buf_len != sizeof(struct diag_uprobe_settings)) {
+			ret = -EINVAL;
+		} else {
+			settings = uprobe_settings;
+			if (diag_uprobe.register_status) {
+				settings.offset = diag_uprobe.offset;
+				strncpy(settings.file_name, diag_uprobe.file_name, 255);
+			}
+			cpumask_to_str(&kern_uprobe_cpumask, settings.cpus, 255);
+			ret = copy_to_user(user_buf, &settings, user_buf_len);
+		}
+		break;
+	case DIAG_UPROBE_DUMP:
+		user_ptr_len = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf = (void __user *)SYSCALL_PARAM2(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM3(regs);
+
+		if (!kern_uprobe_alloced) {
+			ret = -EINVAL;
+		} else {
+			ret = copy_to_user_variant_buffer(&kern_uprobe_variant_buffer,
+					user_ptr_len, user_buf, user_buf_len);
+			record_dump_cmd("uprobe");
+		}
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
+}
+
 long diag_ioctl_uprobe(unsigned int cmd, unsigned long arg)
 {
 	int ret = 0;

@@ -288,6 +288,62 @@ int deactivate_load_monitor(void)
 	return load_monitor_settings.activated;
 }
 
+int load_monitor_syscall(struct pt_regs *regs, long id)
+{
+	int __user *user_ptr_len;
+	size_t __user user_buf_len;
+	void __user *user_buf;
+	int ret = 0;
+	struct diag_load_monitor_settings settings;
+
+	switch (id) {
+	case DIAG_LOAD_MONITOR_SET:
+		user_buf = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM2(regs);
+
+		if (user_buf_len != sizeof(struct diag_load_monitor_settings)) {
+			ret = -EINVAL;
+		} else if (load_monitor_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, user_buf, user_buf_len);
+			if (!ret) {
+				load_monitor_settings = settings;
+			}
+		}
+		break;
+	case DIAG_LOAD_MONITOR_SETTINGS:
+		user_buf = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM2(regs);
+
+		if (user_buf_len != sizeof(struct diag_load_monitor_settings)) {
+			ret = -EINVAL;
+		} else {
+			settings = load_monitor_settings;
+			ret = copy_to_user(user_buf, &settings, user_buf_len);
+		}
+		break;
+	case DIAG_LOAD_MONITOR_DUMP:
+		user_ptr_len = (void __user *)SYSCALL_PARAM1(regs);
+		user_buf = (void __user *)SYSCALL_PARAM2(regs);
+		user_buf_len = (size_t)SYSCALL_PARAM3(regs);
+
+		if (!load_monitor_alloced) {
+			ret = -EINVAL;
+		} else {
+			ret = copy_to_user_variant_buffer(&load_monitor_variant_buffer,
+					user_ptr_len, user_buf, user_buf_len);
+			record_dump_cmd("load-monitor");
+		}
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
+}
+
 long diag_ioctl_load_monitor(unsigned int cmd, unsigned long arg)
 {
 	int ret = 0;

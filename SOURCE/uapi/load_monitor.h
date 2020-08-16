@@ -14,6 +14,14 @@
 
 #include <linux/ioctl.h>
 
+int load_monitor_syscall(struct pt_regs *regs, long id);
+
+//#define DIAG_LOAD_MONITOR_ACTIVATE (DIAG_BASE_SYSCALL_LOAD_MONITOR)
+//#define DIAG_LOAD_MONITOR_DEACTIVATE (DIAG_LOAD_MONITOR_ACTIVATE + 1)
+#define DIAG_LOAD_MONITOR_SET (DIAG_BASE_SYSCALL_LOAD_MONITOR)
+#define DIAG_LOAD_MONITOR_SETTINGS (DIAG_LOAD_MONITOR_SET + 1)
+#define DIAG_LOAD_MONITOR_DUMP (DIAG_LOAD_MONITOR_SETTINGS + 1)
+
 struct diag_load_monitor_settings {
 	unsigned int activated;
 	unsigned int verbose;

@@ -104,6 +104,19 @@ struct event_run_trace_perf {
 	struct diag_user_stack_detail user_stack;
 };
 
+int run_trace_syscall(struct pt_regs *regs, long id);
+
+//#define DIAG_RUN_TRACE_ACTIVATE (DIAG_BASE_SYSCALL_RUN_TRACE)
+//#define DIAG_RUN_TRACE_DEACTIVATE (DIAG_RUN_TRACE_ACTIVATE + 1)
+#define DIAG_RUN_TRACE_START (DIAG_BASE_SYSCALL_RUN_TRACE + 1)
+#define DIAG_RUN_TRACE_STOP (DIAG_RUN_TRACE_START + 1)
+#define DIAG_RUN_TRACE_SET (DIAG_RUN_TRACE_STOP + 1)
+#define DIAG_RUN_TRACE_SETTINGS (DIAG_RUN_TRACE_SET + 1)
+#define DIAG_RUN_TRACE_DUMP (DIAG_RUN_TRACE_SETTINGS + 1)
+#define DIAG_RUN_TRACE_MONITOR_SYSCALL (DIAG_RUN_TRACE_DUMP + 1)
+#define DIAG_RUN_TRACE_CLEAR_SYSCALL (DIAG_RUN_TRACE_MONITOR_SYSCALL + 1)
+#define DIAG_RUN_TRACE_UPROBE (DIAG_RUN_TRACE_CLEAR_SYSCALL + 1)
+
 struct diag_run_trace_settings {
 	unsigned int activated;
 	unsigned int verbose;

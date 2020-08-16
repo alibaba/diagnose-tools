@@ -62,7 +62,13 @@ static void do_activate(const char *arg)
 	if (settings.threshold <= 0)
 		settings.threshold = 20;
 
-	ret = diag_call_ioctl(DIAG_IOCTL_IRQ_DELAY_SET, (long)&settings);
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_IRQ_DELAY_SET, (long)&settings);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_IRQ_DELAY_SET, &ret, &settings, sizeof(struct diag_irq_delay_settings));
+	}
+
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
 	printf("    阀值(ms)：\t%d\n", settings.threshold);
 	printf("    输出级别：\t%d\n", settings.verbose);
@@ -116,7 +122,12 @@ static void do_settings(const char *arg)
 	struct params_parser parse(arg);
 	enable_json = parse.int_value("json");
 
-	ret = diag_call_ioctl(DIAG_IOCTL_IRQ_DELAY_SETTINGS, (long)&settings);
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_IRQ_DELAY_SETTINGS, (long)&settings);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_IRQ_DELAY_SETTINGS, &ret, &settings, sizeof(struct diag_irq_delay_settings));
+	}
 
 	if (1 == enable_json) {
 		return print_settings_in_json(&settings, ret);
@@ -193,7 +204,13 @@ static void do_dump(void)
 		.user_buf = variant_buf,
 	};
 
-	ret = diag_call_ioctl(DIAG_IOCTL_IRQ_DELAY_DUMP, (long)&dump_param);
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_IRQ_DELAY_DUMP, (long)&dump_param);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_IRQ_DELAY_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+	}
+
 	if (ret == 0 && len > 0) {
 		do_extract(variant_buf, len);
 	}
@@ -203,7 +220,12 @@ static void do_test(void)
 {
 	int ms = 100;
 
-	diag_call_ioctl(DIAG_IOCTL_IRQ_DELAY_TEST, (long)&ms);
+	if (run_in_host) {
+		diag_call_ioctl(DIAG_IOCTL_IRQ_DELAY_TEST, (long)&ms);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_IRQ_DELAY_TEST, &ret, ms);
+	}
 }
 
 static int sls_extract(void *buf, unsigned int len, void *)
@@ -266,7 +288,13 @@ static void do_sls(char *arg)
 		return;
 
 	while (1) {
-		ret = diag_call_ioctl(DIAG_IOCTL_IRQ_DELAY_DUMP, (long)&dump_param);
+		if (run_in_host) {
+			ret = diag_call_ioctl(DIAG_IOCTL_IRQ_DELAY_DUMP, (long)&dump_param);
+		} else {
+			ret = -ENOSYS;
+			syscall(DIAG_IRQ_DELAY_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+		}
+
 		if (ret == 0 && len > 0) {
 			/**
 			 * 10 min

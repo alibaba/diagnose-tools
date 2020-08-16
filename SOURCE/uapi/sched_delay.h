@@ -14,6 +14,12 @@
 
 #include <linux/ioctl.h>
 
+int sched_delay_syscall(struct pt_regs *regs, long id);
+
+#define DIAG_SCHED_DELAY_SET (DIAG_BASE_SYSCALL_SCHED_DELAY)
+#define DIAG_SCHED_DELAY_SETTINGS (DIAG_SCHED_DELAY_SET + 1)
+#define DIAG_SCHED_DELAY_DUMP (DIAG_SCHED_DELAY_SETTINGS + 1)
+
 struct diag_sched_delay_settings {
 	unsigned int activated;
 	unsigned int verbose;

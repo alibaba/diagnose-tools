@@ -14,6 +14,14 @@
 
 #include <linux/ioctl.h>
 
+int irq_stats_syscall(struct pt_regs *regs, long id);
+
+//#define DIAG_IRQ_STATS_ACTIVATE (DIAG_BASE_SYSCALL_IRQ_STATS)
+//#define DIAG_IRQ_STATS_DEACTIVATE (DIAG_IRQ_STATS_ACTIVATE + 1)
+#define DIAG_IRQ_STATS_SET (DIAG_BASE_SYSCALL_IRQ_STATS)
+#define DIAG_IRQ_STATS_SETTINGS (DIAG_IRQ_STATS_SET + 1)
+#define DIAG_IRQ_STATS_DUMP (DIAG_IRQ_STATS_SETTINGS + 1)
+
 struct diag_irq_stats_settings {
 	unsigned int activated;
 	unsigned int verbose;
