@@ -37,7 +37,6 @@
 using namespace std;
 
 static char sls_file[256];
-static int run_in_container = 0;
 static int report_reverse = 0;
 static int syslog_enabled;
 
@@ -88,7 +87,12 @@ static void do_activate(const char *arg)
 		settings.cpus[511] = 0;
 	}
 
-	ret = diag_call_ioctl(DIAG_IOCTL_PERF_SET, (long)&settings);	
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_PERF_SET, (long)&settings);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_PERF_SET, &ret, &settings, sizeof(struct diag_perf_settings));
+	}
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
 	printf("    STYLE：\t%d\n", settings.style);
 	printf("    输出级别：\t%d\n", settings.verbose);
@@ -133,7 +137,12 @@ static void do_settings(const char *arg)
 	enable_json = parse.int_value("json");
 
 
-	ret = diag_call_ioctl(DIAG_IOCTL_PERF_SETTINGS, (long)&settings);
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_PERF_SETTINGS, (long)&settings);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_PERF_SETTINGS, &ret, &settings, sizeof(struct diag_perf_settings));
+	}
 	if (ret == 0) {
 		if (1 != enable_json)
 		{
@@ -206,7 +215,7 @@ static int perf_extract(void *buf, unsigned int len, void *)
 					seq);
 			printf("#*        0xffffffffffffff %s (UNKNOWN)\n",
 					detail->task.comm);
-			diag_printf_user_stack(run_in_container ? detail->task.container_tgid : detail->task.tgid,
+			diag_printf_user_stack(run_in_host ? detail->task.tgid : detail->task.container_tgid,
 					detail->task.container_tgid,
 					detail->task.comm,
 					&detail->user_stack, 0, report_reverse);
@@ -219,7 +228,7 @@ static int perf_extract(void *buf, unsigned int len, void *)
 					detail->task.pid,
 					seq);
 			diag_printf_kern_stack(&detail->kern_stack, report_reverse);
-			diag_printf_user_stack(run_in_container ? detail->task.container_tgid : detail->task.tgid,
+			diag_printf_user_stack(run_in_host ? detail->task.tgid : detail->task.container_tgid,
 					detail->task.container_tgid,
 					detail->task.comm,
 					&detail->user_stack, 0, report_reverse);
@@ -254,10 +263,14 @@ static void do_dump(const char *arg)
 	};
 
 	report_reverse = parse.int_value("reverse");
-	run_in_container = parse.int_value("container");
 
 	memset(variant_buf, 0, 50 * 1024 * 1024);
-	ret = diag_call_ioctl(DIAG_IOCTL_PERF_DUMP, (long)&dump_param);
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_PERF_DUMP, (long)&dump_param);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_PERF_DUMP, &ret, &len, variant_buf, 50 * 1024 * 1024);
+	}
 	if (ret == 0 && len > 0) {
 		java_attach_once();
 		do_extract(variant_buf, len);
@@ -379,7 +392,12 @@ static void do_sls(char *arg)
 	java_attach_once();
 
 	while (1) {
-		ret = diag_call_ioctl(DIAG_IOCTL_PERF_DUMP, (long)&dump_param);
+		if (run_in_host) {
+			ret = diag_call_ioctl(DIAG_IOCTL_PERF_DUMP, (long)&dump_param);
+		} else {
+			ret = -ENOSYS;
+			syscall(DIAG_PERF_DUMP, &ret, &len, variant_buf, 50 * 1024 * 1024);
+		}
 		if (ret == 0 && len > 0) {
 			/**
 			 * 10 min

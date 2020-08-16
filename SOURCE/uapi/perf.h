@@ -45,4 +45,8 @@ struct perf_detail {
 #define DIAG_IOCTL_PERF_SETTINGS _IOWR(DIAG_IOCTL_TYPE_PERF, CMD_PERF_SETTINGS, struct diag_perf_settings)
 #define DIAG_IOCTL_PERF_DUMP _IOWR(DIAG_IOCTL_TYPE_PERF, CMD_PERF_DUMP, struct diag_ioctl_dump_param)
 
+#define DIAG_PERF_SET (DIAG_BASE_SYSCALL_PERF)
+#define DIAG_PERF_SETTINGS (DIAG_PERF_SET + 1)
+#define DIAG_PERF_DUMP (DIAG_PERF_SETTINGS + 1)
+
 #endif /* UAPI_PERF_H */

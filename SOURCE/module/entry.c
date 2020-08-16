@@ -228,7 +228,17 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 		up(&controller_sem);
 		printk("diagnose-tools %s %s\n", cmd, func);
 	} else if (strcmp(cmd, "syscall") == 0) {
-		open_syscall = 1;
+		char sub[255];
+
+		ret = sscanf(chr, "%255s %255s", cmd, sub);
+		if (ret != 2)
+			return -EINVAL;
+		
+		if (strcmp(sub, "on") == 0) {
+			diag_hook_sys_enter();
+		} else if (strcmp(sub, "off") == 0) {
+			diag_unhook_sys_enter();
+		}
 	}
 
 	return count;
@@ -285,12 +295,17 @@ static void diag_cb_sys_enter(void *data, struct pt_regs *regs, long id)
 	if (id >= DIAG_BASE_SYSCALL) {
 		int ret = -ENOSYS;
 
+		atomic64_inc_return(&diag_nr_running);
+	
 		down(&controller_sem);
 		if (id == DIAG_VERSION) {
 			ret = DIAG_VERSION;
 		} else if (id >= DIAG_BASE_SYSCALL_REBOOT
 		   && id < DIAG_BASE_SYSCALL_REBOOT + DIAG_SYSCALL_INTERVAL) {
 			ret = reboot_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_PERF
+		   && id < DIAG_BASE_SYSCALL_PERF + DIAG_SYSCALL_INTERVAL) {
+			ret = perf_syscall(regs, id);
 		}
 
 		up(&controller_sem);
@@ -301,6 +316,8 @@ static void diag_cb_sys_enter(void *data, struct pt_regs *regs, long id)
 				ret = copy_to_user(ret_ptr, &ret, sizeof(int));
 			}
 		}
+
+		atomic64_dec_return(&diag_nr_running);
 	}
 }
 
@@ -310,14 +327,27 @@ static void trace_sys_enter_hit(struct pt_regs *regs, long id)
 static void trace_sys_enter_hit(void *__data, struct pt_regs *regs, long id)
 #endif
 {
-	if (open_syscall == 0)
-		return
-	atomic64_inc_return(&diag_nr_running);
 	diag_cb_sys_enter(NULL, regs, id);
-	//cb_sys_enter_run_trace(NULL, regs, id);
-	//cb_sys_enter_sys_delay(NULL, regs, id);
-	//cb_sys_enter_sys_cost(NULL, regs, id);
-	atomic64_dec_return(&diag_nr_running);
+}
+
+static int sys_enter_hooked = 0;
+
+void diag_hook_sys_enter(void)
+{
+	if (sys_enter_hooked)
+		return;
+
+	hook_tracepoint("sys_enter", trace_sys_enter_hit, NULL);
+	sys_enter_hooked = 1;
+}
+
+void diag_unhook_sys_enter(void)
+{
+	if (!sys_enter_hooked)
+		return;
+
+	unhook_tracepoint("sys_enter", trace_sys_enter_hit, NULL);
+	sys_enter_hooked = 0;
 }
 
 static int __init diagnosis_init(void)
@@ -392,7 +422,6 @@ static int __init diagnosis_init(void)
 	if (ret)
 		goto out_dev;
 
-	hook_tracepoint("sys_enter", trace_sys_enter_hit, NULL);
 	printk("diagnose-tools in diagnosis_init\n");
 
 	return 0;
@@ -432,11 +461,14 @@ static void __exit diagnosis_exit(void)
 
 	printk("diagnose-tools in diagnosis_exit\n");
 
+	if (sys_enter_hooked)
+		diag_unhook_sys_enter();
+
 	diag_linux_proc_exit();
 	msleep(20);
 
 	diag_dev_cleanup();
-	unhook_tracepoint("sys_enter", trace_sys_enter_hit, NULL);
+
 	synchronize_sched();
 
 	/**
