@@ -571,6 +571,9 @@ void irq_delay_timer(struct diag_percpu_context *context);
 void perf_timer(struct diag_percpu_context *context);
 void utilization_timer(struct diag_percpu_context *context);
 
+void diag_hook_sys_enter(void);
+void diag_unhook_sys_enter(void);
+
 ssize_t dump_pid_cmdline(int pre, enum diag_printk_type type, void *obj,
 	struct task_struct *tsk, char *buf, size_t _count);
 
@@ -747,6 +750,8 @@ int activate_reboot(void);
 int deactivate_reboot(void);
 int activate_fs_orphan(void);
 int deactivate_fs_orphan(void);
+
+int perf_syscall(struct pt_regs *regs, long id);
 
 void diag_task_brief(struct task_struct *tsk, struct diag_task_detail *detail);
 void printk_task_brief(struct diag_task_detail *detail);

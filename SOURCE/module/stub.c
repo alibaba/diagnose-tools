@@ -924,3 +924,8 @@ long __weak diag_ioctl_reboot(unsigned int cmd, unsigned long arg)
 {
 	return -EINVAL;
 }
+
+int __weak perf_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
+}

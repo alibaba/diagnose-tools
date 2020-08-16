@@ -36,9 +36,11 @@ struct diagnose_func {
 	diagnose_fp func;
 };
 
+unsigned long run_in_host = 0;
+
 static int report_version(int argc, char **argv)
 {
-	printf("diagnose-tools tools version 2.0-rc3\n");
+	printf("diagnose-tools tools version 2.1-rc1\n");
 	exit(0);
 }
 
@@ -218,6 +220,7 @@ int main(int argc, char* argv[])
 
 	fd = open("/dev/diagnose-tools", O_RDWR, 0);
 	if (fd > 0) {
+		run_in_host = 1;
 		version = ioctl(fd, DIAG_IOCTL_VERSION_ALL, 0);
 		close(fd);
 		if (version != DIAG_VERSION && version != -1UL && version != 0xffffffffU) {

@@ -176,10 +176,9 @@ void diag_printf_kern_stack(struct diag_kern_stack_detail *kern_stack)
 void diag_printf_user_stack(int pid, int ns_pid, const char *comm,
 	struct diag_user_stack_detail *user_stack, int attach, int reverse)
 {
-#ifdef __x86_64__
 	int i;
-    symbol sym;
-    elf_file file;
+	symbol sym;
+	elf_file file;
 
 	printf("    用户态堆栈：\n");
 	if (reverse) {
@@ -235,7 +234,6 @@ void diag_printf_user_stack(int pid, int ns_pid, const char *comm,
 			}
 		}
 	}
-#endif
 }
 
 void diag_printf_user_stack(int pid, int ns_pid, const char *comm,
@@ -273,7 +271,6 @@ static int unwind_frame_callback(struct unwind_entry *entry, void *arg)
 void diag_printf_raw_stack(int pid, int ns_pid, const char *comm,
 	struct diag_raw_stack_detail *raw_stack, int attach)
 {
-#ifdef __x86_64__
     struct perf_sample stack_sample;
     entry_cb_arg_t unwind_arg;
     static u64 regs_buf[3];
@@ -290,7 +287,6 @@ void diag_printf_raw_stack(int pid, int ns_pid, const char *comm,
 	unwind__get_entries(unwind_frame_callback, &unwind_arg, &g_symbol_parser, 
 			pid, ns_pid,
 			&stack_sample);
-#endif
 }
 
 void diag_printf_raw_stack(int pid, int ns_pid, const char *comm,
