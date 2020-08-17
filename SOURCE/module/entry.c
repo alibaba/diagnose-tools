@@ -67,6 +67,7 @@ static DEFINE_SEMAPHORE(controller_sem);
 
 struct diag_percpu_context *diag_percpu_context[NR_CPUS];
 unsigned long diag_ignore_jump_check = 0;
+unsigned long open_syscall = 0;
 
 static ssize_t controller_file_read(struct diag_trace_file *trace_file,
 		struct file *file, char __user *buf, size_t size, loff_t *ppos)
