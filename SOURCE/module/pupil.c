@@ -984,6 +984,7 @@ int pupil_syscall(struct pt_regs *regs, long id)
 	int __user *ptr_len;
 	void __user *buf;
 	size_t size;
+	unsigned int pid;
 
 	switch (id) {
 	case DIAG_PUPIL_TASK_DUMP:
@@ -999,10 +1000,8 @@ int pupil_syscall(struct pt_regs *regs, long id)
 		}
 		break;
 	case DIAG_PUPIL_TASK_PID:
-		ret = get_task_info(0, regs);
-		break;
-	case DIAG_PUPIL_TASK_TGID:
-		ret = get_task_info(1, regs);
+		pid = (unsigned int)SYSCALL_PARAM1(regs);
+		ret = get_task_info(pid);
 		break;
 	default:
 		ret = -ENOSYS;
