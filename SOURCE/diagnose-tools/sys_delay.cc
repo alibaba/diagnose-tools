@@ -56,7 +56,7 @@ void usage_sys_delay(void)
 
 static void do_activate(const char *arg)
 {
-	int fd;
+	int fd = 0;
 	int ret = 0;
 	struct params_parser parse(arg);
 	struct diag_sys_delay_settings settings;
@@ -98,7 +98,8 @@ static void do_activate(const char *arg)
 	}
 
 err:
-	close(fd);
+	if (fd)
+		close(fd);
 }
 
 static void do_deactivate(void)
@@ -139,7 +140,7 @@ static void print_settings_in_json(struct diag_sys_delay_settings *settings, int
 
 static void do_settings(const char *arg)
 {
-	int fd;
+	int fd = 0;
 	struct diag_sys_delay_settings settings;
 	int ret;
 	int enable_json = 0;
@@ -179,15 +180,16 @@ static void do_settings(const char *arg)
 	}
 
 err:
-	close(fd);
+	if (fd)
+		close(fd);
 }
 
 static int sys_delay_extract(void *buf, unsigned int len, void *)
 {
 	int *et_type;
 	struct sys_delay_detail *detail;
-    symbol sym;
-    elf_file file;
+	symbol sym;
+	elf_file file;
 	static int seq;
 
 	if (len == 0)
@@ -252,7 +254,7 @@ static void do_dump(void)
 		.user_buf_len = 1024 * 1024,
 		.user_buf = variant_buf,
 	};
-	int fd;
+	int fd = 0;
 
 	if (run_in_host) {
 		fd = open("/dev/diagnose-tools", O_RDWR, 0);
@@ -276,13 +278,14 @@ static void do_dump(void)
 	}
 
 err:
-	close(fd);
+	if (fd)
+		close(fd);
 }
 
 static void do_test(void)
 {
 	int ret = 0;
-	int fd;
+	int fd = 0;
 	int ms = 100;
 
 	if (run_in_host) {
@@ -304,14 +307,15 @@ static void do_test(void)
 	}
 
 err:
-	close(fd);
+	if (fd)
+		close(fd);
 }
 
 static int sls_extract(void *buf, unsigned int len, void *)
 {
 	int *et_type;
 	struct sys_delay_detail *detail;
-    symbol sym;
+	symbol sym;
 	
 	Json::Value root;
 	Json::Value task;
@@ -361,7 +365,7 @@ static void do_sls(char *arg)
 		.user_buf_len = 1024 * 1024,
 		.user_buf = variant_buf,
 	};
-	int fd;
+	int fd = 0;
 
 	ret = log_config(arg, sls_file, &syslog_enabled);
 	if (ret != 1)
@@ -400,7 +404,8 @@ static void do_sls(char *arg)
 		}
 
 err:
-		close(fd);
+		if (fd)
+			close(fd);
 cont:
 		sleep(10);
 		jiffies_sls++;

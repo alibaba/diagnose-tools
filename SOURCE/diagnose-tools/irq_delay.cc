@@ -219,6 +219,7 @@ static void do_dump(void)
 static void do_test(void)
 {
 	int ms = 100;
+	int ret = 0;
 
 	if (run_in_host) {
 		diag_call_ioctl(DIAG_IOCTL_IRQ_DELAY_TEST, (long)&ms);

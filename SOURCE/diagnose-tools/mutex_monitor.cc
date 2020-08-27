@@ -223,6 +223,7 @@ static void do_dump(void)
 static void do_test(void)
 {
 	int test;
+	int ret = 0;
 
 	test = 1500;
 	if (run_in_host) {
