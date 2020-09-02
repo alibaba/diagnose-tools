@@ -89,7 +89,8 @@ void diag_printf_task(struct diag_task_detail *task)
 		task->tgid, task->pid);
 }
 
-void diag_printf_proc_chains(struct diag_proc_chains_detail *proc_chains, int reverse)
+void diag_printf_proc_chains(struct diag_proc_chains_detail *proc_chains,
+	int reverse, int detail)
 {
 	int i;
 
@@ -98,7 +99,7 @@ void diag_printf_proc_chains(struct diag_proc_chains_detail *proc_chains, int re
 		for (i = PROCESS_CHAINS_COUNT - 1; i >= 0; i--) {
 			if (proc_chains->chains[i][0] == 0)
 				continue;
-			if (proc_chains->full_argv[i] == 0) {
+			if (proc_chains->full_argv[i] == 0 && detail) {
 				string cmdline = pid_cmdline.get_pid_cmdline(proc_chains->tgid[i]);
 				printf("#^        0xffffffffffffff %s (UNKNOWN)\n", cmdline.c_str());
 			} else {
@@ -109,7 +110,7 @@ void diag_printf_proc_chains(struct diag_proc_chains_detail *proc_chains, int re
 		for (i = 0; i < PROCESS_CHAINS_COUNT; i++) {
 			if (proc_chains->chains[i][0] == 0)
 				break;
-			if (proc_chains->full_argv[i] == 0) {
+			if (proc_chains->full_argv[i] == 0 && detail) {
 				string cmdline = pid_cmdline.get_pid_cmdline(proc_chains->tgid[i]);
 				if (cmdline.length() > 0)
 					printf("#^        0xffffffffffffff %s (UNKNOWN)\n", cmdline.c_str());
@@ -120,6 +121,11 @@ void diag_printf_proc_chains(struct diag_proc_chains_detail *proc_chains, int re
 			}
 		}
 	}
+}
+
+void diag_printf_proc_chains(struct diag_proc_chains_detail *proc_chains, int reverse)
+{
+	diag_printf_proc_chains(proc_chains, reverse, 1);
 }
 
 void diag_printf_proc_chains(struct diag_proc_chains_detail *proc_chains)

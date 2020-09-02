@@ -93,6 +93,7 @@ void diag_printf_time(struct timeval *tv);
 void diag_printf_task(struct diag_task_detail *task);
 void diag_printf_proc_chains(struct diag_proc_chains_detail *proc_chains);
 void diag_printf_proc_chains(struct diag_proc_chains_detail *proc_chains, int reverse);
+void diag_printf_proc_chains(struct diag_proc_chains_detail *proc_chains, int reverse, int detail);
 void diag_printf_kern_stack(struct diag_kern_stack_detail *kern_stack);
 void diag_printf_kern_stack(struct diag_kern_stack_detail *kern_stack, int reverse);
 void diag_printf_user_stack(int pid, int ns_pid, const char *comm,

@@ -35,6 +35,7 @@ using namespace std;
 
 static char sls_file[256];
 static int syslog_enabled;
+static int process_chains = 0;
 
 void usage_load_monitor(void)
 {
@@ -214,7 +215,7 @@ static int load_monitor_extract(void *buf, unsigned int len, void *)
 
 		printf("#*        0xffffffffffffff %s (UNKNOWN)\n",
 				tsk_info->task.comm);
-		diag_printf_proc_chains(&tsk_info->proc_chains);
+		diag_printf_proc_chains(&tsk_info->proc_chains, 0, process_chains);
 		printf("##\n");
 
 		tsk_info++;
@@ -232,9 +233,10 @@ static void do_extract(char *buf, int len)
 	extract_variant_buffer(buf, len, load_monitor_extract, NULL);
 }
 
-static void do_dump(void)
+static void do_dump(const char *arg)
 {
 	static char variant_buf[1024 * 1024];
+	struct params_parser parse(arg);
 	int len;
 	int ret = 0;
 	struct diag_ioctl_dump_param dump_param = {
@@ -242,6 +244,8 @@ static void do_dump(void)
 		.user_buf_len = 1024 * 1024,
 		.user_buf = variant_buf,
 	};
+
+	process_chains = parse.int_value("process-chains");
 
 	if (run_in_host) {
 		ret = diag_call_ioctl(DIAG_IOCTL_LOAD_MONITOR_DUMP, (long)&dump_param);
@@ -411,7 +415,7 @@ int load_monitor_main(int argc, char **argv)
 			do_settings(optarg ? optarg : "");
 			break;
 		case 4:
-			do_dump();
+			do_dump(optarg ? optarg : "");
 			break;
 		case 5:
 			do_sls(optarg);
