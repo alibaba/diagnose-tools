@@ -384,7 +384,7 @@ int load_monitor_main(int argc, char **argv)
 			{"activate",     optional_argument, 0,  0 },
 			{"deactivate", no_argument,       0,  0 },
 			{"settings",     optional_argument, 0,  0 },
-			{"report",     no_argument, 0,  0 },
+			{"report",     optional_argument, 0,  0 },
 			{"log",     required_argument, 0,  0 },
 			{0,         0,                 0,  0 }
 		};
