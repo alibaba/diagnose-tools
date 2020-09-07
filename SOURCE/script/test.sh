@@ -25,6 +25,7 @@ declare -a __all_case=(["1"]="sys-delay" ["2"]="sys-cost" ["3"]="sched-delay" \
 			["18"]="drop-packet" ["19"]="tcp-retrans" ["20"]="ping-delay" \
 			["21"]="rw-top" ["22"]="fs-shm" ["23"]="fs-orphan" \
 			["24"]="fs-cache" ["25"]="task-info" ["26"]="reboot" \
+			["27"]="net-bandwidth" \
 			["100"]="cpu-loop" ["999"]="kern-demo" )
 
 sys_delay() {
@@ -254,6 +255,13 @@ cpu_loop() {
 
 reboot() {
 	eval "$DIAG_CMD reboot --verbose=1 --activate --settings"
+}
+
+net_bandwidth() {
+	eval "$DIAG_CMD net-bandwidth --deactivate --activate"
+	ping www.baidu.com -c 1 > /dev/null
+	sleep 1
+	eval "$DIAG_CMD net-bandwidth --report='testcount=2' --deactivate --settings"
 }
 
 call_sub_cmd() {
