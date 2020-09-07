@@ -94,6 +94,7 @@ static int usage(int argc, char **argv)
 	usage_test_md5();
 	usage_test_run_trace();
 	usage_pupil();
+	usage_net_bandwidth();
 
 	printf("\n");
 	printf("/***************************************************************************/\n");
@@ -208,6 +209,7 @@ static struct diagnose_func all_funcs[] {
 	{"test-md5", md5_main},
 	{"test-run-trace", test_run_trace_main},
 	{"sys-cost", sys_cost_main},
+	{"net-bandwidth", net_bandwidth_main},
 	{"test", testcase_main},
 };
 

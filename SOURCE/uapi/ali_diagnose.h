@@ -86,7 +86,8 @@ extern unsigned long run_in_host;
 #define DIAG_IOCTL_TYPE_FS_CACHE (DIAG_IOCTL_TYPE_SYS_COST + 1)
 #define DIAG_IOCTL_TYPE_HIGH_ORDER (DIAG_IOCTL_TYPE_FS_CACHE + 1)
 #define DIAG_IOCTL_TYPE_D (DIAG_IOCTL_TYPE_HIGH_ORDER + 1)
-#define DIAG_IOCTL_TYPE_END (DIAG_IOCTL_TYPE_D + 1)
+#define DIAG_IOCTL_TYPE_NET_BANDWIDTH (DIAG_IOCTL_TYPE_D + 1)
+#define DIAG_IOCTL_TYPE_END (DIAG_IOCTL_TYPE_NET_BANDWIDTH + 1)
 
 long diag_ioctl_sys_delay(unsigned int cmd, unsigned long arg);
 long diag_ioctl_sys_cost(unsigned int cmd, unsigned long arg);
@@ -115,6 +116,7 @@ long diag_ioctl_fs_cache(unsigned int cmd, unsigned long arg);
 long diag_ioctl_mm_leak(unsigned int cmd, unsigned long arg);
 long diag_ioctl_pupil_task(unsigned int cmd, unsigned long arg);
 long diag_ioctl_reboot(unsigned int cmd, unsigned long arg);
+long diag_ioctl_net_bandwidth(unsigned int cmd, unsigned long arg);
 
 struct diag_ioctl_test {
 	int in;
@@ -292,6 +294,10 @@ struct diag_ioctl_dump_param_cycle {
 #define DIAG_BASE_SYSCALL_D \
 	(DIAG_BASE_SYSCALL_HIGH_ORDER + DIAG_SYSCALL_INTERVAL)
 
+/// 1600
+#define DIAG_BASE_SYSCALL_NET_BANDWIDTH \
+	(DIAG_BASE_SYSCALL_D + DIAG_SYSCALL_INTERVAL)
+
 #define DIAG_SYSCALL_END (DIAG_BASE_SYSCALL + DIAG_SYSCALL_INTERVAL * 1000)
 
 enum diag_record_id {
@@ -431,6 +437,10 @@ enum diag_record_id {
 
 	et_d = et_high_order + DIAG_EVENT_TYPE_INTERVAL,
 	et_d_detail,
+
+	et_net_bandwidth_base = et_d + DIAG_EVENT_TYPE_INTERVAL,
+	et_net_bandwidth_summary,
+	et_net_bandwidth_detail,
 
 	et_count
 };

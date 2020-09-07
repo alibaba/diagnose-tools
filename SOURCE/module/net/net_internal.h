@@ -21,4 +21,5 @@ extern int diag_net_redis_ixgbe_init(void);
 extern void diag_net_redis_ixgbe_exit(void);
 extern int diag_net_ping_delay_init(void);
 extern void diag_net_ping_delay_exit(void);
-
+extern int diag_net_net_bandwidth_init(void);
+extern void diag_net_net_bandwidth_exit(void);
