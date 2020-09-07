@@ -167,7 +167,7 @@ ifneq ($(KERNELRELEASE),)
 	$(TARGET)-objs += mm/mm_entry.o mm/alloc_page.o mm/alloc_top.o mm/high_order.o
 	$(TARGET)-objs += io/io_entry.o
 	$(TARGET)-objs += fs/fs_entry.o fs/orphan.o fs/shm.o fs/rw_top.o
-	$(TARGET)-objs += net/net_entry.o net/tcp_retrans.o net/drop_packet.o net/ping_delay.o
+	$(TARGET)-objs += net/net_entry.o net/tcp_retrans.o net/drop_packet.o net/ping_delay.o net/net_bandwidth.o
 
 	ifeq ($(EXPERIENTIAL),1)
 		$(TARGET)-objs += test/test.o

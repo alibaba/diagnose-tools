@@ -54,6 +54,7 @@
 #include "uapi/mm_leak.h"
 #include "uapi/sched_delay.h"
 #include "uapi/reboot.h"
+#include "uapi/net_bandwidth.h"
 
 unsigned long diag_timer_period = 10;
 
@@ -143,8 +144,6 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 			activate_rw_top();
 		} else if (strcmp(func, "fs-shm") == 0) {
 			activate_fs_shm();
-		} else if (strcmp(func, "drop-packet") == 0) {
-			activate_drop_packet();
 		} else if (strcmp(func, "sched-delay") == 0) {
 			activate_sched_delay();
 		} else if (strcmp(func, "reboot") == 0) {
@@ -161,6 +160,8 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 			activate_fs_cache();
 		} else if (strcmp(func, "high-order") == 0) {
 			activate_high_order();
+		} else if (strcmp(func, "net-bandwidth") == 0) {
+			activate_net_bandwidth();
 		}
 		up(&controller_sem);
 		printk("diagnose-tools %s %s\n", cmd, func);
@@ -223,6 +224,8 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 			deactivate_fs_cache();
 		} else if (strcmp(func, "high-order") == 0) {
 			deactivate_high_order();
+		} else if (strcmp(func, "net-bandwidth") == 0) {
+			deactivate_net_bandwidth();
 		}
 
 		up(&controller_sem);
@@ -381,6 +384,9 @@ static void diag_cb_sys_enter(void *data, struct pt_regs *regs, long id)
 		} else if (id >= DIAG_BASE_SYSCALL_HIGH_ORDER
 		   && id < DIAG_BASE_SYSCALL_HIGH_ORDER + DIAG_SYSCALL_INTERVAL) {
 			ret = high_order_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_NET_BANDWIDTH
+		   && id < DIAG_BASE_SYSCALL_NET_BANDWIDTH + DIAG_SYSCALL_INTERVAL) {
+			ret = net_bandwidth_syscall(regs, id);
 		}
 
 		up(&controller_sem);

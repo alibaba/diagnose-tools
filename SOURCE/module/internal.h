@@ -750,6 +750,8 @@ int activate_reboot(void);
 int deactivate_reboot(void);
 int activate_fs_orphan(void);
 int deactivate_fs_orphan(void);
+int activate_net_bandwidth(void);
+int deactivate_net_bandwidth(void);
 
 int perf_syscall(struct pt_regs *regs, long id);
 
