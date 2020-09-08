@@ -32,6 +32,7 @@
 
 using namespace std;
 static volatile unsigned cached_lines = 0;
+static int cached_on_tty = -1;
 
 class bandwidth_info
 {
@@ -60,8 +61,6 @@ static enum {
 } arg_order = ORDER_TOTAL;
 
 bool on_tty(void) {
-	static int cached_on_tty = -1;
-
 	if (cached_on_tty < 0)
 		cached_on_tty = isatty(STDOUT_FILENO) > 0;
 
@@ -419,7 +418,7 @@ static int display()
 			printf(" %10s/S",
 					format_bytes(buffer, sizeof(buffer), info->fraction[1]));
 		} else {
-			printf("         -         -");
+			printf("           -             -");
 		}
 		printf("\n");
 	}
@@ -466,7 +465,7 @@ static void do_extract(char *buf, int len)
 static void do_dump(const char *arg)
 {
 	static char variant_buf[1024 * 1024];
-	int len;
+	int len, testcount, i = 0;
 	int ret = 0;
 	struct diag_ioctl_dump_param dump_param = {
 		.user_ptr_len = &len,
@@ -482,6 +481,10 @@ static void do_dump(const char *arg)
 		} else if ( strcmp(str.c_str(), "out") == 0) {
 			arg_order = ORDER_OUT;
 		}
+	}
+	testcount = parse.int_value("testcount");
+	if (testcount > 0) {
+		cached_on_tty = 0;
 	}
 
 	ret = is_activated();
@@ -502,6 +505,8 @@ static void do_dump(const char *arg)
 			display();
 		}
 		sleep(1);
+		if ( testcount > 0 && ++i >= testcount)
+			break;
 	}
 }
 
@@ -512,7 +517,7 @@ int net_bandwidth_main(int argc, char **argv)
 			{"activate",     optional_argument, 0,  0 },
 			{"deactivate", no_argument,       0,  0 },
 			{"settings",     optional_argument, 0,  0 },
-			{"report",     no_argument, 0,  0 },
+			{"report",     optional_argument, 0,  0 },
 			{"log",     required_argument, 0,  0 },
 			{0,         0,                 0,  0 }
 		};
@@ -532,7 +537,7 @@ int net_bandwidth_main(int argc, char **argv)
 		case 0:
 			usage_net_bandwidth();
 			break;
-	    case 1:
+		case 1:
 			do_activate(optarg ? optarg : "");
 			break;
 		case 2:
