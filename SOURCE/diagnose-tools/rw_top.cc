@@ -60,6 +60,8 @@ static void do_activate(const char *arg)
 	settings.shm = parse.int_value("shm");
 	settings.top = parse.int_value("top");
 	settings.perf = parse.int_value("perf");
+	if (settings.top == 0)
+		settings.top = 100;	
 
 	if (run_in_host) {
 		ret = diag_call_ioctl(DIAG_IOCTL_RW_TOP_SET, (long)&settings);
@@ -158,8 +160,6 @@ static int rw_top_extract(void *buf, unsigned int len, void *)
 	if (len == 0)
 		return 0;
 
-	printf("  序号           R-SIZE            W-SIZE          MAP-SIZE           RW-SIZE        文件名\n");
-	
 	et_type = (int *)buf;
 	switch (*et_type) {
 	case et_rw_top_detail:
@@ -196,6 +196,7 @@ static int rw_top_extract(void *buf, unsigned int len, void *)
 				perf->task.comm);
 		diag_printf_proc_chains(&perf->proc_chains);
 		printf("##\n");
+		break;
 	default:
 		break;
 	}
@@ -262,6 +263,7 @@ static void do_dump(void)
 	}
 
 	if (ret == 0) {
+		printf("  序号           R-SIZE            W-SIZE          MAP-SIZE           RW-SIZE        文件名\n");
 		do_extract(variant_buf, len);
 	}
 }
