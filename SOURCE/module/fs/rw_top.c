@@ -290,7 +290,13 @@ static void hook_rw(enum rw_type rw_type, struct file *file, size_t count)
 
 static int kprobe_filemap_fault_pre(struct kprobe *p, struct pt_regs *regs)
 {
-	struct file *file = (void *)ORIG_PARAM1(regs);
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 18, 0)
+	struct vm_area_struct *vma = (void *)ORIG_PARAM1(regs);
+	struct file *file = vma->vm_file;
+#else
+	struct vm_fault *vmf = (void *)ORIG_PARAM1(regs);
+	struct file *file = vmf->vma->vm_file;
+#endif
 
 	hook_rw(2, file, PAGE_SIZE);
 
