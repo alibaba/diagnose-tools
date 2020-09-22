@@ -495,6 +495,16 @@ void __weak diag_net_net_bandwidth_exit(void)
 	//
 }
 
+int __weak diag_sig_info_init(void)
+{
+	return 0;
+}
+
+void __weak diag_sig_info_exit(void)
+{
+	//
+}
+
 int __weak exit_monitor_syscall(struct pt_regs *regs, long id)
 {
 	return -ENOSYS;
@@ -586,6 +596,11 @@ int __weak mm_leak_syscall(struct pt_regs *regs, long id)
 }
 
 int __weak net_bandwidth_syscall(struct pt_regs *regs, long id)
+{
+        return -ENOSYS;
+}
+
+int __weak sig_info_syscall(struct pt_regs *regs, long id)
 {
         return -ENOSYS;
 }
@@ -1056,6 +1071,11 @@ long __weak diag_ioctl_reboot(unsigned int cmd, unsigned long arg)
 }
 
 long __weak diag_ioctl_net_bandwidth(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_sig_info(unsigned int cmd, unsigned long arg)
 {
 	return -EINVAL;
 }

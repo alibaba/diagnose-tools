@@ -160,6 +160,9 @@ static long diag_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     case DIAG_IOCTL_TYPE_NET_BANDWIDTH:
         ret = diag_ioctl_net_bandwidth(nr, arg);
         break;
+    case DIAG_IOCTL_TYPE_SIG_INFO:
+        ret = diag_ioctl_sig_info(nr, arg);
+        break;
     default:
         break;
     }

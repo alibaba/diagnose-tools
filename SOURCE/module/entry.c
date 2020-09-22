@@ -162,6 +162,8 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 			activate_high_order();
 		} else if (strcmp(func, "net-bandwidth") == 0) {
 			activate_net_bandwidth();
+		} else if (strcmp(func, "sig-info") == 0) {
+			activate_sig_info();
 		}
 		up(&controller_sem);
 		printk("diagnose-tools %s %s\n", cmd, func);
@@ -226,6 +228,8 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 			deactivate_high_order();
 		} else if (strcmp(func, "net-bandwidth") == 0) {
 			deactivate_net_bandwidth();
+		} else if (strcmp(func, "sig-info") == 0) {
+			deactivate_sig_info();
 		}
 
 		up(&controller_sem);
@@ -387,6 +391,9 @@ static void diag_cb_sys_enter(void *data, struct pt_regs *regs, long id)
 		} else if (id >= DIAG_BASE_SYSCALL_NET_BANDWIDTH
 		   && id < DIAG_BASE_SYSCALL_NET_BANDWIDTH + DIAG_SYSCALL_INTERVAL) {
 			ret = net_bandwidth_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_SIG_INFO
+		   && id < DIAG_BASE_SYSCALL_SIG_INFO + DIAG_SYSCALL_INTERVAL) {
+			ret = sig_info_syscall(regs, id);
 		}
 
 		up(&controller_sem);
