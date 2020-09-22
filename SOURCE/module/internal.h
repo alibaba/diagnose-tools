@@ -48,6 +48,7 @@ static inline void __percpu_counter_add(struct percpu_counter *fbc,
 #include "uapi/high_order.h"
 #include "uapi/rw_top.h"
 #include "uapi/utilization.h"
+#include "uapi/sig_info.h"
 #include "pub/variant_buffer.h"
 #include "pub/stack.h"
 
@@ -797,6 +798,11 @@ int high_order_syscall(struct pt_regs *regs, long id);
 int diag_high_order_init(void);
 void diag_high_order_exit(void);
 void record_dump_cmd(char *module);
+
+int activate_sig_info(void);
+int deactivate_sig_info(void);
+int diag_sig_info_init(void);
+void diag_sig_info_exit(void);
 
 int diag_dev_init(void);
 void diag_dev_cleanup(void);

@@ -242,6 +242,10 @@ int diag_kernel_init(void)
 	if (ret)
 		goto out_uprobe;
 
+	ret = diag_sig_info_init();
+	if (ret)
+		goto out_sig_info;
+
 	on_each_cpu(start_timer, NULL, 1);
 
 #if !defined(XBY_UBUNTU_1604) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 18, 0)
@@ -298,6 +302,8 @@ out_sched:
 	diag_irq_delay_exit();
 out_irq_delay:
 	diag_irq_stats_exit();
+out_sig_info:
+	diag_sig_info_exit();
 out:
 	return ret;
 }
@@ -348,6 +354,7 @@ void diag_kernel_exit(void)
 	diag_sched_delay_exit();
 	diag_irq_delay_exit();
 	diag_irq_stats_exit();
+	diag_sig_info_exit();
 
 	//remove_proc_entry("ali-linux/diagnose/kern", NULL);
 }

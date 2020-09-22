@@ -49,6 +49,7 @@ int pi_main(int argc, char *argv[]);
 int memcpy_main(int argc, char* argv[]);
 int md5_main(int argc, char *argv[]);
 int net_bandwidth_main(int argc, char *argv[]);
+int sig_info_main(int argc, char *argv[]);
 
 void usage_run_trace(void);
 void usage_sys_delay(void);
@@ -77,6 +78,7 @@ void usage_test_memcpy(void);
 void usage_test_pi(void);
 void usage_test_md5(void);
 void usage_net_bandwidth(void);
+void usage_sig_info(void);
 
 int uprobe_main(int argc, char **argv);
 void usage_uprobe();
