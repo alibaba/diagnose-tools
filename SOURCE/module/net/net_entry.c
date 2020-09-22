@@ -74,6 +74,8 @@ int diag_net_init(void)
 
 	return 0;
 
+out_net_bandwidth:
+	diag_net_ping_delay_exit();
 out_ping_delay:
 	diag_net_redis_ixgbe_exit();
 out_redis_ixgbe:
@@ -84,8 +86,6 @@ out_reqsk:
 	diag_net_drop_packet_exit();
 out_drop:
 	diag_tcp_retrans_exit();
-out_net_bandwidth:
-	diag_net_net_bandwidth_exit();
 out_tcp_retrans:
 	return ret;
 }

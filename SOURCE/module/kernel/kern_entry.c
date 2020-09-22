@@ -254,6 +254,8 @@ int diag_kernel_init(void)
 
 	return 0;
 
+out_sig_info:
+	diag_uprobe_exit();
 out_uprobe:
 	diag_reboot_exit();
 out_reboot:
@@ -302,8 +304,6 @@ out_sched:
 	diag_irq_delay_exit();
 out_irq_delay:
 	diag_irq_stats_exit();
-out_sig_info:
-	diag_sig_info_exit();
 out:
 	return ret;
 }
@@ -329,6 +329,7 @@ void diag_kernel_exit(void)
 		}
 	}
 
+	diag_sig_info_exit();
 	diag_uprobe_exit();
 	diag_reboot_exit();
 	diag_utilization_exit();
@@ -354,7 +355,6 @@ void diag_kernel_exit(void)
 	diag_sched_delay_exit();
 	diag_irq_delay_exit();
 	diag_irq_stats_exit();
-	diag_sig_info_exit();
 
 	//remove_proc_entry("ali-linux/diagnose/kern", NULL);
 }
