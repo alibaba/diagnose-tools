@@ -403,7 +403,7 @@ int net_bandwidth_syscall(struct pt_regs *regs, long id)
 			do_dump();
 			ret = copy_to_user_variant_buffer(&net_bandwidth_variant_buffer,
 					user_ptr_len, user_buf, user_buf_len);
-			record_dump_cmd("drop-packet");
+			record_dump_cmd("net-bandwidth");
 		}
 		break;
 	default:
