@@ -1,0 +1,14 @@
+/.gitignore
+*.o
+*.cmd
+*.so
+*.ko
+*.mod.c
+*.mk
+*.symvers
+*.order
+*.o.ur-safe
+/SOURCE/module/.tmp_versions
+/rpmbuild/RPMS
+/rpmbuild/diagnose-tools.spec
+/SOURCE/diagnose-tools/diagnose-tools
