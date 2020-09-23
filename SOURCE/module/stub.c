@@ -1084,3 +1084,14 @@ int __weak perf_syscall(struct pt_regs *regs, long id)
 {
 	return -ENOSYS;
 }
+
+int __weak deactivate_net_bandwidth(void)
+{
+	return -EINVAL;
+}
+
+int __weak activate_net_bandwidth(void)
+{
+	return -EINVAL;
+}
+

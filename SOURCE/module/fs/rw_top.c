@@ -67,7 +67,7 @@ static unsigned long rw_top_alloced = 0;
 
 static struct diag_variant_buffer rw_top_variant_buffer;
 
-static struct kprobe diag_kprobe_page_cache_read;
+static struct kprobe diag_kprobe_filemap_fault;
 
 enum rw_type {
 	RW_READ,
@@ -288,9 +288,15 @@ static void hook_rw(enum rw_type rw_type, struct file *file, size_t count)
 	}
 }
 
-static int kprobe_page_cache_read_pre(struct kprobe *p, struct pt_regs *regs)
+static int kprobe_filemap_fault_pre(struct kprobe *p, struct pt_regs *regs)
 {
-	struct file *file = (void *)ORIG_PARAM1(regs);
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 18, 0)
+	struct vm_area_struct *vma = (void *)ORIG_PARAM1(regs);
+	struct file *file = vma->vm_file;
+#else
+	struct vm_fault *vmf = (void *)ORIG_PARAM1(regs);
+	struct file *file = vmf->vma->vm_file;
+#endif
 
 	hook_rw(2, file, PAGE_SIZE);
 
@@ -1891,8 +1897,8 @@ static int __activate_rw_top(void)
 	mutex_unlock(orig_text_mutex);
 	put_online_cpus();
 
-	hook_kprobe(&diag_kprobe_page_cache_read, "page_cache_read",
-				kprobe_page_cache_read_pre, NULL);
+	hook_kprobe(&diag_kprobe_filemap_fault, "filemap_fault",
+				kprobe_filemap_fault_pre, NULL);
 
 	return 1;
 out_variant_buffer:
@@ -1918,7 +1924,7 @@ static void __deactivate_rw_top(void)
 	mutex_unlock(orig_text_mutex);
 	put_online_cpus();
 
-	unhook_kprobe(&diag_kprobe_page_cache_read);
+	unhook_kprobe(&diag_kprobe_filemap_fault);
 
 	synchronize_sched();
 	msleep(10);

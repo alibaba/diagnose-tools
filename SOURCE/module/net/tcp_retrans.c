@@ -358,7 +358,7 @@ static void jump_init(void)
 {
 }
 #elif LINUX_VERSION_CODE > KERNEL_VERSION(4, 9, 0)
-#if !defined(ALIOS_3000_010) && !defined(ALIOS_3000_012) \
+#if !defined(ALIOS_3000_010) && !defined(ALIOS_3000_011) && !defined(ALIOS_3000_012) \
 	&& !defined(ALIOS_3000_013) && !defined(ALIOS_3000_014) \
   && !defined(ALIOS_3000_015) && !defined(ALIOS_3000_016) \
 	&& !defined(ALIOS_3000_018) && !defined(ALIOS_3000_018_ECSVM)
@@ -494,7 +494,7 @@ static void tcp_retrans_try_collapse(struct sock *sk, struct sk_buff *to,
 	struct sk_buff *skb = to, *tmp;
 	bool first = true;
 
-#if defined(ALIOS_3000_010) || defined(ALIOS_3000_012) \
+#if defined(ALIOS_3000_010) || defined(ALIOS_3000_011) || defined(ALIOS_3000_012) \
   || defined(ALIOS_3000_013) || defined(ALIOS_3000_014) \
   || defined(ALIOS_3000_015) || defined(ALIOS_3000_016) \
 	|| defined(ALIOS_3000_018) || defined(ALIOS_3000_018_ECSVM)
@@ -780,7 +780,7 @@ static void __deactivate_tcp_retrans(void)
 
 static int lookup_syms(void)
 {
-#if !defined(ALIOS_3000_010) && !defined(ALIOS_3000_012) \
+#if !defined(ALIOS_3000_010) && !defined(ALIOS_3000_011) && !defined(ALIOS_3000_012) \
   && !defined(ALIOS_3000_013) && !defined(ALIOS_3000_014) \
   && !defined(ALIOS_3000_015) && !defined(ALIOS_3000_016) \
 	&& !defined(ALIOS_3000_018) && !defined(ALIOS_3000_018_ECSVM)

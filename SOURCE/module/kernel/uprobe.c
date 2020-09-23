@@ -464,5 +464,10 @@ void diag_uprobe_exit(void)
 
 	destroy_diag_variant_buffer(&kern_uprobe_variant_buffer);
 }
+#else
+int uprobe_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
+}
 #endif
 
