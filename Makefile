@@ -13,7 +13,8 @@ else
 endif
 
 devel:
-ifneq ($(findstring Ubuntu,$(UNAME_A)),)
+ifneq ($(findstring Ubuntu,$(UNAME_A) $(shell test -e /etc/os-release && head -1 /etc/os-release)),)
+	apt update
 	apt -y install gcc
 	apt -y install g++
 	apt -y install libunwind8-dev
@@ -24,6 +25,7 @@ ifneq ($(findstring Ubuntu,$(UNAME_A)),)
 	apt -y install bash-completion # git自动补全
 	apt install openjdk-8-jdk
 else
+	yum check-update
 	yum install -y libstdc++-static
 	yum install -y glibc-static
 	yum install -y zlib-devel
