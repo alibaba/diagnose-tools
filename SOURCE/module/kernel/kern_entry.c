@@ -248,7 +248,7 @@ int diag_kernel_init(void)
 
 	on_each_cpu(start_timer, NULL, 1);
 
-#if !defined(XBY_UBUNTU_1604) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 18, 0)
+#if !defined(XBY_UBUNTU_1604) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
 	register_hotcpu_notifier(&diag_cpu_nb);
 #endif
 
@@ -314,7 +314,7 @@ void diag_kernel_exit(void)
 	struct diag_percpu_context *percpu_context;
 	struct hrtimer *timer;
 
-#if !defined(XBY_UBUNTU_1604) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 18, 0)
+#if !defined(XBY_UBUNTU_1604) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
 	unregister_hotcpu_notifier(&diag_cpu_nb);
 #endif
 	/* cancel per-cpu hrtimer */

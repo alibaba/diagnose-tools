@@ -57,7 +57,7 @@
 #include "uapi/drop_packet.h"
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0) && !defined(XBY_UBUNTU_1604) \
-	&& !defined(CENTOS_3_10_123_9_3)
+	&& !defined(CENTOS_3_10_123_9_3) && !defined(UBUNTU_1604)
 
 __maybe_unused static atomic64_t diag_nr_running = ATOMIC64_INIT(0);
 struct diag_drop_packet_settings drop_packet_settings;

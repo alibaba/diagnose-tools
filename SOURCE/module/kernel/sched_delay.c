@@ -47,7 +47,8 @@
 #include "uapi/sched_delay.h"
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32) && \
-	LINUX_VERSION_CODE <= KERNEL_VERSION(4, 20, 0)
+	LINUX_VERSION_CODE <= KERNEL_VERSION(4, 20, 0) \
+	&& !defined(UBUNTU_1604)
 
 #if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
 #define diag_last_queued ali_reserved3
