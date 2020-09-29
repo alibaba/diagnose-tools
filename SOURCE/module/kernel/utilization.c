@@ -45,7 +45,7 @@
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)) || (KERNEL_VERSION(4, 20, 0) <= LINUX_VERSION_CODE) \
 	|| defined(CENTOS_3_10_693) || defined(CENTOS_3_10_957) \
 	|| defined(CENTOS_3_10_862) || defined(CENTOS_3_10_1062) \
-	|| defined(CENTOS_3_10_1127)
+	|| defined(CENTOS_3_10_1127) || defined(UBUNTU_1604)
 /**
  * 只支持7u
  */

@@ -41,7 +41,7 @@
 
 #include "uapi/mutex_monitor.h"
 
-#if defined(UPSTREAM_4_19_32) || defined(XBY_UBUNTU_1604)
+#if defined(UPSTREAM_4_19_32) || defined(XBY_UBUNTU_1604) || defined(UBUNTU_1604)
 int diag_mutex_init(void)
 {
 	return 0;
@@ -51,7 +51,7 @@ void diag_mutex_exit(void)
 {
 }
 #else
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
 /*
  * Optimistic trylock that only works in the uncontended case. Make sure to
  * follow with a __mutex_trylock() before failing.
