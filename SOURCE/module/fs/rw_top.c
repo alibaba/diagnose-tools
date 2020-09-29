@@ -78,9 +78,12 @@ enum rw_type {
 };
 
 struct file_info {
+	unsigned long rw_key;
 	struct list_head list;
 	struct inode *f_inode;
 	char path_name[DIAG_PATH_LEN];
+	unsigned long pid;
+	char comm[TASK_COMM_LEN];
 	atomic64_t rw_size[NR_RW_TYPE];
 };
 
@@ -95,6 +98,14 @@ static DEFINE_MUTEX(file_mutex);
 
 __maybe_unused static u64 last_jiffies;
 
+static unsigned long
+(*orig_ondemand_readahead)(struct address_space *mapping,
+           struct file_ra_state *ra, struct file *filp,
+           bool hit_readahead_marker, pgoff_t offset,
+           unsigned long req_size);
+static unsigned long
+(*orig_force_page_cache_readahead)(struct address_space *mapping,
+           struct file *filp, pgoff_t offset, unsigned long nr_to_read);
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 12, 0)
 static int (*orig_file_read_actor)(read_descriptor_t *desc, struct page *page,
 			unsigned long offset, unsigned long size);
@@ -131,6 +142,19 @@ static ssize_t
 		const struct iomap_ops *ops);
 static struct iomap_ops *orig_ext4_iomap_ops;
 #endif
+DEFINE_ORIG_FUNC(void, page_cache_sync_readahead, 5,
+	struct address_space *, mapping,
+	struct file_ra_state *, ra,
+	struct file *, filp,
+	pgoff_t, offset,
+	unsigned long, req_size);
+DEFINE_ORIG_FUNC(void, page_cache_async_readahead, 6,
+	struct address_space *, mapping,
+	struct file_ra_state *, ra,
+	struct file *, filp,
+	struct page *, page,
+	pgoff_t, offset,
+	unsigned long, req_size);
 
 static struct inode_operations *orig_shmem_inode_operations;
 
@@ -160,12 +184,14 @@ static int need_trace(struct file *file)
 	return 1;
 }
 
-static struct file_info *find_alloc_file_info(struct file *file)
+static struct file_info *find_alloc_file_info(struct file *file,
+		struct task_struct *task)
 {
 	struct file_info *info;
 	char path_name[DIAG_PATH_LEN];
 	char *ret_path;
 	struct inode *f_inode;
+	unsigned long rw_key;
 
 	if (!file)
 		return NULL;
@@ -180,7 +206,9 @@ static struct file_info *find_alloc_file_info(struct file *file)
 	if (f_inode == NULL)
 		return NULL;
 
-	info = radix_tree_lookup(&file_tree, (unsigned long)f_inode);
+	rw_key = task->pid | (unsigned long)f_inode;
+
+	info = radix_tree_lookup(&file_tree, rw_key);
 	if (!info && MAX_FILE_COUNT > atomic64_read(&file_count_in_tree)) {
 		info = kmalloc(sizeof(struct file_info), GFP_ATOMIC | __GFP_ZERO);
 		if (info) {
@@ -194,17 +222,22 @@ static struct file_info *find_alloc_file_info(struct file *file)
 				return NULL;
 			}
 
+			info->rw_key = rw_key;
 			info->f_inode = f_inode;
 			strncpy(info->path_name, ret_path, DIAG_PATH_LEN);
 			info->path_name[DIAG_PATH_LEN - 1] = 0;
-			
+
+			info->pid = task->pid;
+			strncpy(info->comm, task->comm, TASK_COMM_LEN);
+			info->comm[TASK_COMM_LEN - 1] = 0;
+
 			spin_lock_irqsave(&tree_lock, flags);
-			tmp = radix_tree_lookup(&file_tree, (unsigned long)f_inode);
+			tmp = radix_tree_lookup(&file_tree, rw_key);
 			if (tmp) {
 				kfree(info);
 				info = tmp;
 			} else {
-				radix_tree_insert(&file_tree, (unsigned long)f_inode, info);
+				radix_tree_insert(&file_tree, rw_key, info);
 				atomic64_inc(&file_count_in_tree);
 			}
 			spin_unlock_irqrestore(&tree_lock, flags);
@@ -261,7 +294,7 @@ static void hook_rw(enum rw_type rw_type, struct file *file, size_t count)
 		return;
 	}
 
-	info = find_alloc_file_info(file);
+	info = find_alloc_file_info(file, current);
 	if (info) {
 		atomic64_add(count, &info->rw_size[rw_type]);
 		atomic64_add(count, &info->rw_size[RW_ALL]);
@@ -360,7 +393,6 @@ find_page:
 					ra, filp,
 					index, last_index - index);
 			page = find_get_page(mapping, index);
-			hook_rw(0, filp, PAGE_SIZE);
 			if (unlikely(page == NULL))
 				goto no_cached_page;
 		}
@@ -657,6 +689,7 @@ new_generic_file_aio_read(struct kiocb *iocb, const struct iovec *iov,
 
 	return ret;
 }
+
 static ssize_t diag_do_sync_write(struct file *filp, const char __user *buf, size_t len, loff_t *ppos)
 {
 	struct iovec iov = { .iov_base = (void __user *)buf, .iov_len = len };
@@ -864,7 +897,6 @@ find_page:
 					ra, filp,
 					index, last_index - index);
 			page = find_get_page(mapping, index);
-			hook_rw(0, filp, PAGE_SIZE);
 			if (unlikely(page == NULL))
 				goto no_cached_page;
 		}
@@ -1153,7 +1185,6 @@ static ssize_t diag_ext4_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
 	if (!iov_iter_count(to))
 		return 0; /* skip atime */
 
-	
 #ifdef CONFIG_FS_DAX
 	if (IS_DAX(file_inode(iocb->ki_filp))) {
 		ret = ext4_dax_read_iter(iocb, to);
@@ -1536,7 +1567,6 @@ find_page:
 					ra, filp,
 					index, last_index - index);
 			page = find_get_page(mapping, index);
-			hook_rw(0, filp, PAGE_SIZE);
 			if (unlikely(page == NULL))
 				goto no_cached_page;
 		}
@@ -1861,6 +1891,120 @@ static ssize_t new_ext4_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
 }
 #endif
 
+/**
+ * page_cache_sync_readahead - generic file readahead
+ * @mapping: address_space which holds the pagecache and I/O vectors
+ * @ra: file_ra_state which holds the readahead state
+ * @filp: passed on to ->readpage() and ->readpages()
+ * @offset: start offset into @mapping, in pagecache page-sized units
+ * @req_size: hint: total size of the read which the caller is performing in
+ *            pagecache pages
+ *
+ * page_cache_sync_readahead() should be called when a cache miss happened:
+ * it will submit the read.  The readahead logic may decide to piggyback more
+ * pages onto the read request if access patterns suggest it will improve
+ * performance.
+ */
+void
+diag_page_cache_sync_readahead(struct address_space *mapping,
+			       struct file_ra_state *ra, struct file *filp,
+			       pgoff_t offset, unsigned long req_size)
+{
+	int i, npages = 0;
+	/* no read-ahead */
+	if (!ra->ra_pages)
+		return;
+
+	/* be dumb */
+	if (filp && (filp->f_mode & FMODE_RANDOM)) {
+		orig_force_page_cache_readahead(mapping, filp, offset, req_size);
+		return;
+	}
+
+	/* do read-ahead */
+	npages = orig_ondemand_readahead(mapping, ra, filp, false, offset,
+			req_size);
+	for (i = 0; i < npages; i++) {
+		hook_rw(0, filp, PAGE_SIZE);
+	}
+}
+
+void
+new_page_cache_sync_readahead(struct address_space *mapping,
+	       struct file_ra_state *ra, struct file *filp,
+	       pgoff_t offset, unsigned long req_size)
+{
+	atomic64_inc_return(&diag_nr_running);
+	diag_page_cache_sync_readahead(mapping, ra, filp, offset, req_size);
+	atomic64_dec_return(&diag_nr_running);
+}
+
+/**
+ * page_cache_async_readahead - file readahead for marked pages
+ * @mapping: address_space which holds the pagecache and I/O vectors
+ * @ra: file_ra_state which holds the readahead state
+ * @filp: passed on to ->readpage() and ->readpages()
+ * @page: the page at @offset which has the PG_readahead flag set
+ * @offset: start offset into @mapping, in pagecache page-sized units
+ * @req_size: hint: total size of the read which the caller is performing in
+ *            pagecache pages
+ *
+ * page_cache_async_readahead() should be called when a page is used which
+ * has the PG_readahead flag; this is a marker to suggest that the application
+ * has used up enough of the readahead window that we should start pulling in
+ * more pages.
+ */
+void
+diag_page_cache_async_readahead(struct address_space *mapping,
+			   struct file_ra_state *ra, struct file *filp,
+			   struct page *page, pgoff_t offset,
+			   unsigned long req_size)
+{
+	int i, npages = 0;
+	/* no read-ahead */
+	if (!ra->ra_pages)
+		return;
+
+	/*
+	 * Same bit is used for PG_readahead and PG_reclaim.
+	 */
+	if (PageWriteback(page))
+		return;
+
+	ClearPageReadahead(page);
+
+	/*
+	 * Defer asynchronous read-ahead on IO congestion.
+	 */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 0, 0)
+	if (bdi_read_congested(mapping->backing_dev_info))
+		return;
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 2, 0)
+	if (bdi_read_congested(inode_to_bdi(mapping->host)))
+		return;
+#else
+	if (inode_read_congested(mapping->host))
+			return;
+#endif
+
+	/* do read-ahead */
+	npages = orig_ondemand_readahead(mapping, ra, filp, true, offset, req_size);
+	for (i = 0; i < npages; i++) {
+		hook_rw(0, filp, PAGE_SIZE);
+	}
+}
+
+void
+new_page_cache_async_readahead(struct address_space *mapping,
+		   struct file_ra_state *ra, struct file *filp,
+		   struct page *page, pgoff_t offset,
+		   unsigned long req_size)
+{
+	atomic64_inc_return(&diag_nr_running);
+	diag_page_cache_async_readahead(mapping, ra, filp, page,
+			offset, req_size);
+	atomic64_dec_return(&diag_nr_running);
+}
 
 static int __activate_rw_top(void)
 {
@@ -1881,7 +2025,9 @@ static int __activate_rw_top(void)
 	JUMP_CHECK(__generic_file_write_iter);
 	JUMP_CHECK(ext4_file_read_iter);
 #endif
-	
+	JUMP_CHECK(page_cache_sync_readahead);
+	JUMP_CHECK(page_cache_async_readahead);
+
 	get_online_cpus();
 	mutex_lock(orig_text_mutex);
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 12, 0)
@@ -1894,12 +2040,14 @@ static int __activate_rw_top(void)
 	JUMP_INSTALL(__generic_file_write_iter);
 	JUMP_INSTALL(ext4_file_read_iter);
 #endif
+	JUMP_INSTALL(page_cache_sync_readahead);
+	JUMP_INSTALL(page_cache_async_readahead);
+
 	mutex_unlock(orig_text_mutex);
 	put_online_cpus();
 
 	hook_kprobe(&diag_kprobe_filemap_fault, "filemap_fault",
 				kprobe_filemap_fault_pre, NULL);
-
 	return 1;
 out_variant_buffer:
 	return 0;
@@ -1908,7 +2056,7 @@ out_variant_buffer:
 static void __deactivate_rw_top(void)
 {
 	u64 nr_running;
-	
+
 	get_online_cpus();
 	mutex_lock(orig_text_mutex);
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 12, 0)
@@ -1921,6 +2069,8 @@ static void __deactivate_rw_top(void)
 	JUMP_REMOVE(__generic_file_write_iter);
 	JUMP_REMOVE(ext4_file_read_iter);
 #endif
+	JUMP_REMOVE(page_cache_sync_readahead);
+	JUMP_REMOVE(page_cache_async_readahead);
 	mutex_unlock(orig_text_mutex);
 	put_online_cpus();
 
@@ -2001,6 +2151,9 @@ static int do_show(void)
 		detail.map_size = atomic64_read(&file_info->rw_size[RW_FILEMAP_FAULT]);
 		detail.rw_size = atomic64_read(&file_info->rw_size[RW_ALL]);
 		strncpy(detail.path_name, file_info->path_name, DIAG_PATH_LEN);
+		detail.pid = file_info->pid;
+		strncpy(detail.comm, file_info->comm, TASK_COMM_LEN);
+		detail.comm[TASK_COMM_LEN - 1] = 0;
 		diag_variant_buffer_spin_lock(&rw_top_variant_buffer, flags);
 		diag_variant_buffer_reserve(&rw_top_variant_buffer, sizeof(struct rw_top_detail));
 		diag_variant_buffer_write_nolock(&rw_top_variant_buffer, &detail, sizeof(struct rw_top_detail));
@@ -2030,8 +2183,8 @@ static void do_dump(void)
 
 		for (i = 0; i < nr_found; i++) {
 			file_info = files[i];
-			radix_tree_delete(&file_tree, (unsigned long)file_info->f_inode);
-			pos = (unsigned long)file_info->f_inode + 1;
+			radix_tree_delete(&file_tree, file_info->rw_key);
+			pos = (unsigned long)file_info->rw_key + 1;
 			INIT_LIST_HEAD(&file_info->list);
 			list_add_tail(&file_info->list, &file_list);
 		}
@@ -2172,6 +2325,10 @@ static int lookup_syms(void)
 	LOOKUP_SYMS(ext4_iomap_ops);
 #endif
 	LOOKUP_SYMS(shmem_inode_operations);
+	LOOKUP_SYMS(force_page_cache_readahead);
+	LOOKUP_SYMS(ondemand_readahead);
+	LOOKUP_SYMS(page_cache_sync_readahead);
+	LOOKUP_SYMS(page_cache_async_readahead);
 
 	return 0;
 }
@@ -2192,6 +2349,8 @@ int diag_rw_top_init(void)
 	JUMP_INIT(__generic_file_write_iter);
 	JUMP_INIT(ext4_file_read_iter);
 #endif
+	JUMP_INIT(page_cache_sync_readahead);
+	JUMP_INIT(page_cache_async_readahead);
 
 	INIT_RADIX_TREE(&file_tree, GFP_ATOMIC);
 
@@ -2222,8 +2381,8 @@ void diag_rw_top_exit(void)
 		nr_found = radix_tree_gang_lookup(&file_tree, (void **)files, pos, NR_BATCH);
 		for (i = 0; i < nr_found; i++) {
 			file_info = files[i];
-			radix_tree_delete(&file_tree, (unsigned long)file_info->f_inode);
-			pos = (unsigned long)file_info->f_inode + 1;
+			radix_tree_delete(&file_tree, (unsigned long)file_info->rw_key);
+			pos = (unsigned long)file_info->rw_key + 1;
 			kfree(file_info);
 		}
 	} while (nr_found > 0);

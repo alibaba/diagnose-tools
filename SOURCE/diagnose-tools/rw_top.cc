@@ -167,12 +167,14 @@ static int rw_top_extract(void *buf, unsigned int len, void *)
 			break;
 		detail = (struct rw_top_detail *)buf;
 
-		printf("%5d%18lu%18lu%18lu%18lu        %-100s\n",
+		printf("%5d%18lu%18lu%18lu%18lu%8lu%16s        %-100s\n",
 			detail->seq,
 			detail->r_size,
 			detail->w_size,
 			detail->map_size,
 			detail->rw_size,
+			detail->pid,
+			detail->comm,
 			detail->path_name);
 
 		break;
@@ -225,6 +227,8 @@ static int sls_extract(void *buf, unsigned int len, void *)
 		root["w_size"] = Json::Value(detail->w_size);
 		root["map_size"] = Json::Value(detail->map_size);
 		root["rw_size"] = Json::Value(detail->rw_size);
+		root["pid"] = Json::Value(detail->pid);
+		root["comm"] = Json::Value(detail->comm);
 		root["path_name"] = Json::Value(detail->path_name);
 
 		gettimeofday(&tv, NULL);
@@ -263,7 +267,7 @@ static void do_dump(void)
 	}
 
 	if (ret == 0) {
-		printf("  序号           R-SIZE            W-SIZE          MAP-SIZE           RW-SIZE        文件名\n");
+		printf("  序号           R-SIZE            W-SIZE          MAP-SIZE           RW-SIZE     PID          进程名        文件名\n");
 		do_extract(variant_buf, len);
 	}
 }

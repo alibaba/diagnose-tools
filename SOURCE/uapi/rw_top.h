@@ -39,6 +39,8 @@ struct rw_top_detail {
 	unsigned long map_size;
 	unsigned long rw_size;
 	char path_name[DIAG_PATH_LEN];
+	unsigned long pid;
+	char comm[TASK_COMM_LEN];
 };
 
 struct rw_top_perf {
