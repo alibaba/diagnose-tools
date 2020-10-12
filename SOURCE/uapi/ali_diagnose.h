@@ -333,6 +333,7 @@ enum diag_record_id {
 
 	et_exec_monitor_base = et_fs_orphan_base + DIAG_EVENT_TYPE_INTERVAL,
 	et_exec_monitor_detail,
+	et_exec_monitor_perf,
 
 	et_exit_monitor_base = et_exec_monitor_base + DIAG_EVENT_TYPE_INTERVAL,
 	et_exit_monitor_detail,

@@ -73,6 +73,27 @@ static void hook_exec(const char * filename, struct mm_struct *mm)
 	if (!mm)
 		return;
 
+	if (exec_monitor_settings.perf) {
+		struct exec_monitor_perf *perf;
+
+		perf = &diag_percpu_context[smp_processor_id()]->exec_monitor.perf;
+		perf->et_type = et_exec_monitor_perf;
+		perf->id = 0;
+		perf->seq = 0;
+		do_gettimeofday(&perf->tv);
+		diag_task_brief(current, &perf->task);
+		diag_task_kern_stack(current, &perf->kern_stack);
+		diag_task_user_stack(current, &perf->user_stack);
+		perf->proc_chains.chains[0][0] = 0;
+		dump_proc_chains_simple(current, &perf->proc_chains);
+		diag_variant_buffer_spin_lock(&exec_monitor_variant_buffer, flags);
+		diag_variant_buffer_reserve(&exec_monitor_variant_buffer, sizeof(struct exec_monitor_perf));
+		diag_variant_buffer_write_nolock(&exec_monitor_variant_buffer, perf, sizeof(struct exec_monitor_perf));
+		diag_variant_buffer_seal(&exec_monitor_variant_buffer);
+		diag_variant_buffer_spin_unlock(&exec_monitor_variant_buffer, flags);
+		return;
+	}
+
 	get_argv_from_mm(mm, buf, 255);
 	
 	detail = kmalloc(sizeof(struct exec_monitor_detail), GFP_KERNEL);

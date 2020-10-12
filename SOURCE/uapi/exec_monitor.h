@@ -25,6 +25,7 @@ int exec_monitor_syscall(struct pt_regs *regs, long id);
 struct diag_exec_monitor_settings {
 	unsigned int activated;
 	unsigned int verbose;
+	unsigned int perf;
 };
 
 struct exec_monitor_detail {
@@ -33,6 +34,17 @@ struct exec_monitor_detail {
 	char filename[256];
 	struct diag_proc_chains_detail proc_chains;
 	struct diag_task_detail task;
+};
+
+struct exec_monitor_perf {
+	int et_type;
+	unsigned long id;
+	unsigned long seq;
+	struct timeval tv;
+	struct diag_proc_chains_detail proc_chains;
+	struct diag_task_detail task;
+	struct diag_kern_stack_detail kern_stack;
+	struct diag_user_stack_detail user_stack;
 };
 
 #define CMD_EXEC_MONITOR_SET (0)
