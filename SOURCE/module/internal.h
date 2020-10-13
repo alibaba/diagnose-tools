@@ -38,6 +38,7 @@ static inline void __percpu_counter_add(struct percpu_counter *fbc,
 #include "symbol.h"
 #include "uapi/ali_diagnose.h"
 #include "uapi/exit_monitor.h"
+#include "uapi/exec_monitor.h"
 #include "uapi/irq_delay.h"
 #include "uapi/perf.h"
 #include "uapi/sys_delay.h"
@@ -444,6 +445,14 @@ struct diag_percpu_context {
 		struct kprobe_raw_stack_detail kprobe_raw_stack_detail;
 		unsigned int sample_step;
 	} kprobe;
+
+	struct {
+		struct exec_monitor_perf perf;
+	} exec_monitor;
+
+	struct {
+		struct sig_info_perf perf;
+	} sig_info;
 };
 
 extern struct diag_percpu_context *diag_percpu_context[NR_CPUS];
