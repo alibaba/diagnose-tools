@@ -49,6 +49,9 @@ void usage_sig_info(void)
 	printf("    sig-info usage:\n");
 	printf("        --help sig-info help info\n");
 	printf("        --activate\n");
+	printf("            spid set pid of send process if you want monitor specify pid\n");
+	printf("            rpid set pid of receive process if you want monitor specify pid\n");
+	printf("            perf set 1 if want perf detail\n");
 	printf("        --deactivate\n");
 	printf("        --report dump log with text.\n");
 	printf("          interval=1 loop second\n");
@@ -66,6 +69,10 @@ static void do_activate(const char *arg)
 
 	memset(&settings, 0, sizeof(struct diag_sig_info_settings));
 
+	settings.spid = parse.int_value("spid");
+	settings.rpid = parse.int_value("rpid");
+	settings.perf = parse.int_value("perf");
+
 	if (run_in_host) {
 		ret = diag_call_ioctl(DIAG_IOCTL_SIG_INFO_SET, (long)&settings);
 	} else {
@@ -74,6 +81,9 @@ static void do_activate(const char *arg)
 	}
 
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
+	printf("    发送信号进程PID：\t%ld\n", settings.spid);
+	printf("    接收信号进程PID：\t%ld\n", settings.rpid);
+	printf("    PERF：%d\n", settings.perf);
 
 	if (ret)
 		return;
@@ -105,6 +115,9 @@ static void print_settings_in_json(struct diag_sig_info_settings *settings, int 
 
 	if (ret == 0) {
 		root["activated"] = Json::Value(settings->activated);
+		root["spid"] = Json::Value(settings->spid);
+		root["rpid"] = Json::Value(settings->rpid);
+		root["PERF"] = Json::Value(settings->perf);
 	} else {
 		root["err"] = Json::Value("found sig-info settings failed, please check if diagnose-tools is installed correctly or not.");
 	}
@@ -137,6 +150,9 @@ static void do_settings(const char *arg)
 	if (ret == 0) {
 		printf("功能设置：\n");
 		printf("    是否激活：%s\n", settings.activated ? "√" : "×");
+		printf("    发送信号进程PID：%ld\n", settings.spid);
+		printf("    接收信号进程PID：%ld\n", settings.rpid);
+		printf("    PERF：%d\n", settings.perf);
 	} else {
 		printf("获取sig-info设置失败，请确保正确安装了diagnose-tools工具\n");
 	}
@@ -146,6 +162,7 @@ static int sig_info_extract(void *buf, unsigned int len, void *)
 {
 	int *et_type;
 	struct sig_info_detail *detail;
+	struct sig_info_perf *perf;
 	int signum;
 
 	if (len == 0)
@@ -161,6 +178,25 @@ static int sig_info_extract(void *buf, unsigned int len, void *)
 		printf("%5lu %16s %10lu %16s %10d %10s\n", detail->spid,
 				detail->scomm, detail->rpid, detail->rcomm,
 				signum, diag_signal_str[signum]);
+		break;
+	case et_sig_info_perf:
+		if (len < sizeof(struct sig_info_perf))
+			break;
+		perf = (struct sig_info_perf *)buf;
+
+		printf("##CGROUP:[%s]  %d      [%03d]  采样命中\n",
+				perf->task.cgroup_buf,
+				perf->task.pid,
+				0);
+		diag_printf_kern_stack(&perf->kern_stack);
+		diag_printf_user_stack(perf->task.tgid,
+				perf->task.container_tgid,
+				perf->task.comm,
+				&perf->user_stack, 0);
+		printf("#*        0xffffffffffffff %s (UNKNOWN)\n",
+				perf->task.comm);
+		diag_printf_proc_chains(&perf->proc_chains);
+		printf("##\n");
 		break;
 	default:
 		break;

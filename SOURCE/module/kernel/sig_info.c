@@ -29,9 +29,10 @@
 #include <net/xfrm.h>
 #include <linux/inetdevice.h>
 
-#include "../../uapi/sig_info.h"
 #include "internal.h"
-#include "pub/kprobe.h"
+#include "mm_tree.h"
+#include "pub/trace_point.h"
+#include "uapi/sig_info.h"
 
 struct diag_sig_info_settings sig_info_settings;
 static int sig_info_alloced = 0;
@@ -54,8 +55,6 @@ static DEFINE_SPINLOCK(tree_lock);
 static DEFINE_MUTEX(sig_mutex);
 
 static struct diag_variant_buffer sig_info_variant_buffer;
-
-static struct kprobe kprobe___send_signal;
 
 __maybe_unused static void move_to_list(struct list_head *sig_list)
 {
@@ -158,21 +157,47 @@ static void inspect_signal(int signum, const struct task_struct *rtask)
 {
 	struct sig_info *signalinfo;
 	struct task_struct *stask = current;
+	unsigned long flags;
+
+	if (sig_info_settings.spid > 0 && stask->pid != sig_info_settings.spid) {
+		return;
+	}
+
+	if (sig_info_settings.rpid > 0 && rtask->pid != sig_info_settings.rpid) {
+		return;
+	}
 
 	signalinfo = find_alloc_desc(signum, stask, rtask);
-	if (!signalinfo)
-		return;
+	if (signalinfo && sig_info_settings.perf) {
+		struct sig_info_perf *perf;
+
+		perf = &diag_percpu_context[smp_processor_id()]->sig_info.perf;
+		perf->et_type = et_sig_info_perf;
+		perf->id = 0;
+		perf->seq = 0;
+		do_gettimeofday(&perf->tv);
+		diag_task_brief(current, &perf->task);
+		diag_task_kern_stack(current, &perf->kern_stack);
+		diag_task_user_stack(current, &perf->user_stack);
+		perf->proc_chains.chains[0][0] = 0;
+		dump_proc_chains_simple(current, &perf->proc_chains);
+		diag_variant_buffer_spin_lock(&sig_info_variant_buffer, flags);
+		diag_variant_buffer_reserve(&sig_info_variant_buffer, sizeof(struct sig_info_perf));
+		diag_variant_buffer_write_nolock(&sig_info_variant_buffer, perf, sizeof(struct sig_info_perf));
+		diag_variant_buffer_seal(&sig_info_variant_buffer);
+		diag_variant_buffer_spin_unlock(&sig_info_variant_buffer, flags);
+	}
+	return;
 }
 
-static int kprobe___send_signal_pre(struct kprobe *p, struct pt_regs *regs)
+static int trace_signal_generate_hit(void *ignore, int sig,
+		struct siginfo *info, struct task_struct *task,
+		int group, int result)
 {
-	int signum = ORIG_PARAM1(regs);
-	struct task_struct *rtask = (void *)ORIG_PARAM3(regs);
-
 	if (!sig_info_settings.activated)
 		return 0;
 
-	inspect_signal(signum, rtask);
+	inspect_signal(sig, task);
 
 	return 0;
 }
@@ -188,13 +213,7 @@ static int __activate_sig_info(void)
 
 	clean_data();
 
-	hook_kprobe(&kprobe___send_signal, "__send_signal",
-				kprobe___send_signal_pre, NULL);
-
-	get_online_cpus();
-	mutex_lock(orig_text_mutex);
-	mutex_unlock(orig_text_mutex);
-	put_online_cpus();
+	hook_tracepoint("signal_generate", trace_signal_generate_hit, NULL);
 
 	return 1;
 out_variant_buffer:
@@ -203,12 +222,7 @@ out_variant_buffer:
 
 static void __deactivate_sig_info(void)
 {
-	unhook_kprobe(&kprobe___send_signal);
-
-	get_online_cpus();
-	mutex_lock(orig_text_mutex);
-	mutex_unlock(orig_text_mutex);
-	put_online_cpus();
+	unhook_tracepoint("signal_generate", trace_signal_generate_hit, NULL);
 
 	synchronize_sched();
 	msleep(20);

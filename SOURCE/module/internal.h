@@ -449,6 +449,10 @@ struct diag_percpu_context {
 	struct {
 		struct exec_monitor_perf perf;
 	} exec_monitor;
+
+	struct {
+		struct sig_info_perf perf;
+	} sig_info;
 };
 
 extern struct diag_percpu_context *diag_percpu_context[NR_CPUS];
