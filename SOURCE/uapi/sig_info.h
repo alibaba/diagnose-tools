@@ -106,15 +106,6 @@ struct diag_sig_info_settings {
 
 struct sig_info_detail {
 	int et_type;
-	int signum;
-	unsigned long spid;
-	unsigned long rpid;
-	char scomm[TASK_COMM_LEN];
-	char rcomm[TASK_COMM_LEN];
-};
-
-struct sig_info_perf {
-	int et_type;
 	unsigned long id;
 	unsigned long seq;
     unsigned long sig;

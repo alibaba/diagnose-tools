@@ -451,7 +451,6 @@ enum diag_record_id {
 
 	et_sig_info_base = et_net_bandwidth_base + DIAG_EVENT_TYPE_INTERVAL,
 	et_sig_info_detail,
-	et_sig_info_perf,
 
 	et_count
 };

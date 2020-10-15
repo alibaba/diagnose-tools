@@ -48,7 +48,7 @@ static void inspect_signal(int signum, const struct task_struct *rtask)
 {
 	struct task_struct *stask = current;
 	unsigned long flags;
-	struct sig_info_perf *perf;
+	struct sig_info_detail *detail;
 
 	if (sig_info_settings.spid > 0 && stask->tgid != sig_info_settings.spid) {
 		return;
@@ -58,21 +58,21 @@ static void inspect_signal(int signum, const struct task_struct *rtask)
 		return;
 	}
 
-	perf = &diag_percpu_context[smp_processor_id()]->sig_info.perf;
-	perf->et_type = et_sig_info_perf;
-	perf->id = 0;
-	perf->seq = 0;
-	perf->sig = signum;
-	do_gettimeofday(&perf->tv);
-	diag_task_brief(rtask, &perf->receive_task);
-	diag_task_brief(current, &perf->task);
-	diag_task_kern_stack(current, &perf->kern_stack);
-	diag_task_user_stack(current, &perf->user_stack);
-	perf->proc_chains.chains[0][0] = 0;
-	dump_proc_chains_simple(current, &perf->proc_chains);
+	detail = &diag_percpu_context[smp_processor_id()]->sig_info.detail;
+	detail->et_type = et_sig_info_detail;
+	detail->id = 0;
+	detail->seq = 0;
+	detail->sig = signum;
+	do_gettimeofday(&detail->tv);
+	diag_task_brief(rtask, &detail->receive_task);
+	diag_task_brief(current, &detail->task);
+	diag_task_kern_stack(current, &detail->kern_stack);
+	diag_task_user_stack(current, &detail->user_stack);
+	detail->proc_chains.chains[0][0] = 0;
+	dump_proc_chains_simple(current, &detail->proc_chains);
 	diag_variant_buffer_spin_lock(&sig_info_variant_buffer, flags);
-	diag_variant_buffer_reserve(&sig_info_variant_buffer, sizeof(struct sig_info_perf));
-	diag_variant_buffer_write_nolock(&sig_info_variant_buffer, perf, sizeof(struct sig_info_perf));
+	diag_variant_buffer_reserve(&sig_info_variant_buffer, sizeof(struct sig_info_detail));
+	diag_variant_buffer_write_nolock(&sig_info_variant_buffer, detail, sizeof(struct sig_info_detail));
 	diag_variant_buffer_seal(&sig_info_variant_buffer);
 	diag_variant_buffer_spin_unlock(&sig_info_variant_buffer, flags);
 }

@@ -451,7 +451,7 @@ struct diag_percpu_context {
 	} exec_monitor;
 
 	struct {
-		struct sig_info_perf perf;
+		struct sig_info_detail detail;
 	} sig_info;
 };
 

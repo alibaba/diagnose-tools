@@ -162,7 +162,7 @@ static int sig_info_extract(void *buf, unsigned int len, void *)
 {
 	int *et_type;
 	struct sig_info_detail *detail;
-	struct sig_info_perf *perf;
+	struct sig_info_detail *perf;
 	int signum;
 
 	if (len == 0)
@@ -179,10 +179,10 @@ static int sig_info_extract(void *buf, unsigned int len, void *)
 				detail->scomm, detail->rpid, detail->rcomm,
 				signum, diag_signal_str[signum]);
 		break;
-	case et_sig_info_perf:
-		if (len < sizeof(struct sig_info_perf))
+	case et_sig_info_detail:
+		if (len < sizeof(struct sig_info_detail))
 			break;
-		perf = (struct sig_info_perf *)buf;
+		perf = (struct sig_info_detail *)buf;
 
 		printf("##CGROUP:[%s]  %d      [%03d]  采样命中\n",
 				perf->task.cgroup_buf,
