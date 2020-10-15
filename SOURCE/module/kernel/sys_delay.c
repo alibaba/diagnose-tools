@@ -95,9 +95,13 @@ int new__cond_resched(void *x)
 #else
 #include <linux/preempt.h>
 
+#ifndef preempt_disable_notrace
 #define preempt_disable_notrace()		barrier()
+#endif
 #define preempt_enable_no_resched_notrace()	barrier()
+#ifndef preempt_enable_notrace
 #define preempt_enable_notrace()		barrier()
+#endif
 
 static inline void preempt_latency_start(int val) { }
 static inline void preempt_latency_stop(int val) { }
@@ -504,7 +508,7 @@ long diag_ioctl_sys_delay(unsigned int cmd, unsigned long arg)
 static int lookup_syms(void)
 {
 	LOOKUP_SYMS(_cond_resched);
-#if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
+#if KERNEL_VERSION(4, 4, 0) <= LINUX_VERSION_CODE
 	LOOKUP_SYMS(__schedule);
 #else
 	LOOKUP_SYMS(__cond_resched);

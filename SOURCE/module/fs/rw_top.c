@@ -39,7 +39,8 @@
 #include <linux/backing-dev.h>
 #include <linux/aio.h>
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 12, 0) && LINUX_VERSION_CODE <= KERNEL_VERSION(4, 20, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 12, 0) && LINUX_VERSION_CODE <= KERNEL_VERSION(4, 20, 0) \
+	&& !defined(UBUNTU_1604)
 #include <linux/iomap.h>
 #include <linux/swap.h>
 #endif
@@ -57,7 +58,8 @@
 #include "pub/kprobe.h"
 #include "uapi/rw_top.h"
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32) && LINUX_VERSION_CODE <= KERNEL_VERSION(4, 20, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32) && LINUX_VERSION_CODE <= KERNEL_VERSION(4, 20, 0) \
+	&& !defined(UBUNTU_1604)
 static atomic64_t diag_nr_running = ATOMIC64_INIT(0);
 struct diag_rw_top_settings rw_top_settings = {
 	.top = 20,

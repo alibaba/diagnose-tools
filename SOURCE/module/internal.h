@@ -76,7 +76,9 @@ static inline void __percpu_counter_add(struct percpu_counter *fbc,
 
 #define __SC_DECL(t, a)	t a
 #define __MAP0(m,...)
+#ifndef __MAP1
 #define __MAP1(m,t,a,...) m(t,a)
+#endif
 #define __MAP2(m,t,a,...) m(t,a), __MAP1(m,__VA_ARGS__)
 #define __MAP3(m,t,a,...) m(t,a), __MAP2(m,__VA_ARGS__)
 #define __MAP4(m,t,a,...) m(t,a), __MAP3(m,__VA_ARGS__)
