@@ -190,9 +190,19 @@ static void inspect_signal(int signum, const struct task_struct *rtask)
 	return;
 }
 
+#if KERNEL_VERSION(4, 19, 0) <= LINUX_VERSION_CODE
+static int trace_signal_generate_hit(void *ignore, int sig,
+		struct siginfo *info, struct task_struct *task,
+		int type, int result)
+#elif KERNEL_VERSION(3, 10, 0) <= LINUX_VERSION_CODE
 static int trace_signal_generate_hit(void *ignore, int sig,
 		struct siginfo *info, struct task_struct *task,
 		int group, int result)
+#else
+static int trace_signal_generate_hit(int sig,
+		struct siginfo *info, struct task_struct *task,
+		int group)
+#endif
 {
 	if (!sig_info_settings.activated)
 		return 0;
