@@ -111,7 +111,11 @@ perf() {
 
 	eval "$DIAG_CMD perf --deactivate --activate='style=0 idle=1 bvt=1'"
 	sleep 1
-	eval "$DIAG_CMD perf --report --deactivate"
+	eval "$DIAG_CMD perf --report"
+	sleep 1
+	eval "$DIAG_CMD perf --report='out=perf.out'"
+	eval "$DIAG_CMD perf --report='in=perf.out'"
+	eval "$DIAG_CMD perf --deactivate"
 }
 
 kprobe() {

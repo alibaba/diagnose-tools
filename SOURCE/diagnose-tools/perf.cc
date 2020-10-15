@@ -55,7 +55,7 @@ void usage_perf(void)
 	printf("            bvt set 1 if want monitor idle\n");
 	printf("            sys set 1 if want monitor syscall only\n");
 	printf("        --deactivate\n");
-	printf("        --report dump log with text.\n");
+	printf("        --report dump log with text/file.\n");
 	printf("        --test testcase for perf.\n");
 }
 
@@ -261,19 +261,48 @@ static void do_dump(const char *arg)
 		.user_buf_len = 50 * 1024 * 1024,
 		.user_buf = variant_buf,
 	};
+	string in_file;
+	string out_file;
 
 	report_reverse = parse.int_value("reverse");
+	in_file = parse.string_value("in");
+	out_file = parse.string_value("out");
 
 	memset(variant_buf, 0, 50 * 1024 * 1024);
-	if (run_in_host) {
-		ret = diag_call_ioctl(DIAG_IOCTL_PERF_DUMP, (long)&dump_param);
+	if (in_file.length() > 0) {
+		ifstream fin(in_file, ios::binary);
+		fin.read(variant_buf, 50 * 1024 * 1024);
+		len = fin.gcount();
+		if (len > 0) {
+			java_attach_once();
+			do_extract(variant_buf, len);
+		}
 	} else {
-		ret = -ENOSYS;
-		syscall(DIAG_PERF_DUMP, &ret, &len, variant_buf, 50 * 1024 * 1024);
-	}
-	if (ret == 0 && len > 0) {
-		java_attach_once();
-		do_extract(variant_buf, len);
+		if (run_in_host) {
+			ret = diag_call_ioctl(DIAG_IOCTL_PERF_DUMP, (long)&dump_param);
+		} else {
+			ret = -ENOSYS;
+			syscall(DIAG_PERF_DUMP, &ret, &len, variant_buf, 50 * 1024 * 1024);
+		}
+
+		if (out_file.length() > 0) {
+			if (ret == 0 && len > 0) {
+				ofstream fout(out_file);
+				fout.write(variant_buf, len);
+				fout.close();
+			}
+		} else {
+			if (run_in_host) {
+				ret = diag_call_ioctl(DIAG_IOCTL_PERF_DUMP, (long)&dump_param);
+			} else {
+				ret = -ENOSYS;
+				syscall(DIAG_PERF_DUMP, &ret, &len, variant_buf, 50 * 1024 * 1024);
+			}
+			if (ret == 0 && len > 0) {
+				java_attach_once();
+				do_extract(variant_buf, len);
+			}
+		}
 	}
 }
 
