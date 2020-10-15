@@ -50,11 +50,11 @@ static void inspect_signal(int signum, const struct task_struct *rtask)
 	unsigned long flags;
 	struct sig_info_perf *perf;
 
-	if (sig_info_settings.spid > 0 && stask->pid != sig_info_settings.spid) {
+	if (sig_info_settings.spid > 0 && stask->tgid != sig_info_settings.spid) {
 		return;
 	}
 
-	if (sig_info_settings.rpid > 0 && rtask->pid != sig_info_settings.rpid) {
+	if (sig_info_settings.rpid > 0 && rtask->tgid != sig_info_settings.rpid) {
 		return;
 	}
 
