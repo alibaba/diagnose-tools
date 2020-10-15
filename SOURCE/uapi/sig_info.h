@@ -101,7 +101,6 @@ struct diag_sig_info_settings {
 	unsigned int activated;
 	unsigned long spid;
 	unsigned long rpid;
-	unsigned int perf;
 };
 
 struct sig_info_detail {

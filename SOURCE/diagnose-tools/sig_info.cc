@@ -29,21 +29,6 @@ using namespace std;
 static char sls_file[256];
 static int syslog_enabled;
 
-static const char *diag_signal_str[] = {
-              "SIGNOP",    "SIGSIGHUP",  "SIGINT",  "SIGQUIT",  "SIGILL", /* 0-4 */
-              "SIGTRAP",   "SIGABRT",  "SIGBUS",   "SIGFPE", "SIGKILL", /* 5-9 */
-              "SIGUSR1",   "SIGSEGV", "SIGUSR2",  "SIGPIPE", "SIGALRM", /* 10-14 */
-              "SIGTERM", "SIGSTKFLT", "SIGCHLD",  "SIGCONT", "SIGSTOP", /* 15-19 */
-              "SIGTSTP",   "SIGTTIN", "SIGTTOU",   "SIGURG", "SIGXCPU", /* 20-24 */
-              "SIGXFSZ", "SIGVTALRM", "SIGPROF", "SIGWINCH", "SIGPOLL", /* 25-29 */
-              "SIGPWR",    "SIGSYS",  "SIGRT0",   "SIGRT1",  "SIGRT2", /* 30-34 */
-              "SIGRT3",    "SIGRT4",  "SIGRT5",   "SIGRT6",  "SIGRT7", /* 35-39 */
-              "SIGRT8",    "SIGRT9", "SIGRT10",  "SIGRT11", "SIGRT12", /* 40-44 */
-              "SIGRT13",   "SIGRT14", "SIGRT15",  "SIGRT16", "SIGRT17", /* 45-49 */
-              "SIGRT18",   "SIGRT19", "SIGRT20",  "SIGRT21", "SIGRT22", /* 50-54 */
-              "SIGRT23",   "SIGRT24", "SIGRT25",  "SIGRT26", "SIGRT27", /* 55-59 */
-              "SIGRT28",   "SIGRT29", "SIGRT30",  "SIGRT31", "SIGRT32"}; /* 60-64 */
-
 void usage_sig_info(void)
 {
 	printf("    sig-info usage:\n");
@@ -51,7 +36,6 @@ void usage_sig_info(void)
 	printf("        --activate\n");
 	printf("            spid set pid of send process if you want monitor specify pid\n");
 	printf("            rpid set pid of receive process if you want monitor specify pid\n");
-	printf("            perf set 1 if want perf detail\n");
 	printf("        --deactivate\n");
 	printf("        --report dump log with text.\n");
 	printf("          interval=1 loop second\n");
@@ -71,7 +55,6 @@ static void do_activate(const char *arg)
 
 	settings.spid = parse.int_value("spid");
 	settings.rpid = parse.int_value("rpid");
-	settings.perf = parse.int_value("perf");
 
 	if (run_in_host) {
 		ret = diag_call_ioctl(DIAG_IOCTL_SIG_INFO_SET, (long)&settings);
@@ -83,7 +66,6 @@ static void do_activate(const char *arg)
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
 	printf("    发送信号进程PID：\t%ld\n", settings.spid);
 	printf("    接收信号进程PID：\t%ld\n", settings.rpid);
-	printf("    PERF：%d\n", settings.perf);
 
 	if (ret)
 		return;
@@ -117,7 +99,6 @@ static void print_settings_in_json(struct diag_sig_info_settings *settings, int 
 		root["activated"] = Json::Value(settings->activated);
 		root["spid"] = Json::Value(settings->spid);
 		root["rpid"] = Json::Value(settings->rpid);
-		root["PERF"] = Json::Value(settings->perf);
 	} else {
 		root["err"] = Json::Value("found sig-info settings failed, please check if diagnose-tools is installed correctly or not.");
 	}
@@ -152,7 +133,6 @@ static void do_settings(const char *arg)
 		printf("    是否激活：%s\n", settings.activated ? "√" : "×");
 		printf("    发送信号进程PID：%ld\n", settings.spid);
 		printf("    接收信号进程PID：%ld\n", settings.rpid);
-		printf("    PERF：%d\n", settings.perf);
 	} else {
 		printf("获取sig-info设置失败，请确保正确安装了diagnose-tools工具\n");
 	}
@@ -162,7 +142,6 @@ static int sig_info_extract(void *buf, unsigned int len, void *)
 {
 	int *et_type;
 	struct sig_info_detail *detail;
-	struct sig_info_detail *perf;
 	int signum;
 
 	if (len == 0)
@@ -174,28 +153,22 @@ static int sig_info_extract(void *buf, unsigned int len, void *)
 		if (len < sizeof(struct sig_info_detail))
 			break;
 		detail = (struct sig_info_detail *)buf;
-		signum = detail->signum;
-		printf("%5lu %16s %10lu %16s %10d %10s\n", detail->spid,
-				detail->scomm, detail->rpid, detail->rcomm,
-				signum, diag_signal_str[signum]);
-		break;
-	case et_sig_info_detail:
-		if (len < sizeof(struct sig_info_detail))
-			break;
-		perf = (struct sig_info_detail *)buf;
-
+		signum = detail->sig;
+		
 		printf("##CGROUP:[%s]  %d      [%03d]  采样命中\n",
-				perf->task.cgroup_buf,
-				perf->task.pid,
+				detail->task.cgroup_buf,
+				detail->task.pid,
 				0);
-		diag_printf_kern_stack(&perf->kern_stack);
-		diag_printf_user_stack(perf->task.tgid,
-				perf->task.container_tgid,
-				perf->task.comm,
-				&perf->user_stack, 0);
+		diag_printf_kern_stack(&detail->kern_stack);
+		diag_printf_user_stack(detail->task.tgid,
+				detail->task.container_tgid,
+				detail->task.comm,
+				&detail->user_stack, 0);
+		printf("#*        0xffffffffffffff SIG:%d (UNKNOWN)\n",
+				signum);
 		printf("#*        0xffffffffffffff %s (UNKNOWN)\n",
-				perf->task.comm);
-		diag_printf_proc_chains(&perf->proc_chains);
+				detail->task.comm);
+		diag_printf_proc_chains(&detail->proc_chains);
 		printf("##\n");
 		break;
 	default:
@@ -222,12 +195,9 @@ static int sls_extract(void *buf, unsigned int len, void *)
 			break;
 		detail = (struct sig_info_detail *)buf;
 
-		root["signum"] = Json::Value(detail->signum);
-		root["spid"]   = Json::Value(detail->spid);
-		root["scomm"]  = Json::Value(detail->scomm);
-		root["rpid"]   = Json::Value(detail->rpid);
-		root["rcomm"]  = Json::Value(detail->rcomm);
+		root["signum"] = Json::Value(detail->sig);
 
+		/* to-do */
 		gettimeofday(&tv, NULL);
 		write_file(sls_file, "sig-info", &tv, 0, 0, root);
 		write_syslog(syslog_enabled, "sig-info", &tv, 0, 0, root);
@@ -244,23 +214,23 @@ static void do_extract(char *buf, int len)
 	extract_variant_buffer(buf, len, sig_info_extract, NULL);
 }
 
-static void do_dump(void)
+static void do_dump(const char *arg)
 {
-	static char variant_buf[1024 * 1024];
+	static char variant_buf[20 * 1024 * 1024];
 	int len;
 	int ret = 0;
 	struct diag_ioctl_dump_param dump_param = {
 		.user_ptr_len = &len,
-		.user_buf_len = 1024 * 1024,
+		.user_buf_len = 20 * 1024 * 1024,
 		.user_buf = variant_buf,
 	};
 
-	memset(variant_buf, 0, 1024 * 1024);
+	memset(variant_buf, 0, 20 * 1024 * 1024);
 	if (run_in_host) {
 		ret = diag_call_ioctl(DIAG_IOCTL_SIG_INFO_DUMP, (long)&dump_param);
 	} else {
 		ret = -ENOSYS;
-		syscall(DIAG_SIG_INFO_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+		syscall(DIAG_SIG_INFO_DUMP, &ret, &len, variant_buf, 20 * 1024 * 1024);
 	}
 
 	if (ret == 0) {
@@ -268,30 +238,14 @@ static void do_dump(void)
 	}
 }
 
-static void do_loop_dump(const char *arg)
-{
-	struct params_parser parse(arg);
-	int interval = parse.int_value("interval");
-	if (interval < 1) {
-		interval = 1;
-	}
-
-	printf("%5s %16s %10s %16s %10s %10s\n", "SPID", "SNAME", "RPID", "RNAME",
-			"SIGNUM", "SIGNAME");
-	while (1) {
-		do_dump();
-		sleep(interval);
-	}
-}
-
 static void do_sls(char *arg)
 {
 	int ret;
 	int len;
-	static char variant_buf[1024 * 1024];
+	static char variant_buf[20 * 1024 * 1024];
 	struct diag_ioctl_dump_param dump_param = {
 		.user_ptr_len = &len,
-		.user_buf_len = 1024 * 1024,
+		.user_buf_len = 20 * 1024 * 1024,
 		.user_buf = variant_buf,
 	};
 
@@ -351,7 +305,7 @@ int sig_info_main(int argc, char **argv)
 			do_settings(optarg ? optarg : "");
 			break;
 		case 4:
-			do_loop_dump(optarg ? optarg : "");
+			do_dump(optarg ? optarg : "");
 			break;
 		case 5:
 			do_sls(optarg);
