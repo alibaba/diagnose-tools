@@ -164,11 +164,18 @@ static int sig_info_extract(void *buf, unsigned int len, void *)
 				detail->task.container_tgid,
 				detail->task.comm,
 				&detail->user_stack, 0);
-		printf("#*        0xffffffffffffff SIG:%d (UNKNOWN)\n",
-				signum);
 		printf("#*        0xffffffffffffff %s (UNKNOWN)\n",
 				detail->task.comm);
 		diag_printf_proc_chains(&detail->proc_chains);
+		printf("#*        0xffffffffffffff SIG:%d (UNKNOWN)\n",
+				signum);
+				printf("#*        0xffffffffffffff TASK:[%s / %d / %d] (UNKNOWN)\n",
+				detail->receive_task.comm,
+				detail->task.tgid,
+				detail->task.container_tgid
+				);
+		printf("#*        0xffffffffffffff CGROUP:[%s] (UNKNOWN)\n",
+				detail->receive_task.cgroup_buf);
 		printf("##\n");
 		break;
 	default:
