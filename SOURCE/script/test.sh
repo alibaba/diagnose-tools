@@ -269,7 +269,9 @@ net_bandwidth() {
 }
 
 sig_info() {
-	eval "$DIAG_CMD sig-info --deactivate --activate --report --settings"
+	eval "$DIAG_CMD sig-info --deactivate --activate --settings"
+	sleep 1
+	eval "$DIAG_CMD sig-info --report"
 }
 
 call_sub_cmd() {
