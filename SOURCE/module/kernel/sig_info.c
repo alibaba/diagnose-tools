@@ -62,7 +62,9 @@ static void inspect_signal(int signum, const struct task_struct *rtask)
 	perf->et_type = et_sig_info_perf;
 	perf->id = 0;
 	perf->seq = 0;
+	perf->sig = signum;
 	do_gettimeofday(&perf->tv);
+	diag_task_brief(rtask, &perf->receive_task);
 	diag_task_brief(current, &perf->task);
 	diag_task_kern_stack(current, &perf->kern_stack);
 	diag_task_user_stack(current, &perf->user_stack);
