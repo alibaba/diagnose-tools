@@ -569,12 +569,12 @@ int str_to_cpumask(char *cpus, struct cpumask *cpumask)
 
 void cpumask_to_str(struct cpumask *cpumask, char *buf, int len)
 {
-#if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
+#if KERNEL_VERSION(4, 4, 0) <= LINUX_VERSION_CODE
 	snprintf(buf, len, "%*pbl", cpumask_pr_args(cpumask));
 #else
-    bitmap_scnlistprintf(buf, len,
-        cpumask_bits(cpumask), nr_cpu_ids);
-    buf[len - 1] = 0;
+	bitmap_scnlistprintf(buf, len,
+		cpumask_bits(cpumask), nr_cpu_ids);
+	buf[len - 1] = 0;
 #endif
 }
 void record_dump_cmd(char *func)

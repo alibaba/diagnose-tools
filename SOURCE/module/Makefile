@@ -4,6 +4,7 @@
 
 DIAG_EXTRA_CFLAGS := -DMODULE
 
+ARCH := $(shell uname -i)
 UNAME := $(shell uname -r)
 ifeq ($(KERNEL_BUILD_PATH),)
 	KERNEL_BUILD_PATH := /lib/modules/$(UNAME)/build
@@ -108,6 +109,9 @@ endif
 ifneq ($(findstring alios7.aarch64,$(KERNEL_BUILD_PATH)),)
 	DIAG_EXTRA_CFLAGS += -DDIAG_ARM64
 endif
+ifneq ($(findstring aarch64,$(ARCH)),)
+	DIAG_EXTRA_CFLAGS += -DDIAG_ARM64
+endif
 
 #ifneq ($(findstring 3.10.0-957.el7.x86_64,$(KERNEL_BUILD_PATH)),)
 #	DIAG_EXTRA_CFLAGS += -DCENTOS_3_10_957 -DCENTOS_7U
@@ -150,6 +154,10 @@ ifneq ($(findstring 4.15.0-112-generic,$(KERNEL_BUILD_PATH)),)
 endif
 
 ifneq ($(findstring 4.4.0-93-generic,$(KERNEL_BUILD_PATH)),)
+	DIAG_EXTRA_CFLAGS += -DUBUNTU_1604
+endif
+
+ifneq ($(findstring 4.4.38+,$(KERNEL_BUILD_PATH)),)
 	DIAG_EXTRA_CFLAGS += -DUBUNTU_1604
 endif
 
