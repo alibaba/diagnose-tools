@@ -91,11 +91,27 @@ static int trace_signal_generate_hit(int sig,
 		int group)
 #endif
 {
-	if (!sig_info_settings.activated)
-		return 0;
-
-	inspect_signal(sig, task);
-
+	if(strlen(sig_info_settings.signum) != 0)
+	{
+		DECLARE_BITMAP(bmap1, 2048);
+		DECLARE_BITMAP(bmap2, 2048);
+		char sig_kernel[100];
+		if (!sig_info_settings.activated)
+			return 0;
+		
+		sprintf(sig_kernel,"%d",sig);
+		if (bitmap_parselist(sig_kernel, bmap1, 64) || bitmap_parselist(sig_info_settings.signum, bmap2, 64)){
+			pr_err("parse failed \n");
+			return 0;
+		}	
+		if(bitmap_and(bmap1, bmap1, bmap2, 64))
+			inspect_signal(sig, task);
+	}
+	else{
+		if (!sig_info_settings.activated)
+			return 0;
+		inspect_signal(sig, task);
+	}	
 	return 0;
 }
 
