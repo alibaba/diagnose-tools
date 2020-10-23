@@ -32,7 +32,14 @@ extern void (*orig___show_regs)(struct pt_regs *regs, int all);
 extern struct list_head *orig_ptype_all;
 
 #if !defined(DIAG_ARM64)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 2, 0) || defined(CENTOS_4_18_193)
+extern unsigned int (*orig_stack_trace_save_tsk)(struct task_struct *task,
+				  unsigned long *store, unsigned int size,
+				  unsigned int skipnr);
+extern unsigned int (*orig_stack_trace_save_user)(unsigned long *store, unsigned int size);
+#else
 extern void (*orig_save_stack_trace_user)(struct stack_trace *trace);
+#endif
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)

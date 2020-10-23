@@ -51,7 +51,7 @@ void diag_mutex_exit(void)
 {
 }
 #else
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0) || defined(CENTOS_8U)
 /*
  * Optimistic trylock that only works in the uncontended case. Make sure to
  * follow with a __mutex_trylock() before failing.

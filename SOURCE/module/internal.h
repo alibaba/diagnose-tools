@@ -705,9 +705,11 @@ int diag_copy_stack_frame(struct task_struct *tsk,
 	void *frame,
 	unsigned int size);
 
-#if KERNEL_VERSION(5, 0, 0) <= LINUX_VERSION_CODE
+#if KERNEL_VERSION(5, 0, 0) <= LINUX_VERSION_CODE || defined(CENTOS_8U)
 #define synchronize_sched synchronize_rcu
+#endif
 
+#if KERNEL_VERSION(5, 0, 0) <= LINUX_VERSION_CODE
 static inline void do_gettimeofday(struct timeval *tv)
 {
 	struct timespec64 ts;

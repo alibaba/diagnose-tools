@@ -82,7 +82,7 @@ copy_stack_frame(const void __user *fp, struct stackframe *frame)
 	int ret = 0;
 	unsigned long data[2];
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0) && !(defined(CENTOS_8U))
 	if (!access_ok(VERIFY_READ, fp, sizeof(*frame)))
 #else
 	if (!access_ok(fp, sizeof(*frame)))
@@ -489,7 +489,7 @@ copy_stack_frame(const void __user *fp, struct stack_frame_user *frame)
 {
 	int ret;
 
-#if KERNEL_VERSION(5, 0, 0) >= LINUX_VERSION_CODE
+#if KERNEL_VERSION(5, 0, 0) >= LINUX_VERSION_CODE && !(defined(CENTOS_8U))
 	if (!access_ok(VERIFY_READ, fp, sizeof(*frame)))
 		return 0;
 #endif

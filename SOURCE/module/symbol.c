@@ -29,7 +29,14 @@ struct list_head *orig_ptype_all;
 
 void (*orig___show_regs)(struct pt_regs *regs, int all);
 #if !defined(DIAG_ARM64)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 2, 0) || defined(CENTOS_4_18_193)
+unsigned int (*orig_stack_trace_save_tsk)(struct task_struct *task,
+                                  unsigned long *store, unsigned int size,
+                                  unsigned int skipnr);
+unsigned int (*orig_stack_trace_save_user)(unsigned long *store, unsigned int size);
+#else
 void (*orig_save_stack_trace_user)(struct stack_trace *trace);
+#endif
 #endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
 void (*orig___do_page_fault)(struct pt_regs *regs,
@@ -111,7 +118,7 @@ static int lookup_syms(void)
 #else
 	LOOKUP_SYMS(text_poke_bp);
 #endif /* LINUX_VERSION_CODE */
-#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 0, 0)
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 0, 0) || defined(CENTOS_4_18_193)
 	LOOKUP_SYMS(stack_trace_save_tsk);
 	LOOKUP_SYMS(stack_trace_save_user);
 #else
