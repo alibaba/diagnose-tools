@@ -44,7 +44,7 @@ static void clean_data(void)
 	//
 }
 
-static void inspect_signal(int signum, const struct task_struct *rtask)
+static void inspect_signal(int signum, struct task_struct *rtask)
 {
 	struct task_struct *stask = current;
 	unsigned long flags;

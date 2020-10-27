@@ -18,6 +18,25 @@ ifeq ($(EXPERIENTIAL),1)
 	DIAG_EXTRA_CFLAGS += -DEXPERIENTIAL
 endif
 
+ifneq ($(findstring el8,$(KERNEL_BUILD_PATH)),)
+	DIAG_EXTRA_CFLAGS += -DCENTOS_8U
+
+	ifneq ($(findstring 4.18.0-80,$(KERNEL_BUILD_PATH)),)
+		DIAG_EXTRA_CFLAGS += -DCENTOS_4_18_80
+	endif
+
+	ifneq ($(findstring 4.18.0-147,$(KERNEL_BUILD_PATH)),)
+		DIAG_EXTRA_CFLAGS += -DCENTOS_4_18_147
+	endif
+
+	ifneq ($(findstring 4.18.0-193,$(KERNEL_BUILD_PATH)),)
+		DIAG_EXTRA_CFLAGS += -DCENTOS_4_18_193
+	endif
+#	ifneq ($(findstring 4.18.0-193.19.1.el8_2.x86_64,$(KERNEL_BUILD_PATH)),)
+#		DIAG_EXTRA_CFLAGS += -DCENTOS_4_18_193_19_1
+#	endif
+endif
+
 ifneq ($(findstring el7.x86_64,$(KERNEL_BUILD_PATH)),)
 	DIAG_EXTRA_CFLAGS += -DCENTOS_7U
 

@@ -85,7 +85,7 @@ int diag_unregister_cb_sys_enter(cb_sys_enter cb, void *data)
 	up_write(&sys_enter_sem);
 
 	if (found) {
-#if KERNEL_VERSION(5, 0, 0) <= LINUX_VERSION_CODE
+#if KERNEL_VERSION(5, 0, 0) <= LINUX_VERSION_CODE || defined(CENTOS_8U)
 		synchronize_rcu();
 #else
 		synchronize_sched();
