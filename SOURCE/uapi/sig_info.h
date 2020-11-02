@@ -101,6 +101,7 @@ struct diag_sig_info_settings {
 	unsigned int activated;
 	unsigned long spid;
 	unsigned long rpid;
+	char     signum[521];
 };
 
 struct sig_info_detail {

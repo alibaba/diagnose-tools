@@ -36,6 +36,7 @@ void usage_sig_info(void)
 	printf("        --activate\n");
 	printf("            spid set pid of send process if you want monitor specify pid\n");
 	printf("            rpid set pid of receive process if you want monitor specify pid\n");
+	printf("            signum set signal num you want to monitor(eg:9,15/9-18),or monitor all sig if signum is not set \n");
 	printf("        --deactivate\n");
 	printf("        --report dump log with text.\n");
 	printf("          interval=1 loop second\n");
@@ -55,6 +56,11 @@ static void do_activate(const char *arg)
 
 	settings.spid = parse.int_value("spid");
 	settings.rpid = parse.int_value("rpid");
+	str = parse.string_value("signum");
+        if (str.length() > 0) {
+                strncpy(settings.signum, str.c_str(), 512);
+                settings.signum[511] = 0;
+        }
 
 	if (run_in_host) {
 		ret = diag_call_ioctl(DIAG_IOCTL_SIG_INFO_SET, (long)&settings);
@@ -66,6 +72,7 @@ static void do_activate(const char *arg)
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
 	printf("    发送信号进程PID：\t%ld\n", settings.spid);
 	printf("    接收信号进程PID：\t%ld\n", settings.rpid);
+	printf("    监控信号编号：\t%s\n", settings.signum);
 
 	if (ret)
 		return;
