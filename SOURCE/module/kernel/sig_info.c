@@ -28,6 +28,7 @@
 #include <linux/cpu.h>
 #include <net/xfrm.h>
 #include <linux/inetdevice.h>
+#include <linux/bitmap.h>
 
 #include "internal.h"
 #include "mm_tree.h"
@@ -44,19 +45,29 @@ static void clean_data(void)
 	//
 }
 
+static int need_trace(int signum, struct task_struct *rtask)
+{
+	unsigned long bit = signum - 1;
+
+	if (!sig_info_settings.activated)
+		return 0;
+
+	if (sig_info_settings.tgid && rtask->tgid != sig_info_settings.tgid)
+		return 0;
+
+	if (bit >= 64)
+		return 0;
+
+	if (!test_bit(bit, sig_info_settings.sig_bitmap))
+		return 0;
+
+	return 1;
+}
+
 static void inspect_signal(int signum, struct task_struct *rtask)
 {
-	struct task_struct *stask = current;
 	unsigned long flags;
 	struct sig_info_detail *detail;
-
-	if (sig_info_settings.spid > 0 && stask->tgid != sig_info_settings.spid) {
-		return;
-	}
-
-	if (sig_info_settings.rpid > 0 && rtask->tgid != sig_info_settings.rpid) {
-		return;
-	}
 
 	detail = &diag_percpu_context[smp_processor_id()]->sig_info.detail;
 	detail->et_type = et_sig_info_detail;
@@ -78,41 +89,23 @@ static void inspect_signal(int signum, struct task_struct *rtask)
 }
 
 #if KERNEL_VERSION(4, 19, 0) <= LINUX_VERSION_CODE
-static int trace_signal_generate_hit(void *ignore, int sig,
+static void trace_signal_generate_hit(void *ignore, int sig,
 		struct siginfo *info, struct task_struct *task,
 		int type, int result)
 #elif KERNEL_VERSION(3, 10, 0) <= LINUX_VERSION_CODE
-static int trace_signal_generate_hit(void *ignore, int sig,
+static void trace_signal_generate_hit(void *ignore, int sig,
 		struct siginfo *info, struct task_struct *task,
 		int group, int result)
 #else
-static int trace_signal_generate_hit(int sig,
+static void trace_signal_generate_hit(int sig,
 		struct siginfo *info, struct task_struct *task,
 		int group)
 #endif
 {
-	if(strlen(sig_info_settings.signum) != 0)
-	{
-		DECLARE_BITMAP(bmap1, 2048);
-		DECLARE_BITMAP(bmap2, 2048);
-		char sig_kernel[100];
-		if (!sig_info_settings.activated)
-			return 0;
-		
-		sprintf(sig_kernel,"%d",sig);
-		if (bitmap_parselist(sig_kernel, bmap1, 64) || bitmap_parselist(sig_info_settings.signum, bmap2, 64)){
-			pr_err("parse failed \n");
-			return 0;
-		}	
-		if(bitmap_and(bmap1, bmap1, bmap2, 64))
-			inspect_signal(sig, task);
-	}
-	else{
-		if (!sig_info_settings.activated)
-			return 0;
-		inspect_signal(sig, task);
-	}	
-	return 0;
+	if (!need_trace(sig, task))
+		return;
+
+	inspect_signal(sig, task);
 }
 
 static int __activate_sig_info(void)
@@ -171,7 +164,7 @@ int sig_info_syscall(struct pt_regs *regs, long id)
 	size_t __user user_buf_len;
 	void __user *user_buf;
 	int ret = 0;
-	struct diag_sig_info_settings settings;
+	static struct diag_sig_info_settings settings;
 
 	switch (id) {
 	case DIAG_SIG_INFO_SET:
@@ -183,8 +176,13 @@ int sig_info_syscall(struct pt_regs *regs, long id)
 		} else if (sig_info_settings.activated) {
 			ret = -EBUSY;
 		} else {
+			char *sigs = "0-63";
+
 			ret = copy_from_user(&settings, user_buf, user_buf_len);
 			if (!ret) {
+				if (strnlen(settings.signum, 256) > 0)
+					sigs = settings.signum;
+				str_to_bitmaps(sigs, settings.sig_bitmap, 64);
 				sig_info_settings = settings;
 			}
 		}
@@ -196,7 +194,8 @@ int sig_info_syscall(struct pt_regs *regs, long id)
 		if (user_buf_len != sizeof(struct diag_sig_info_settings)) {
 			ret = -EINVAL;
 		} else {
-			settings.activated = sig_info_settings.activated;
+			settings = sig_info_settings;
+			bitmap_to_str(settings.sig_bitmap, 64, settings.signum, 255);
 			ret = copy_to_user(user_buf, &settings, user_buf_len);
 		}
 		break;
@@ -232,14 +231,20 @@ long diag_ioctl_sig_info(unsigned int cmd, unsigned long arg)
 		if (sig_info_settings.activated) {
 			ret = -EBUSY;
 		} else {
+			char *sigs = "0-63";
+
 			ret = copy_from_user(&settings, (void *)arg, sizeof(struct diag_sig_info_settings));
 			if (!ret) {
+				if (strnlen(settings.signum, 256) > 0)
+					sigs = settings.signum;
+				str_to_bitmaps(sigs, settings.sig_bitmap, 64);
 				sig_info_settings = settings;
 			}
 		}
 		break;
 	case CMD_SIG_INFO_SETTINGS:
-		settings.activated = sig_info_settings.activated;
+		settings = sig_info_settings;
+		bitmap_to_str(settings.sig_bitmap, 64, settings.signum, 255);
 		ret = copy_to_user((void *)arg, &settings, sizeof(struct diag_sig_info_settings));
 		break;
 	case CMD_SIG_INFO_DUMP:

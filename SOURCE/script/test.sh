@@ -269,7 +269,7 @@ net_bandwidth() {
 }
 
 sig_info() {
-	eval "$DIAG_CMD sig-info --deactivate --activate --settings"
+	eval "$DIAG_CMD sig-info --deactivate --activate='signum=9,11' --settings"
 	sleep 1
 	eval "$DIAG_CMD sig-info --report"
 }

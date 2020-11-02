@@ -782,6 +782,8 @@ void cb_sys_enter_sys_cost(void *__data, struct pt_regs *regs, long id);
 
 int str_to_cpumask(char *cpus, struct cpumask *cpumask);
 void cpumask_to_str(struct cpumask *cpumask, char *buf, int len);
+int str_to_bitmaps(char *bits, unsigned long *bitmap, int nr);
+void bitmap_to_str(unsigned long *bitmap, int nr, char *buf, int len);
 
 int activate_ping_delay(void);
 int deactivate_ping_delay(void);

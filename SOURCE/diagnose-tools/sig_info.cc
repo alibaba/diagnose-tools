@@ -34,8 +34,7 @@ void usage_sig_info(void)
 	printf("    sig-info usage:\n");
 	printf("        --help sig-info help info\n");
 	printf("        --activate\n");
-	printf("            spid set pid of send process if you want monitor specify pid\n");
-	printf("            rpid set pid of receive process if you want monitor specify pid\n");
+	printf("            tgid set pid of receive process if you want monitor specify pid\n");
 	printf("            signum set signal num you want to monitor(eg:9,15/9-18),or monitor all sig if signum is not set \n");
 	printf("        --deactivate\n");
 	printf("        --report dump log with text.\n");
@@ -54,12 +53,11 @@ static void do_activate(const char *arg)
 
 	memset(&settings, 0, sizeof(struct diag_sig_info_settings));
 
-	settings.spid = parse.int_value("spid");
-	settings.rpid = parse.int_value("rpid");
+	settings.tgid = parse.int_value("tgid");
 	str = parse.string_value("signum");
         if (str.length() > 0) {
-                strncpy(settings.signum, str.c_str(), 512);
-                settings.signum[511] = 0;
+            strncpy(settings.signum, str.c_str(), 255);
+        	settings.signum[255] = 0;
         }
 
 	if (run_in_host) {
@@ -70,8 +68,7 @@ static void do_activate(const char *arg)
 	}
 
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
-	printf("    发送信号进程PID：\t%ld\n", settings.spid);
-	printf("    接收信号进程PID：\t%ld\n", settings.rpid);
+	printf("    接收信号进程PID：\t%ld\n", settings.tgid);
 	printf("    监控信号编号：\t%s\n", settings.signum);
 
 	if (ret)
@@ -104,8 +101,7 @@ static void print_settings_in_json(struct diag_sig_info_settings *settings, int 
 
 	if (ret == 0) {
 		root["activated"] = Json::Value(settings->activated);
-		root["spid"] = Json::Value(settings->spid);
-		root["rpid"] = Json::Value(settings->rpid);
+		root["tgid"] = Json::Value(settings->tgid);
 	} else {
 		root["err"] = Json::Value("found sig-info settings failed, please check if diagnose-tools is installed correctly or not.");
 	}
@@ -138,8 +134,8 @@ static void do_settings(const char *arg)
 	if (ret == 0) {
 		printf("功能设置：\n");
 		printf("    是否激活：%s\n", settings.activated ? "√" : "×");
-		printf("    发送信号进程PID：%ld\n", settings.spid);
-		printf("    接收信号进程PID：%ld\n", settings.rpid);
+		printf("    接收信号进程PID：%ld\n", settings.tgid);
+		printf("    监控信号编号：\t%s\n", settings.signum);
 	} else {
 		printf("获取sig-info设置失败，请确保正确安装了diagnose-tools工具\n");
 	}
