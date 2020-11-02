@@ -55,7 +55,7 @@ static int need_trace(int signum, struct task_struct *rtask)
 	if (sig_info_settings.tgid && rtask->tgid != sig_info_settings.tgid)
 		return 0;
 
-	if (bit >= 64)
+	if (bit > 64)
 		return 0;
 
 	if (!test_bit(bit, sig_info_settings.sig_bitmap))
