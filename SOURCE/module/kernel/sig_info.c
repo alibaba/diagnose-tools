@@ -47,7 +47,7 @@ static void clean_data(void)
 
 static int need_trace(int signum, struct task_struct *rtask)
 {
-	unsigned long bit = signum - 1;
+	unsigned long bit = signum;
 
 	if (!sig_info_settings.activated)
 		return 0;
@@ -176,7 +176,7 @@ int sig_info_syscall(struct pt_regs *regs, long id)
 		} else if (sig_info_settings.activated) {
 			ret = -EBUSY;
 		} else {
-			char *sigs = "0-63";
+			char *sigs = "1-64";
 
 			ret = copy_from_user(&settings, user_buf, user_buf_len);
 			if (!ret) {
@@ -231,7 +231,7 @@ long diag_ioctl_sig_info(unsigned int cmd, unsigned long arg)
 		if (sig_info_settings.activated) {
 			ret = -EBUSY;
 		} else {
-			char *sigs = "0-63";
+			char *sigs = "1-64";
 
 			ret = copy_from_user(&settings, (void *)arg, sizeof(struct diag_sig_info_settings));
 			if (!ret) {

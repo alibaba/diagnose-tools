@@ -101,7 +101,7 @@ struct diag_sig_info_settings {
 	unsigned int activated;
 	unsigned long tgid;
 	char     signum[256];
-    signed long sig_bitmap[64 / sizeof(unsigned long)];
+    signed long sig_bitmap[128 / sizeof(unsigned long)];
 };
 
 struct sig_info_detail {
