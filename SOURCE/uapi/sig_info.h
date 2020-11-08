@@ -99,29 +99,22 @@ enum DIAG_SIGNAL {
 
 struct diag_sig_info_settings {
 	unsigned int activated;
-	unsigned long spid;
-	unsigned long rpid;
-	unsigned int perf;
+	unsigned long tgid;
+	char     signum[256];
+    signed long sig_bitmap[128 / sizeof(unsigned long)];
 };
 
 struct sig_info_detail {
 	int et_type;
-	int signum;
-	unsigned long spid;
-	unsigned long rpid;
-	char scomm[TASK_COMM_LEN];
-	char rcomm[TASK_COMM_LEN];
-};
-
-struct sig_info_perf {
-	int et_type;
 	unsigned long id;
 	unsigned long seq;
+    unsigned long sig;
 	struct timeval tv;
 	struct diag_proc_chains_detail proc_chains;
 	struct diag_task_detail task;
 	struct diag_kern_stack_detail kern_stack;
 	struct diag_user_stack_detail user_stack;
+    struct diag_task_detail receive_task;
 };
 
 #define CMD_SIG_INFO_SET (0)

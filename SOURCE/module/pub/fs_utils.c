@@ -11,7 +11,7 @@
 
 #include <linux/fdtable.h>
 #include <linux/version.h>
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
 #include <linux/sched/task.h>
 #include <linux/sched/mm.h>
 #endif

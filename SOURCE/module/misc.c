@@ -569,14 +569,31 @@ int str_to_cpumask(char *cpus, struct cpumask *cpumask)
 
 void cpumask_to_str(struct cpumask *cpumask, char *buf, int len)
 {
-#if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
+#if KERNEL_VERSION(4, 4, 0) <= LINUX_VERSION_CODE
 	snprintf(buf, len, "%*pbl", cpumask_pr_args(cpumask));
 #else
-    bitmap_scnlistprintf(buf, len,
-        cpumask_bits(cpumask), nr_cpu_ids);
-    buf[len - 1] = 0;
+	bitmap_scnlistprintf(buf, len,
+		cpumask_bits(cpumask), nr_cpu_ids);
+	buf[len - 1] = 0;
 #endif
 }
+
+int str_to_bitmaps(char *bits, unsigned long *bitmap, int nr)
+{
+	return bitmap_parselist(bits, bitmap, nr);
+}
+
+void bitmap_to_str(unsigned long *bitmap, int nr, char *buf, int len)
+{
+#if KERNEL_VERSION(4, 4, 0) <= LINUX_VERSION_CODE
+	snprintf(buf, len, "%*pbl", nr, bitmap);
+#else
+	bitmap_scnlistprintf(buf, len,
+		bitmap, nr);
+	buf[len - 1] = 0;
+#endif
+}
+
 void record_dump_cmd(char *func)
 {
 	printk_ratelimited(KERN_INFO "diagnose-tools: dump %s\n", func);

@@ -1,9 +1,10 @@
 
 CWD = $(shell pwd)
+ARCH := $(shell uname -i)
 UNAME_A := $(shell uname -a)
 
 all: module tools java_agent pkg
-ifneq ($(findstring Ubuntu,$(UNAME_A)),)
+ifneq ($(findstring Ubuntu,$(UNAME_A) $(shell test -e /etc/os-release && head -1 /etc/os-release)),)
 	dpkg -P diagnose-tools || echo "remove diagnose-tools error"
 	cd rpmbuild; sudo dpkg -i diagnose-tools*.deb
 else
@@ -13,7 +14,8 @@ else
 endif
 
 devel:
-ifneq ($(findstring Ubuntu,$(UNAME_A)),)
+ifneq ($(findstring Ubuntu,$(UNAME_A) $(shell test -e /etc/os-release && head -1 /etc/os-release)),)
+	apt update
 	apt -y install gcc
 	apt -y install g++
 	apt -y install libunwind8-dev
@@ -24,6 +26,7 @@ ifneq ($(findstring Ubuntu,$(UNAME_A)),)
 	apt -y install bash-completion # git自动补全
 	apt install openjdk-8-jdk
 else
+	yum check-update
 	yum install -y libstdc++-static
 	yum install -y glibc-static
 	yum install -y zlib-devel
@@ -62,10 +65,14 @@ java_agent:
 pkg:
 	cd rpmbuild; sh rpmbuild.sh
 	ls rpmbuild/RPMS/*/*
-ifneq ($(findstring Ubuntu,$(UNAME_A)),)
+ifneq ($(findstring Ubuntu,$(UNAME_A) $(shell test -e /etc/os-release && head -1 /etc/os-release)),)
 	#sudo dpkg-reconfigure dash !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	cd rpmbuild; rm -f diagnose-tools*.deb
+ifneq ($(findstring aarch64,$(ARCH)),)
+	cd rpmbuild; sudo alien -d --target=arm64 ./RPMS/aarch64/diagnose-tools*.rpm
+else
 	cd rpmbuild; sudo alien -d ./RPMS/x86_64/diagnose-tools*.rpm
+endif
 endif
 
 test:

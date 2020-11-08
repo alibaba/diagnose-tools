@@ -76,7 +76,9 @@ static inline void __percpu_counter_add(struct percpu_counter *fbc,
 
 #define __SC_DECL(t, a)	t a
 #define __MAP0(m,...)
+#ifndef __MAP1
 #define __MAP1(m,t,a,...) m(t,a)
+#endif
 #define __MAP2(m,t,a,...) m(t,a), __MAP1(m,__VA_ARGS__)
 #define __MAP3(m,t,a,...) m(t,a), __MAP2(m,__VA_ARGS__)
 #define __MAP4(m,t,a,...) m(t,a), __MAP3(m,__VA_ARGS__)
@@ -451,7 +453,7 @@ struct diag_percpu_context {
 	} exec_monitor;
 
 	struct {
-		struct sig_info_perf perf;
+		struct sig_info_detail detail;
 	} sig_info;
 };
 
@@ -703,9 +705,11 @@ int diag_copy_stack_frame(struct task_struct *tsk,
 	void *frame,
 	unsigned int size);
 
-#if KERNEL_VERSION(5, 0, 0) <= LINUX_VERSION_CODE
+#if KERNEL_VERSION(5, 0, 0) <= LINUX_VERSION_CODE || defined(CENTOS_8U)
 #define synchronize_sched synchronize_rcu
+#endif
 
+#if KERNEL_VERSION(5, 0, 0) <= LINUX_VERSION_CODE
 static inline void do_gettimeofday(struct timeval *tv)
 {
 	struct timespec64 ts;
@@ -778,6 +782,8 @@ void cb_sys_enter_sys_cost(void *__data, struct pt_regs *regs, long id);
 
 int str_to_cpumask(char *cpus, struct cpumask *cpumask);
 void cpumask_to_str(struct cpumask *cpumask, char *buf, int len);
+int str_to_bitmaps(char *bits, unsigned long *bitmap, int nr);
+void bitmap_to_str(unsigned long *bitmap, int nr, char *buf, int len);
 
 int activate_ping_delay(void);
 int deactivate_ping_delay(void);

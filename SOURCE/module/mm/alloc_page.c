@@ -23,6 +23,7 @@
 #include <linux/init.h>
 #include <linux/tracepoint.h>
 #include <linux/proc_fs.h>
+#include <linux/gfp.h>
 #include <trace/events/napi.h>
 
 #include "internal.h"
@@ -37,7 +38,7 @@ static u64 alloc_page_test(unsigned int order)
 
 	time_start = ktime_get();
 
-	ret = alloc_pages_current(GFP_KERNEL, order);
+	ret = alloc_pages(GFP_KERNEL, order);
 	if (!ret)
 		return 0;
 

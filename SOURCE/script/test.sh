@@ -111,7 +111,11 @@ perf() {
 
 	eval "$DIAG_CMD perf --deactivate --activate='style=0 idle=1 bvt=1'"
 	sleep 1
-	eval "$DIAG_CMD perf --report --deactivate"
+	eval "$DIAG_CMD perf --report"
+	sleep 1
+	eval "$DIAG_CMD perf --report='out=perf.out'"
+	eval "$DIAG_CMD perf --report='in=perf.out'"
+	eval "$DIAG_CMD perf --deactivate"
 }
 
 kprobe() {
@@ -265,7 +269,9 @@ net_bandwidth() {
 }
 
 sig_info() {
-	eval "$DIAG_CMD sig-info --deactivate --activate --report --settings"
+	eval "$DIAG_CMD sig-info --deactivate --activate='signum=9,11' --settings"
+	sleep 1
+	eval "$DIAG_CMD sig-info --report"
 }
 
 call_sub_cmd() {
