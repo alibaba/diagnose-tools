@@ -100,6 +100,7 @@ enum DIAG_SIGNAL {
 struct diag_sig_info_settings {
 	unsigned int activated;
 	unsigned long tgid;
+	char     comm[TASK_COMM_LEN];
 	char     signum[256];
     signed long sig_bitmap[128 / sizeof(unsigned long)];
 };
@@ -108,7 +109,7 @@ struct sig_info_detail {
 	int et_type;
 	unsigned long id;
 	unsigned long seq;
-    unsigned long sig;
+	unsigned long sig;
 	struct timeval tv;
 	struct diag_proc_chains_detail proc_chains;
 	struct diag_task_detail task;
