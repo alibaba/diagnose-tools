@@ -23,6 +23,7 @@ extern unsigned long (*__kallsyms_lookup_name)(const char *name);
 #if defined(DIAG_ARM64)
 extern void (*orig___flush_dcache_area)(void *addr, size_t len);
 extern int (*orig_aarch64_insn_patch_text)(void *addrs[], u32 insns[], int cnt);
+extern void (*orig_save_stack_trace_tsk)(struct task_struct *tsk, struct stack_trace *trace);
 #else
 extern void *(*orig_text_poke_smp)(void *, const void *, size_t);
 extern void *(*orig_text_poke_bp)(void *addr, const void *opcode, size_t len, void *handler);
