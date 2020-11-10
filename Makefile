@@ -24,7 +24,7 @@ ifneq ($(findstring Ubuntu,$(UNAME_A) $(shell test -e /etc/os-release && head -1
 	apt -y install rpm
 	apt -y install alien
 	apt -y install bash-completion # git自动补全
-	apt install openjdk-8-jdk
+	apt -y install --no-install-recommends openjdk-8-jdk
 else
 	yum check-update
 	yum install -y libstdc++-static
