@@ -255,7 +255,7 @@ static void __diagnose_print_stack_trace(int pre, enum diag_printk_type type, vo
 	memset(backtrace, 0, BACKTRACE_DEPTH * sizeof(unsigned long));
 	trace.max_entries = BACKTRACE_DEPTH;
 	trace.entries = backtrace;
-	save_stack_trace_tsk(p, &trace);
+	orig_save_stack_trace_tsk(p, &trace);
 #endif
 
 	for (i = 0; i < BACKTRACE_DEPTH; i++) {
@@ -365,7 +365,7 @@ static void __diagnose_print_stack_trace_unfold(int pre, enum diag_printk_type t
 	memset(backtrace, 0, BACKTRACE_DEPTH * sizeof(unsigned long));
 	trace.max_entries = BACKTRACE_DEPTH;
 	trace.entries = backtrace;
-	save_stack_trace_tsk(p, &trace);
+	orig_save_stack_trace_tsk(p, &trace);
 #endif
 
 	for (i = 0; i < BACKTRACE_DEPTH; i++) {
@@ -474,7 +474,7 @@ void diagnose_save_stack_trace(struct task_struct *tsk, unsigned long *backtrace
 	memset(backtrace, 0, BACKTRACE_DEPTH * sizeof(unsigned long));
 	trace.max_entries = BACKTRACE_DEPTH;
 	trace.entries = backtrace;
-	save_stack_trace_tsk(tsk, &trace);
+	orig_save_stack_trace_tsk(tsk, &trace);
 #endif
 }
 

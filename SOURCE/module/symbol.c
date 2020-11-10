@@ -19,6 +19,7 @@ rwlock_t *orig_tasklist_lock;
 #if defined(DIAG_ARM64)
 void (*orig___flush_dcache_area)(void *addr, size_t len);
 int (*orig_aarch64_insn_patch_text)(void *addrs[], u32 insns[], int cnt);
+void (*orig_save_stack_trace_tsk)(struct task_struct *tsk, struct stack_trace *trace);
 #else
 void *(*orig_text_poke_smp)(void *, const void *, size_t);
 void *(*orig_text_poke_bp)(void *addr, const void *opcode,
@@ -112,6 +113,7 @@ static int lookup_syms(void)
 #if defined(DIAG_ARM64)
 	LOOKUP_SYMS(__flush_dcache_area);
 	LOOKUP_SYMS(aarch64_insn_patch_text);
+	LOOKUP_SYMS(save_stack_trace_tsk);
 #else
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,12,0)
 	LOOKUP_SYMS(text_poke_smp);
