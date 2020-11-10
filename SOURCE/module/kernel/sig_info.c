@@ -61,6 +61,14 @@ static int need_trace(int signum, struct task_struct *rtask)
 	if (!test_bit(bit, sig_info_settings.sig_bitmap))
 		return 0;
 
+	if (sig_info_settings.comm[0]) {
+		struct task_struct *leader = rtask->group_leader ?
+				rtask->group_leader : rtask;
+
+		if (!strstr(leader->comm, sig_info_settings.comm))
+			return 0;
+	}
+
 	return 1;
 }
 
