@@ -16,10 +16,10 @@
 struct mutex *orig_text_mutex;
 rwlock_t *orig_tasklist_lock;
 
+void (*orig_save_stack_trace_tsk)(struct task_struct *tsk, struct stack_trace *trace);
 #if defined(DIAG_ARM64)
 void (*orig___flush_dcache_area)(void *addr, size_t len);
 int (*orig_aarch64_insn_patch_text)(void *addrs[], u32 insns[], int cnt);
-void (*orig_save_stack_trace_tsk)(struct task_struct *tsk, struct stack_trace *trace);
 #else
 void *(*orig_text_poke_smp)(void *, const void *, size_t);
 void *(*orig_text_poke_bp)(void *addr, const void *opcode,
