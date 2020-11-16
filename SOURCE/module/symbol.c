@@ -26,6 +26,9 @@ void *(*orig_text_poke_bp)(void *addr, const void *opcode,
 		size_t len, void *handler);
 #endif
 
+#if defined(CENTOS_8U)
+void (*orig_save_stack_trace_tsk)(struct task_struct *tsk, struct stack_trace *trace);
+#endif
 struct list_head *orig_ptype_all;
 
 void (*orig___show_regs)(struct pt_regs *regs, int all);
@@ -127,6 +130,10 @@ static int lookup_syms(void)
 	LOOKUP_SYMS(save_stack_trace_user);
 #endif
 #endif /* DIAG_ARM64 */
+
+#if defined(CENTOS_8U)
+	LOOKUP_SYMS(save_stack_trace_tsk);
+#endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
 	orig_runqueues = (void *)__kallsyms_lookup_name("per_cpu__runqueues");
