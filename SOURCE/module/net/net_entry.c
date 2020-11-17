@@ -99,5 +99,5 @@ void diag_net_exit(void)
 	diag_net_packet_corruption_exit();
 	diag_net_redis_ixgbe_exit();
 	diag_net_net_bandwidth_exit();
-	//remove_proc_entry("ali-linux/diagnose/net", NULL);
+	remove_proc_entry("ali-linux/diagnose/net", NULL);
 }

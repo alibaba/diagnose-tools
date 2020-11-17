@@ -87,6 +87,6 @@ void diag_mm_exit(void)
 	diag_memory_leak_exit();
 	diag_mm_page_fault_exit();
 	diag_alloc_top_exit();
-    //remove_proc_entry("ali-linux/diagnose/mm", NULL);
+	remove_proc_entry("ali-linux/diagnose/mm", NULL);
 }
 

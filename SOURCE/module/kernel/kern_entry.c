@@ -356,5 +356,5 @@ void diag_kernel_exit(void)
 	diag_irq_delay_exit();
 	diag_irq_stats_exit();
 
-	//remove_proc_entry("ali-linux/diagnose/kern", NULL);
+	remove_proc_entry("ali-linux/diagnose/kern", NULL);
 }

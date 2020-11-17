@@ -257,12 +257,12 @@ int diag_linux_proc_init(void)
 	int ret;
 
 	pe = diag_proc_mkdir("ali-linux", NULL);
-	//if (!pe)
-	//	return -ENOMEM;
+	if (!pe)
+		return -ENOMEM;
 
 	pe = diag_proc_mkdir("ali-linux/diagnose", NULL);
-	//if (!pe)
-	//	return -ENOMEM;
+	if (!pe)
+		return -ENOMEM;
 
 	ret = init_diag_trace_file(&controller_file,
 			"ali-linux/diagnose/controller",
@@ -280,9 +280,9 @@ out_controller_file:
 
 void diag_linux_proc_exit(void)
 {
-	//remove_proc_entry("ali-linux/diagnose", NULL);
-	//remove_proc_entry("ali-linux", NULL);
 	destroy_diag_trace_file(&controller_file);
+	remove_proc_entry("ali-linux/diagnose", NULL);
+	remove_proc_entry("ali-linux", NULL);
 }
 
 unsigned long (*__kallsyms_lookup_name)(const char *name);
@@ -552,9 +552,6 @@ static void __exit diagnosis_exit(void)
 	if (sys_enter_hooked)
 		diag_unhook_sys_enter();
 
-	diag_linux_proc_exit();
-	msleep(20);
-
 	diag_dev_cleanup();
 
 	synchronize_sched();
@@ -592,6 +589,9 @@ static void __exit diagnosis_exit(void)
 	msleep(20);
 
 	alidiagnose_symbols_exit();
+	msleep(20);
+
+	diag_linux_proc_exit();
 	msleep(20);
 
 	synchronize_sched();

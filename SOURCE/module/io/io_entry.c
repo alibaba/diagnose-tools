@@ -95,5 +95,5 @@ void diag_io_exit(void)
 	diag_vfs_exit();
 	diag_nvme_exit();
 
-	//remove_proc_entry("ali-linux/diagnose/io", NULL);
+	remove_proc_entry("ali-linux/diagnose/io", NULL);
 }
