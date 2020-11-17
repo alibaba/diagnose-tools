@@ -385,8 +385,8 @@ long diag_ioctl_load_monitor(unsigned int cmd, unsigned long arg)
 
 int diag_load_init(void)
 {
-	orig_avenrun_r = (void *)__kallsyms_lookup_name("avenrun_r");
-	orig_avenrun = (void *)__kallsyms_lookup_name("avenrun");
+	LOOKUP_SYMS_NORET(avenrun_r);
+	LOOKUP_SYMS_NORET(avenrun);
 
 	init_mm_tree(&mm_tree);
 	init_diag_variant_buffer(&load_monitor_variant_buffer, 1 * 1024 * 1024);
