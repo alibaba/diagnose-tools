@@ -427,7 +427,7 @@ int utilization_syscall(struct pt_regs *regs, long id)
 			do_dump();
 			ret = copy_to_user_variant_buffer(&utilization_variant_buffer,
 					user_ptr_len, user_buf, user_buf_len);
-			record_dump_cmd("utilization");
+			//record_dump_cmd("utilization");
 		}
 		break;
 	case DIAG_UTILIZATION_ISOLATE:
