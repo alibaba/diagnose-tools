@@ -52,8 +52,8 @@ ifneq ($(findstring el7.x86_64,$(KERNEL_BUILD_PATH)),)
 		DIAG_EXTRA_CFLAGS += -DCENTOS_3_10_693
 	endif
 
-	ifneq ($(findstring 3.10.0-862.el7.x86_64,$(KERNEL_BUILD_PATH)),)
-		DIAG_EXTRA_CFLAGS += -DCENTOS_3_10_862 -DCENTOS_7U
+	ifneq ($(findstring 3.10.0-862,$(KERNEL_BUILD_PATH)),)
+		DIAG_EXTRA_CFLAGS += -DCENTOS_3_10_862
 	endif
 
 	ifneq ($(findstring 3.10.0-957,$(KERNEL_BUILD_PATH)),)
