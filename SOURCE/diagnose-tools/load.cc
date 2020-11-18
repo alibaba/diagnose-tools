@@ -402,7 +402,7 @@ int load_monitor_main(int argc, char **argv)
 		if (c == -1)
 			break;
 		switch (option_index) {
-		case 10:
+		case 0:
 			usage_load_monitor();
 			break;
 	  case 1:
