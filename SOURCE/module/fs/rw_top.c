@@ -325,7 +325,7 @@ static void hook_rw(enum rw_type rw_type, struct file *file, size_t count)
 
 static int kprobe_filemap_fault_pre(struct kprobe *p, struct pt_regs *regs)
 {
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 18, 0)
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 18, 0) && !(defined(CENTOS_8U))
 	struct vm_area_struct *vma = (void *)ORIG_PARAM1(regs);
 	struct file *file = vma->vm_file;
 #else
