@@ -339,6 +339,17 @@ int deactivate_irq_stats(void)
 	return 0;
 }
 
+static void reset_data(void)
+{
+	int cpu;
+	struct irq_result *result;
+
+	for_each_possible_cpu(cpu) {
+		result = &get_percpu_context_cpu(cpu)->irq_stats.irq_result;
+		memset(result, 0, sizeof(struct irq_result));
+	}
+}
+
 static void dump_data(void)
 {
 	int cpu;
@@ -367,7 +378,7 @@ static void dump_data(void)
 	{
 		context = get_percpu_context_cpu(cpu);
 		result = &context->irq_stats.irq_result;
-		
+
 		irq_summary.et_type = et_irq_stats_irq_summary;
 		irq_summary.id = event_id;
 		irq_summary.cpu = cpu;
@@ -435,7 +446,7 @@ static void dump_data(void)
 		{
 			softirq_summary.softirq_cnt[softirq] = result->softirq_cnt[softirq];
 			softirq_summary.softirq_cnt_d[softirq] = result->softirq_cnt_d[softirq];
-    		softirq_summary.sortirq_run_total[softirq] = result->sortirq_run_total[softirq];
+			softirq_summary.sortirq_run_total[softirq] = result->sortirq_run_total[softirq];
 			softirq_summary.sortirq_run_total_d[softirq] = result->sortirq_run_total_d[softirq];
 		}
 		diag_variant_buffer_spin_lock(&irq_stats_variant_buffer, flags);
@@ -464,6 +475,8 @@ static void dump_data(void)
 		diag_variant_buffer_seal(&irq_stats_variant_buffer);
 		diag_variant_buffer_spin_unlock(&irq_stats_variant_buffer, flags);
 	}
+
+	reset_data();
 }
 
 int irq_stats_syscall(struct pt_regs *regs, long id)
