@@ -43,9 +43,6 @@
 #include "pub/trace_file.h"
 #include "pub/stack.h"
 
-#if KERNEL_VERSION(5, 2, 0) > LINUX_VERSION_CODE
-extern void (*orig_save_stack_trace_tsk)(struct task_struct *tsk, struct stack_trace *trace);
-#endif
 extern struct mm_struct *get_task_mm(struct task_struct *task);
 extern void mmput(struct mm_struct *);
 

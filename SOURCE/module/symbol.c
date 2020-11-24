@@ -16,7 +16,6 @@
 struct mutex *orig_text_mutex;
 rwlock_t *orig_tasklist_lock;
 
-void (*orig_save_stack_trace_tsk)(struct task_struct *tsk, struct stack_trace *trace);
 #if defined(DIAG_ARM64)
 void (*orig___flush_dcache_area)(void *addr, size_t len);
 int (*orig_aarch64_insn_patch_text)(void *addrs[], u32 insns[], int cnt);
@@ -30,13 +29,14 @@ struct list_head *orig_ptype_all;
 
 void (*orig___show_regs)(struct pt_regs *regs, int all);
 #if !defined(DIAG_ARM64)
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 2, 0) || defined(CENTOS_4_18_193)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0) || defined(CENTOS_4_18_193)
 unsigned int (*orig_stack_trace_save_tsk)(struct task_struct *task,
                                   unsigned long *store, unsigned int size,
                                   unsigned int skipnr);
 unsigned int (*orig_stack_trace_save_user)(unsigned long *store, unsigned int size);
 #else
 void (*orig_save_stack_trace_user)(struct stack_trace *trace);
+void (*orig_save_stack_trace_tsk)(struct task_struct *tsk, struct stack_trace *trace);
 #endif
 #endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
@@ -124,10 +124,9 @@ static int lookup_syms(void)
 	LOOKUP_SYMS(stack_trace_save_user);
 #else
 	LOOKUP_SYMS(save_stack_trace_user);
+	LOOKUP_SYMS(save_stack_trace_tsk);
 #endif
 #endif /* DIAG_ARM64 */
-
-	LOOKUP_SYMS(save_stack_trace_tsk);
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
 	orig_runqueues = (void *)__kallsyms_lookup_name("per_cpu__runqueues");
