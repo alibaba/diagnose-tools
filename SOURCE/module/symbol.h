@@ -29,7 +29,7 @@ extern void *(*orig_text_poke_smp)(void *, const void *, size_t);
 extern void *(*orig_text_poke_bp)(void *addr, const void *opcode, size_t len, void *handler);
 #endif
 
-#if defined(CENTOS_8U)
+#if defined(CENTOS_8U) || KERNEL_VERSION(5, 0, 0) > LINUX_VERSION_CODE
 extern void (*orig_save_stack_trace_tsk)(struct task_struct *tsk, struct stack_trace *trace);
 #endif
 extern void (*orig___show_regs)(struct pt_regs *regs, int all);

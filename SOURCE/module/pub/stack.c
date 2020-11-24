@@ -38,6 +38,7 @@
 #include <linux/cpumask.h>
 #include <linux/mm.h>
 
+#include "symbol.h"
 #include "mm_tree.h"
 #include "internal.h"
 #include "pub/trace_file.h"
