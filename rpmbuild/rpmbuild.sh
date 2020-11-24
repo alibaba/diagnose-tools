@@ -80,4 +80,4 @@ main()
 }
 
 echo "args1: $1 args2: $2 args3: $3 args4: $4"
-main 2.0 rc2
+main 2.0 rc3

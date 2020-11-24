@@ -40,7 +40,7 @@ unsigned long run_in_host = 0;
 
 static int report_version(int argc, char **argv)
 {
-	printf("diagnose-tools tools version 2.1-rc2\n");
+	printf("diagnose-tools tools version 2.1-rc3\n");
 	exit(0);
 }
 
