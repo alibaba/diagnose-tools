@@ -39,7 +39,7 @@
 #include <linux/aio.h>
 #include <linux/fdtable.h>
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 12, 0) && LINUX_VERSION_CODE <= KERNEL_VERSION(4, 10, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 12, 0) && LINUX_VERSION_CODE <= KERNEL_VERSION(4, 4, 0)
 #include <linux/iomap.h>
 #endif
 
@@ -320,6 +320,46 @@ int fs_shm_syscall(struct pt_regs *regs, long id)
 			do_dump();
 			ret = copy_to_user_variant_buffer(&shm_variant_buffer,
 					user_ptr_len, user_buf, user_buf_len);
+			record_dump_cmd("fs-shm");
+		}
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
+}
+
+long diag_ioctl_fs_shm(unsigned int cmd, unsigned long arg)
+{
+	int ret = 0;
+	struct diag_fs_shm_settings settings;
+	struct diag_ioctl_dump_param dump_param;
+
+	switch (cmd) {
+	case CMD_FS_SHM_SET:
+		if (fs_shm_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, (void *)arg, sizeof(struct diag_fs_shm_settings));
+			if (!ret) {
+				fs_shm_settings = settings;
+			}
+		}
+		break;
+	case CMD_FS_SHM_SETTINGS:
+		settings = fs_shm_settings;
+		ret = copy_to_user((void *)arg, &settings, sizeof(struct diag_fs_shm_settings));
+		break;
+	case CMD_FS_SHM_DUMP:
+		ret = copy_from_user(&dump_param, (void *)arg, sizeof(struct diag_ioctl_dump_param));
+		if (!fs_shm_alloced) {
+			ret = -EINVAL;
+		} else if (!ret){
+			do_dump();
+			ret = copy_to_user_variant_buffer(&shm_variant_buffer,
+					dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len);
 			record_dump_cmd("fs-shm");
 		}
 		break;

@@ -63,7 +63,7 @@ int alloc_diag_variant_buffer(struct diag_variant_buffer *buffer)
 
 	memset(buf1, 0, buf_size);
 	memset(buf2, 0, buf_size);
-	memset(buf3, 0, buf_size);
+	memset(buf3, 0, buf_size * 2);
 	buffer->buffers[0].data = buf1;
 	buffer->buffers[1].data = buf2;
 	buffer->product.data = buf3;

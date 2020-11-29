@@ -939,13 +939,13 @@ static void save_task_info(struct task_struct *tsk, struct pupil_task_detail *de
 	diag_task_raw_stack(tsk, &detail->raw_stack);
 }
 
-static int get_task_info(int type, struct pt_regs *regs)
+static int get_task_info(int nid)
 {
 	static struct pupil_task_detail detail;
 	struct task_struct *tsk;
-	pid_t id = SYSCALL_PARAM1(regs);
 	int ret;
 	unsigned long flags;
+	pid_t id = (pid_t)nid;
 
 	ret = alloc_diag_variant_buffer(&pupil_variant_buffer);
 	if (ret)
@@ -962,32 +962,18 @@ static int get_task_info(int type, struct pt_regs *regs)
 		return ret;
 	}
 
-	if (type == 0) {
-		save_task_info(tsk, &detail);
-
-		diag_variant_buffer_spin_lock(&pupil_variant_buffer, flags);
-		diag_variant_buffer_reserve(&pupil_variant_buffer,
-				sizeof(struct pupil_task_detail));
-		diag_variant_buffer_write_nolock(&pupil_variant_buffer,
-				&detail, sizeof(struct pupil_task_detail));
-		diag_variant_buffer_seal(&pupil_variant_buffer);
-		diag_variant_buffer_spin_unlock(&pupil_variant_buffer, flags);
-	} else {
-		struct task_struct *thread = tsk;
-
-		while_each_thread(tsk, thread) {
-			save_task_info(thread, &detail);
-
-			diag_variant_buffer_spin_lock(&pupil_variant_buffer, flags);
-			diag_variant_buffer_reserve(&pupil_variant_buffer,
-					sizeof(struct pupil_task_detail));
-			diag_variant_buffer_write_nolock(&pupil_variant_buffer,
-					&detail, sizeof(struct pupil_task_detail));
-			diag_variant_buffer_seal(&pupil_variant_buffer);
-			diag_variant_buffer_spin_unlock(&pupil_variant_buffer, flags);
-		}
-	}
+	get_task_struct(tsk);
 	rcu_read_unlock();
+	save_task_info(tsk, &detail);
+	put_task_struct(tsk);
+
+	diag_variant_buffer_spin_lock(&pupil_variant_buffer, flags);
+	diag_variant_buffer_reserve(&pupil_variant_buffer,
+			sizeof(struct pupil_task_detail));
+	diag_variant_buffer_write_nolock(&pupil_variant_buffer,
+			&detail, sizeof(struct pupil_task_detail));
+	diag_variant_buffer_seal(&pupil_variant_buffer);
+	diag_variant_buffer_spin_unlock(&pupil_variant_buffer, flags);
 
 	return ret;
 }
@@ -998,6 +984,7 @@ int pupil_syscall(struct pt_regs *regs, long id)
 	int __user *ptr_len;
 	void __user *buf;
 	size_t size;
+	unsigned int pid;
 
 	switch (id) {
 	case DIAG_PUPIL_TASK_DUMP:
@@ -1013,10 +1000,40 @@ int pupil_syscall(struct pt_regs *regs, long id)
 		}
 		break;
 	case DIAG_PUPIL_TASK_PID:
-		ret = get_task_info(0, regs);
+		pid = (unsigned int)SYSCALL_PARAM1(regs);
+		ret = get_task_info(pid);
 		break;
-	case DIAG_PUPIL_TASK_TGID:
-		ret = get_task_info(1, regs);
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
+}
+
+long diag_ioctl_pupil_task(unsigned int cmd, unsigned long arg)
+{
+	int ret = 0;
+	struct diag_ioctl_dump_param dump_param;
+	int id = 0;
+
+	switch (cmd) {
+	case CMD_PUPIL_TASK_DUMP:
+		ret = copy_from_user(&dump_param, (void *)arg, sizeof(struct diag_ioctl_dump_param));
+
+		if (!pupil_alloced) {
+			ret = -EINVAL;
+		} else if (!ret) {
+			ret = copy_to_user_variant_buffer(&pupil_variant_buffer, dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len); 
+			record_dump_cmd("task-info");
+		}
+		break;
+	case CMD_PUPIL_TASK_PID:
+		ret = copy_from_user(&id, (void *)arg, sizeof(int));
+
+		if (!ret) {
+			ret = get_task_info(id);
+		}
 		break;
 	default:
 		ret = -ENOSYS;

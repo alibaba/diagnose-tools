@@ -74,13 +74,21 @@ static void do_activate(const char *arg)
 		settings.cpus[511] = 0;
 	}
 
-	ret = -ENOSYS;
-	syscall(DIAG_UTILIZATION_SET, &ret, &settings, sizeof(struct diag_utilization_settings));
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_UTILIZATION_SET, (long)&settings);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_UTILIZATION_SET, &ret, &settings, sizeof(struct diag_utilization_settings));
+	}
+
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
 	printf("    STYLE：\t%d\n", settings.style);
 	printf("    SAMPLE：\t%d\n", settings.sample);
 	printf("    输出级别：\t%d\n", settings.verbose);
 	printf("    CPUS：\t%s\n", settings.cpus);
+
+	if (ret)
+		return;
 
 	ret = diag_activate("utilization");
 	if (ret == 1) {
@@ -130,11 +138,16 @@ static void do_settings(const char *arg)
 	struct params_parser parse(arg);
 	enable_json = parse.int_value("json");
 
-	ret = -ENOSYS;
-	syscall(DIAG_UTILIZATION_SETTINGS, &ret, &settings, sizeof(struct diag_utilization_settings));
+	memset(&settings, 0, sizeof(struct diag_utilization_settings));
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_UTILIZATION_SETTINGS, (long)&settings);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_UTILIZATION_SETTINGS, &ret, &settings, sizeof(struct diag_utilization_settings));
+	}
 
 	if (1 == enable_json) {
-		return print_settings_in_json(&settings, ret);
+		print_settings_in_json(&settings, ret);
 	}
 
 	if (ret == 0) {
@@ -249,9 +262,20 @@ static void do_dump(void)
 	static char variant_buf[1024 * 1024];
 	int len;
 	int ret = 0;
+	struct diag_ioctl_dump_param dump_param = {
+		.user_ptr_len = &len,
+		.user_buf_len = 1024 * 1024,
+		.user_buf = variant_buf,
+	};
 
-	ret = -ENOSYS;
-	syscall(DIAG_UTILIZATION_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+	memset(variant_buf, 0, 1024 * 1024);
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_UTILIZATION_DUMP, (long)&dump_param);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_UTILIZATION_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+	}
+
 	if (ret == 0) {
 		do_extract(variant_buf, len);
 	}
@@ -260,17 +284,26 @@ static void do_dump(void)
 static void do_isolate(char *arg)
 {
 	int ret;
-	unsigned int cpu;
 	char comm[256];
+	struct diag_ioctl_utilization_isolate isolate = {
+        .cpu = 0,
+		.user_buf = comm,
+		.user_buf_len = 256,
+	};
 
 	memset(comm, 0, 256);
-	ret = sscanf(arg, "%d %255s", &cpu, comm);
+	ret = sscanf(arg, "%d %255s", &isolate.cpu, comm);
 	if (ret < 1)
 		return;
 
-	ret = -ENOSYS;
-	syscall(DIAG_UTILIZATION_ISOLATE, &ret, cpu, comm, strlen(comm));
-	printf("set isolate for utilization: %d, %s, ret is %d\n", cpu, comm, ret);
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_UTILIZATION_ISOLATE, (long)&isolate);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_UTILIZATION_ISOLATE, &ret, isolate.cpu, comm, strlen(comm));
+	}
+
+	printf("set isolate for utilization: %d, %s, ret is %d\n", isolate.cpu, comm, ret);
 }
 
 static void do_sample(char *arg)
@@ -282,8 +315,13 @@ static void do_sample(char *arg)
 	if (ret < 1)
 		return;
 
-	ret = -ENOSYS;
-	syscall(DIAG_UTILIZATION_SAMPLE, &ret, sample);
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_UTILIZATION_SAMPLE, (long)&sample);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_UTILIZATION_SAMPLE, &ret, sample);
+	}
+
 	printf("set sample for utilization: %d, ret is %d\n", sample, ret);
 }
 
@@ -338,14 +376,24 @@ static void do_sls(char *arg)
 	int ret;
 	static char variant_buf[10 * 1024 * 1024];
 	int len;
+	struct diag_ioctl_dump_param dump_param = {
+		.user_ptr_len = &len,
+		.user_buf_len = 10 * 1024 * 1024,
+		.user_buf = variant_buf,
+	};
 
 	ret = log_config(arg, sls_file, &syslog_enabled);
 	if (ret != 1)
 		return;
 
 	while (1) {
-		ret = -ENOSYS;
-		syscall(DIAG_UTILIZATION_DUMP, &ret, &len, variant_buf, 10 * 1024 * 1024);
+		if (run_in_host) {
+			ret = diag_call_ioctl(DIAG_IOCTL_UTILIZATION_DUMP, (long)&dump_param);
+		} else {
+			ret = -ENOSYS;
+			syscall(DIAG_UTILIZATION_DUMP, &ret, &len, variant_buf, 10 * 1024 * 1024);
+		}
+
 		if (ret == 0 && len > 0) {
 			extract_variant_buffer(variant_buf, len, sls_extract, NULL);
 		}

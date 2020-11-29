@@ -41,7 +41,7 @@
 
 #include "uapi/mutex_monitor.h"
 
-#if defined(UPSTREAM_4_19_32) || defined(XBY_UBUNTU_1604)
+#if defined(UPSTREAM_4_19_32) || defined(XBY_UBUNTU_1604) || defined(UBUNTU_1604)
 int diag_mutex_init(void)
 {
 	return 0;
@@ -51,7 +51,7 @@ void diag_mutex_exit(void)
 {
 }
 #else
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0) || defined(CENTOS_8U)
 /*
  * Optimistic trylock that only works in the uncontended case. Make sure to
  * follow with a __mutex_trylock() before failing.
@@ -549,11 +549,69 @@ int mutex_monitor_syscall(struct pt_regs *regs, long id)
 	return ret;
 }
 
+long diag_ioctl_mutex_monitor(unsigned int cmd, unsigned long arg)
+{
+	int i, ms;
+	int ret = 0;
+	struct diag_mutex_monitor_settings settings;
+	struct diag_ioctl_dump_param dump_param;
+	static DEFINE_MUTEX(lock);
+
+	switch (cmd) {
+	case CMD_MUTEX_MONITOR_SET:
+		if (mutex_monitor_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, (void *)arg, sizeof(struct diag_mutex_monitor_settings));
+			if (!ret) {
+				mutex_monitor_settings = settings;
+			}
+		}
+		break;
+	case CMD_MUTEX_MONITOR_SETTINGS:
+		settings = mutex_monitor_settings;
+		ret = copy_to_user((void *)arg, &settings, sizeof(struct diag_mutex_monitor_settings));
+		break;
+	case CMD_MUTEX_MONITOR_DUMP:
+		ret = copy_from_user(&dump_param, (void *)arg, sizeof(struct diag_ioctl_dump_param));
+
+		if (!mutex_monitor_alloced) {
+			ret = -EINVAL;
+		} else if (!ret) {
+			ret = copy_to_user_variant_buffer(&mutex_monitor_variant_buffer,
+					dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len);
+			record_dump_cmd("mutex-monitor");
+		}
+		break;
+	case CMD_MUTEX_MONITOR_TEST:
+		ret = copy_from_user(&ms, (void *)arg, sizeof(int));
+
+		if (!ret) {
+			if (ms <= 0 || ms > 20000) {
+				ret = -EINVAL;
+			} else {
+				mutex_lock(&lock);
+				for (i = 0; i < ms; i++)
+					mdelay(1);
+				mutex_unlock(&lock);
+			}
+		}
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
+}
+
 static int lookup_syms(void)
 {
 	LOOKUP_SYMS(__mutex_lock_slowpath);
 	
 	orig___mutex_unlock_slowpath = (void *)__kallsyms_lookup_name("__mutex_unlock_slowpath.isra.0");
+	if (orig___mutex_unlock_slowpath == NULL)
+		orig___mutex_unlock_slowpath = (void *)__kallsyms_lookup_name("__mutex_unlock_slowpath.isra.12");
 	if (orig___mutex_unlock_slowpath == NULL)
 		orig___mutex_unlock_slowpath = (void *)__kallsyms_lookup_name("__mutex_unlock_slowpath.isra.14");
 	if (orig___mutex_unlock_slowpath == NULL)
@@ -562,6 +620,10 @@ static int lookup_syms(void)
 		orig___mutex_unlock_slowpath = (void *)__kallsyms_lookup_name("__mutex_unlock_slowpath.isra.16");
 	if (orig___mutex_unlock_slowpath == NULL)
 		orig___mutex_unlock_slowpath = (void *)__kallsyms_lookup_name("__mutex_unlock_slowpath.isra.18");
+	if (orig___mutex_unlock_slowpath == NULL)
+		orig___mutex_unlock_slowpath = (void *)__kallsyms_lookup_name("__mutex_unlock_slowpath.isra.17");
+	if (orig___mutex_unlock_slowpath == NULL)
+		orig___mutex_unlock_slowpath = (void *)__kallsyms_lookup_name("__mutex_unlock_slowpath.isra.19");
 	if (orig___mutex_unlock_slowpath == NULL)
 		orig___mutex_unlock_slowpath = (void *)__kallsyms_lookup_name("__mutex_unlock_slowpath");
 	if (orig___mutex_unlock_slowpath == NULL)

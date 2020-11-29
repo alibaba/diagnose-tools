@@ -38,6 +38,7 @@ static inline void __percpu_counter_add(struct percpu_counter *fbc,
 #include "symbol.h"
 #include "uapi/ali_diagnose.h"
 #include "uapi/exit_monitor.h"
+#include "uapi/exec_monitor.h"
 #include "uapi/irq_delay.h"
 #include "uapi/perf.h"
 #include "uapi/sys_delay.h"
@@ -48,6 +49,7 @@ static inline void __percpu_counter_add(struct percpu_counter *fbc,
 #include "uapi/high_order.h"
 #include "uapi/rw_top.h"
 #include "uapi/utilization.h"
+#include "uapi/sig_info.h"
 #include "pub/variant_buffer.h"
 #include "pub/stack.h"
 
@@ -74,7 +76,9 @@ static inline void __percpu_counter_add(struct percpu_counter *fbc,
 
 #define __SC_DECL(t, a)	t a
 #define __MAP0(m,...)
+#ifndef __MAP1
 #define __MAP1(m,t,a,...) m(t,a)
+#endif
 #define __MAP2(m,t,a,...) m(t,a), __MAP1(m,__VA_ARGS__)
 #define __MAP3(m,t,a,...) m(t,a), __MAP2(m,__VA_ARGS__)
 #define __MAP4(m,t,a,...) m(t,a), __MAP3(m,__VA_ARGS__)
@@ -236,6 +240,15 @@ extern int diag_get_symbol_count(char *symbol);
 #define STACK_IS_END(v) ((v) == 0 || (v) == ULONG_MAX)
 
 extern u64 timer_sampling_period_ms;
+
+
+#if KERNEL_VERSION(5, 0, 0) <= LINUX_VERSION_CODE
+struct stack_trace {
+	unsigned int nr_entries, max_entries;
+	unsigned long *entries;
+	int skip;	/* input argument: How many entries to skip */
+};
+#endif
 
 struct diag_percpu_context;
 struct task_struct;
@@ -408,12 +421,11 @@ struct diag_percpu_context {
 	struct perf_detail perf_detail;
 	struct sys_delay_detail sys_delay_detail;
 	struct sched_delay_dither sched_delay_dither;
-	struct kprobe_detail kprobe_detail;
-	struct kprobe_raw_stack_detail kprobe_raw_stack_detail;
 
 	struct {
 		struct uprobe_detail uprobe_detail;
 		struct uprobe_raw_stack_detail uprobe_raw_stack_detail;
+		unsigned int sample_step;
 	} uprobe;
 
 	struct {
@@ -430,6 +442,19 @@ struct diag_percpu_context {
 	} rw_top;
 
 	struct utilization_detail utilization_detail;
+	struct {
+		struct kprobe_detail kprobe_detail;
+		struct kprobe_raw_stack_detail kprobe_raw_stack_detail;
+		unsigned int sample_step;
+	} kprobe;
+
+	struct {
+		struct exec_monitor_perf perf;
+	} exec_monitor;
+
+	struct {
+		struct sig_info_detail detail;
+	} sig_info;
 };
 
 extern struct diag_percpu_context *diag_percpu_context[NR_CPUS];
@@ -558,6 +583,9 @@ void irq_delay_timer(struct diag_percpu_context *context);
 void perf_timer(struct diag_percpu_context *context);
 void utilization_timer(struct diag_percpu_context *context);
 
+void diag_hook_sys_enter(void);
+void diag_unhook_sys_enter(void);
+
 ssize_t dump_pid_cmdline(int pre, enum diag_printk_type type, void *obj,
 	struct task_struct *tsk, char *buf, size_t _count);
 
@@ -677,6 +705,21 @@ int diag_copy_stack_frame(struct task_struct *tsk,
 	void *frame,
 	unsigned int size);
 
+#if KERNEL_VERSION(5, 0, 0) <= LINUX_VERSION_CODE || defined(CENTOS_8U)
+#define synchronize_sched synchronize_rcu
+#endif
+
+#if KERNEL_VERSION(5, 0, 0) <= LINUX_VERSION_CODE
+static inline void do_gettimeofday(struct timeval *tv)
+{
+	struct timespec64 ts;
+
+	ktime_get_real_ts64(&ts);
+	tv->tv_sec = ts.tv_sec;
+	tv->tv_usec = ts.tv_nsec/1000;
+}
+#endif
+
 extern unsigned long diag_ignore_jump_check;
 
 int activate_run_trace(void);
@@ -721,6 +764,10 @@ int activate_reboot(void);
 int deactivate_reboot(void);
 int activate_fs_orphan(void);
 int deactivate_fs_orphan(void);
+int activate_net_bandwidth(void);
+int deactivate_net_bandwidth(void);
+
+int perf_syscall(struct pt_regs *regs, long id);
 
 void diag_task_brief(struct task_struct *tsk, struct diag_task_detail *detail);
 void printk_task_brief(struct diag_task_detail *detail);
@@ -735,6 +782,8 @@ void cb_sys_enter_sys_cost(void *__data, struct pt_regs *regs, long id);
 
 int str_to_cpumask(char *cpus, struct cpumask *cpumask);
 void cpumask_to_str(struct cpumask *cpumask, char *buf, int len);
+int str_to_bitmaps(char *bits, unsigned long *bitmap, int nr);
+void bitmap_to_str(unsigned long *bitmap, int nr, char *buf, int len);
 
 int activate_ping_delay(void);
 int deactivate_ping_delay(void);
@@ -744,13 +793,11 @@ void diag_ping_delay_exit(void);
 
 int activate_uprobe(void);
 int deactivate_uprobe(void);
-int uprobe_syscall(struct pt_regs *regs, long id);
 int diag_uprobe_init(void);
 void diag_uprobe_exit(void);
 
 int activate_sys_cost(void);
 int deactivate_sys_cost(void);
-int sys_cost_syscall(struct pt_regs *regs, long id);
 int diag_sys_cost_init(void);
 void diag_sys_cost_exit(void);
 
@@ -766,5 +813,14 @@ int high_order_syscall(struct pt_regs *regs, long id);
 int diag_high_order_init(void);
 void diag_high_order_exit(void);
 void record_dump_cmd(char *module);
+
+int activate_sig_info(void);
+int deactivate_sig_info(void);
+int diag_sig_info_init(void);
+void diag_sig_info_exit(void);
+
+int diag_dev_init(void);
+void diag_dev_cleanup(void);
+
 #endif /* __DIAG_INTERNAL_H */
 

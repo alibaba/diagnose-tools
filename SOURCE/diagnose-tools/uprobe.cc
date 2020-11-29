@@ -90,6 +90,7 @@ static void do_activate(const char *arg)
 	settings.verbose = parse.int_value("verbose");
 	settings.tgid = parse.int_value("tgid");
 	settings.verbose = parse.int_value("verbose");
+	settings.sample_step = parse.int_value("sample-step");
 	
 	str = parse.string_value("comm");
 	if (str.length() > 0) {
@@ -103,37 +104,42 @@ static void do_activate(const char *arg)
 	}
 
 	param_name = parse.string_value("param1-name");
-	strncpy(settings.params[0].param_name, param_name.c_str(), 255);
+	memcpy(settings.params[0].param_name, param_name.c_str(), 255);
 	settings.params[0].param_idx = parse.int_value("param1-index");
 	settings.params[0].type = parse.int_value("param1-type");
 	settings.params[0].size = parse.int_value("param1-size");
 
 	param_name = parse.string_value("param2-name");
-	strncpy(settings.params[1].param_name, param_name.c_str(), 255);
+	memcpy(settings.params[1].param_name, param_name.c_str(), 255);
 	settings.params[1].param_idx = parse.int_value("param2-index");
 	settings.params[1].type = parse.int_value("param2-type");
 	settings.params[1].size = parse.int_value("param3-size");
 
 	param_name = parse.string_value("param3-name");
-	strncpy(settings.params[2].param_name, param_name.c_str(), 255);
+	memcpy(settings.params[2].param_name, param_name.c_str(), 255);
 	settings.params[2].param_idx = parse.int_value("param3-index");
 	settings.params[2].type = parse.int_value("param3-type");
 	settings.params[2].size = parse.int_value("param3-size");
 
 	param_name = parse.string_value("param4-name");
-	strncpy(settings.params[3].param_name, param_name.c_str(), 255);
+	memcpy(settings.params[3].param_name, param_name.c_str(), 255);
 	settings.params[3].param_idx = parse.int_value("param4-index");
 	settings.params[3].type = parse.int_value("param4-type");
 	settings.params[3].size = parse.int_value("param4-size");
 
 	param_name = parse.string_value("param5-name");
-	strncpy(settings.params[4].param_name, param_name.c_str(), 255);
+	memcpy(settings.params[4].param_name, param_name.c_str(), 255);
 	settings.params[4].param_idx = parse.int_value("param5-index");
 	settings.params[4].type = parse.int_value("param5-type");
 	settings.params[4].size = parse.int_value("param5-size");
 
-	ret = -ENOSYS;
-	syscall(DIAG_UPROBE_SET, &ret, &settings, sizeof(struct diag_uprobe_settings));
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_UPROBE_SET,(long)&settings);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_UPROBE_SET, &ret, &settings, sizeof(struct diag_uprobe_settings));
+	}
+
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
 	printf("    进程ID：%d\n", settings.tgid);
 	printf("    线程ID：%d\n", settings.pid);
@@ -147,6 +153,8 @@ static void do_activate(const char *arg)
 	printf("    参数3：%s\n", settings.params[2].param_name);
 	printf("    参数4：%s\n", settings.params[3].param_name);
 	printf("    参数5：%s\n", settings.params[4].param_name);
+	if (ret)
+		return;
 
 	ret = diag_activate("uprobe");
 	if (ret == 1) {
@@ -203,8 +211,12 @@ static void do_settings(const char *arg)
 	enable_json = parse.int_value("json");
 
 	memset(&settings, 0, sizeof(struct diag_uprobe_settings));
-	ret = -ENOSYS;
-	syscall(DIAG_UPROBE_SETTINGS, &ret, &settings, sizeof(struct diag_uprobe_settings));
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_UPROBE_SETTINGS, (long)&settings);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_UPROBE_SETTINGS, &ret, &settings, sizeof(struct diag_uprobe_settings));
+	}
 
 	if (1 == enable_json) {
 		return print_settings_in_json(&settings, ret);
@@ -406,10 +418,19 @@ static void do_dump(void)
 	static char variant_buf[40 * 1024 * 1024];
 	int len;
 	int ret = 0;
+	struct diag_ioctl_dump_param dump_param = {
+		.user_ptr_len = &len,
+		.user_buf_len = 40 * 1024 * 1024,
+		.user_buf = variant_buf,
+	};
 
 	memset(variant_buf, 0, 40* 1024 * 1024);
-	ret = -ENOSYS;
-	syscall(DIAG_UPROBE_DUMP, &ret, &len, variant_buf, 40 * 1024 * 1024);
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_UPROBE_DUMP,(long)&dump_param);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_UPROBE_DUMP, &ret, &len, variant_buf, 40 * 1024 * 1024);
+	}
 
 	if (ret == 0 && len > 0) {
 		do_extract(variant_buf, len);
@@ -421,19 +442,29 @@ static void do_sls(char *arg)
 	int ret;
 	int len;
 	static char variant_buf[40 * 1024 * 1024];
+	struct diag_ioctl_dump_param dump_param = {
+		.user_ptr_len = &len,
+		.user_buf_len = 40 * 1024 * 1024,
+		.user_buf = variant_buf,
+	};
 
 	ret = log_config(arg, sls_file, &syslog_enabled);
 	if (ret != 1)
 		return;
 
 	while (1) {
-		syscall(DIAG_UPROBE_DUMP, &ret, &len, variant_buf, 40 * 1024 * 1024);
+		if (run_in_host) {
+			ret = diag_call_ioctl(DIAG_IOCTL_UPROBE_DUMP,(long)&dump_param);
+		} else {
+			syscall(DIAG_UPROBE_DUMP, &ret, &len, variant_buf, 40 * 1024 * 1024);
+		}
+
 		if (ret == 0 && len > 0) {
 			extract_variant_buffer(variant_buf, len, sls_extract, NULL);
 		}
 
 		sleep(10);
-	}	
+	}
 
 }
 

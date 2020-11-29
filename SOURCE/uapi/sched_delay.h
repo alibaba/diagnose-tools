@@ -12,6 +12,8 @@
 #ifndef UAPI_SCHED_DELAY_H
 #define UAPI_SCHED_DELAY_H
 
+#include <linux/ioctl.h>
+
 int sched_delay_syscall(struct pt_regs *regs, long id);
 
 #define DIAG_SCHED_DELAY_SET (DIAG_BASE_SYSCALL_SCHED_DELAY)
@@ -49,5 +51,12 @@ struct sched_delay_dither {
 	struct diag_user_stack_detail user_stack;
 	struct diag_proc_chains_detail proc_chains;
 };
+
+#define CMD_SCHED_DELAY_SET (0)
+#define CMD_SCHED_DELAY_SETTINGS (CMD_SCHED_DELAY_SET + 1)
+#define CMD_SCHED_DELAY_DUMP (CMD_SCHED_DELAY_SETTINGS + 1)
+#define DIAG_IOCTL_SCHED_DELAY_SET _IOR(DIAG_IOCTL_TYPE_SCHED_DELAY, CMD_SCHED_DELAY_SET, struct diag_sched_delay_settings)
+#define DIAG_IOCTL_SCHED_DELAY_SETTINGS _IOW(DIAG_IOCTL_TYPE_SCHED_DELAY, CMD_SCHED_DELAY_SETTINGS, struct diag_sched_delay_settings)
+#define DIAG_IOCTL_SCHED_DELAY_DUMP _IOR(DIAG_IOCTL_TYPE_SCHED_DELAY, CMD_SCHED_DELAY_DUMP, struct diag_ioctl_dump_param)
 
 #endif /* UAPI_SCHED_DELAY_H */

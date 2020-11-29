@@ -23,16 +23,27 @@ extern unsigned long (*__kallsyms_lookup_name)(const char *name);
 #if defined(DIAG_ARM64)
 extern void (*orig___flush_dcache_area)(void *addr, size_t len);
 extern int (*orig_aarch64_insn_patch_text)(void *addrs[], u32 insns[], int cnt);
+extern void (*orig_save_stack_trace_tsk)(struct task_struct *tsk, struct stack_trace *trace);
 #else
 extern void *(*orig_text_poke_smp)(void *, const void *, size_t);
 extern void *(*orig_text_poke_bp)(void *addr, const void *opcode, size_t len, void *handler);
 #endif
 
+#if defined(CENTOS_8U) || KERNEL_VERSION(5, 0, 0) > LINUX_VERSION_CODE
+extern void (*orig_save_stack_trace_tsk)(struct task_struct *tsk, struct stack_trace *trace);
+#endif
 extern void (*orig___show_regs)(struct pt_regs *regs, int all);
 extern struct list_head *orig_ptype_all;
 
 #if !defined(DIAG_ARM64)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 2, 0) || defined(CENTOS_4_18_193)
+extern unsigned int (*orig_stack_trace_save_tsk)(struct task_struct *task,
+				  unsigned long *store, unsigned int size,
+				  unsigned int skipnr);
+extern unsigned int (*orig_stack_trace_save_user)(unsigned long *store, unsigned int size);
+#else
 extern void (*orig_save_stack_trace_user)(struct stack_trace *trace);
+#endif
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
@@ -99,6 +110,11 @@ extern struct dentry * (*orig_d_find_any_alias)(struct inode *inode);
 extern int (*orig_task_statm)(struct mm_struct *mm,
 			 unsigned long *shared, unsigned long *text,
 			 unsigned long *data, unsigned long *resident);
+
+extern unsigned int (*orig_stack_trace_save_tsk)(struct task_struct *task,
+				  unsigned long *store, unsigned int size,
+				  unsigned int skipnr);
+extern unsigned int (*orig_stack_trace_save_user)(unsigned long *store, unsigned int size);
 
 int alidiagnose_symbols_init(void);
 void alidiagnose_symbols_exit(void);

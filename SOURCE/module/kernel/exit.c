@@ -29,6 +29,7 @@
 #include <linux/cpu.h>
 #include <linux/syscalls.h>
 #include <linux/vmalloc.h>
+#include <linux/profile.h>
 #if KERNEL_VERSION(4, 15, 0) <= LINUX_VERSION_CODE
 #include <linux/sched/mm.h>
 #endif
@@ -52,11 +53,6 @@ static unsigned int exit_monitor_event_id = 0;
 static unsigned int exit_monitor_event_seq = 0;
 
 static struct diag_variant_buffer exit_monitor_variant_buffer;
-
-/**
- * 这里只能使用kprobe，而不能使用tracepoint。否则无法打印用户态堆栈
- */
-static struct kprobe kprobe_do_exit;
 
 static int hook_sched_process_exit(struct task_struct *p)
 {
@@ -142,7 +138,8 @@ static int hook_sched_process_exit(struct task_struct *p)
 	return 0;
 }
 
-static int kprobe_do_exit_pre(struct kprobe *p, struct pt_regs *regs)
+static int
+task_exit_notify(struct notifier_block *self, unsigned long val, void *data)
 {
 	atomic64_inc_return(&diag_nr_running);
 	hook_sched_process_exit(current);
@@ -150,6 +147,10 @@ static int kprobe_do_exit_pre(struct kprobe *p, struct pt_regs *regs)
 
 	return 0;
 }
+
+static struct notifier_block task_exit_nb = {
+	.notifier_call	= task_exit_notify,
+};
 
 static int __activate_exit_monitor(void)
 {
@@ -160,10 +161,7 @@ static int __activate_exit_monitor(void)
 		goto out_variant_buffer;
 	exec_monitor_alloced = 1;
 
-	memset(&kprobe_do_exit, 0, sizeof(kprobe_do_exit));
-	hook_kprobe(&kprobe_do_exit, "do_exit",
-		kprobe_do_exit_pre, NULL);
-
+	profile_event_register(PROFILE_TASK_EXIT, &task_exit_nb);
 	exit_monitor_event_id++;
 	return 1;
 out_variant_buffer:
@@ -180,7 +178,7 @@ int activate_exit_monitor(void)
 
 static void __deactivate_exit_monitor(void)
 {
-	unhook_kprobe(&kprobe_do_exit);
+	profile_event_unregister(PROFILE_TASK_EXIT, &task_exit_nb);
 
 	synchronize_sched();
 	msleep(10);
@@ -243,6 +241,46 @@ int exit_monitor_syscall(struct pt_regs *regs, long id)
 		} else {
 			ret = copy_to_user_variant_buffer(&exit_monitor_variant_buffer,
 					user_ptr_len, user_buf, user_buf_len);
+			record_dump_cmd("exit-monitor");
+		}
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
+}
+
+long diag_ioctl_exit_monitor(unsigned int cmd, unsigned long arg)
+{
+	int ret = 0;
+	struct diag_exit_monitor_settings settings;
+	struct diag_ioctl_dump_param dump_param;
+
+	switch (cmd) {
+	case CMD_EXIT_MONITOR_SET:
+		if (exit_monitor_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, (void *)arg, sizeof(struct diag_exit_monitor_settings));
+			if (!ret) {
+				exit_monitor_settings = settings;
+			}
+		}
+		break;
+	case CMD_EXIT_MONITOR_SETTINGS:
+		settings = exit_monitor_settings;
+		ret = copy_to_user((void *)arg, &settings, sizeof(struct diag_exit_monitor_settings));
+		break;
+	case CMD_EXIT_MONITOR_DUMP:
+		ret = copy_from_user(&dump_param, (void *)arg, sizeof(struct diag_ioctl_dump_param));
+
+		if (!exec_monitor_alloced) {
+			ret = -EINVAL;
+		} else if (!ret) {
+			ret = copy_to_user_variant_buffer(&exit_monitor_variant_buffer,
+					dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len);
 			record_dump_cmd("exit-monitor");
 		}
 		break;

@@ -4,6 +4,7 @@
 
 DIAG_EXTRA_CFLAGS := -DMODULE
 
+ARCH := $(shell uname -i)
 UNAME := $(shell uname -r)
 ifeq ($(KERNEL_BUILD_PATH),)
 	KERNEL_BUILD_PATH := /lib/modules/$(UNAME)/build
@@ -15,6 +16,25 @@ endif
 
 ifeq ($(EXPERIENTIAL),1)
 	DIAG_EXTRA_CFLAGS += -DEXPERIENTIAL
+endif
+
+ifneq ($(findstring el8,$(KERNEL_BUILD_PATH)),)
+	DIAG_EXTRA_CFLAGS += -DCENTOS_8U
+
+	ifneq ($(findstring 4.18.0-80,$(KERNEL_BUILD_PATH)),)
+		DIAG_EXTRA_CFLAGS += -DCENTOS_4_18_80
+	endif
+
+	ifneq ($(findstring 4.18.0-147,$(KERNEL_BUILD_PATH)),)
+		DIAG_EXTRA_CFLAGS += -DCENTOS_4_18_147
+	endif
+
+	ifneq ($(findstring 4.18.0-193,$(KERNEL_BUILD_PATH)),)
+		DIAG_EXTRA_CFLAGS += -DCENTOS_4_18_193
+	endif
+#	ifneq ($(findstring 4.18.0-193.19.1.el8_2.x86_64,$(KERNEL_BUILD_PATH)),)
+#		DIAG_EXTRA_CFLAGS += -DCENTOS_4_18_193_19_1
+#	endif
 endif
 
 ifneq ($(findstring el7.x86_64,$(KERNEL_BUILD_PATH)),)
@@ -32,6 +52,10 @@ ifneq ($(findstring el7.x86_64,$(KERNEL_BUILD_PATH)),)
 		DIAG_EXTRA_CFLAGS += -DCENTOS_3_10_693
 	endif
 
+	ifneq ($(findstring 3.10.0-862,$(KERNEL_BUILD_PATH)),)
+		DIAG_EXTRA_CFLAGS += -DCENTOS_3_10_862
+	endif
+
 	ifneq ($(findstring 3.10.0-957,$(KERNEL_BUILD_PATH)),)
 		DIAG_EXTRA_CFLAGS += -DCENTOS_3_10_957
 	endif
@@ -45,13 +69,68 @@ ifneq ($(findstring el7.x86_64,$(KERNEL_BUILD_PATH)),)
 	endif
 endif
 
+ifneq ($(findstring alios7.x86_64,$(KERNEL_BUILD_PATH)),)
+	DIAG_EXTRA_CFLAGS += -DALIOS_7U
+
+	ifneq ($(findstring ali3000,$(KERNEL_BUILD_PATH)),)
+		DIAG_EXTRA_CFLAGS += -DALIOS_3000
+
+		ifneq ($(findstring -009,$(KERNEL_BUILD_PATH)),)
+			DIAG_EXTRA_CFLAGS += -DALIOS_3000_009
+		endif
+
+		ifneq ($(findstring -010,$(KERNEL_BUILD_PATH)),)
+			DIAG_EXTRA_CFLAGS += -DALIOS_3000_010
+		endif
+
+		ifneq ($(findstring -011,$(KERNEL_BUILD_PATH)),)
+			DIAG_EXTRA_CFLAGS += -DALIOS_3000_011
+		endif
+
+		ifneq ($(findstring -012,$(KERNEL_BUILD_PATH)),)
+			DIAG_EXTRA_CFLAGS += -DALIOS_3000_012
+		endif
+
+		ifneq ($(findstring -013,$(KERNEL_BUILD_PATH)),)
+			DIAG_EXTRA_CFLAGS += -DALIOS_3000_013
+		endif
+
+		ifneq ($(findstring -014,$(KERNEL_BUILD_PATH)),)
+			DIAG_EXTRA_CFLAGS += -DALIOS_3000_014
+		endif
+
+		ifneq ($(findstring -015,$(KERNEL_BUILD_PATH)),)
+			DIAG_EXTRA_CFLAGS += -DALIOS_3000_015
+		endif
+
+		ifneq ($(findstring -016,$(KERNEL_BUILD_PATH)),)
+			DIAG_EXTRA_CFLAGS += -DALIOS_3000_016
+		endif
+
+		ifneq ($(findstring -017,$(KERNEL_BUILD_PATH)),)
+			DIAG_EXTRA_CFLAGS += -DALIOS_3000_017
+		endif
+
+		ifneq ($(findstring -018,$(KERNEL_BUILD_PATH)),)
+			DIAG_EXTRA_CFLAGS += -DALIOS_3000_018
+		endif
+
+		ifneq ($(findstring -019,$(KERNEL_BUILD_PATH)),)
+			DIAG_EXTRA_CFLAGS += -DALIOS_3000_019
+		endif
+	endif
+
+	ifneq ($(findstring ali4000,$(KERNEL_BUILD_PATH)),)
+		DIAG_EXTRA_CFLAGS += -DALIOS_4000
+	endif
+endif
+
 ifneq ($(findstring alios7.aarch64,$(KERNEL_BUILD_PATH)),)
 	DIAG_EXTRA_CFLAGS += -DDIAG_ARM64
 endif
-
-#ifneq ($(findstring 3.10.0-862.el7.x86_64,$(KERNEL_BUILD_PATH)),)
-#	DIAG_EXTRA_CFLAGS += -DCENTOS_3_10_862 -DCENTOS_7U
-#endif
+ifneq ($(findstring aarch64,$(ARCH)),)
+	DIAG_EXTRA_CFLAGS += -DDIAG_ARM64
+endif
 
 #ifneq ($(findstring 3.10.0-957.el7.x86_64,$(KERNEL_BUILD_PATH)),)
 #	DIAG_EXTRA_CFLAGS += -DCENTOS_3_10_957 -DCENTOS_7U
@@ -89,6 +168,18 @@ ifneq ($(findstring 3.10.0-1127.10.1.el7.x86_64,$(KERNEL_BUILD_PATH)),)
 	DIAG_EXTRA_CFLAGS += -DCENTOS_3_10_1127_10_1
 endif
 
+ifneq ($(findstring 4.15.0-112-generic,$(KERNEL_BUILD_PATH)),)
+	DIAG_EXTRA_CFLAGS += -DUBUNTU_1604
+endif
+
+ifneq ($(findstring 4.4.0-93-generic,$(KERNEL_BUILD_PATH)),)
+	DIAG_EXTRA_CFLAGS += -DUBUNTU_1604
+endif
+
+ifneq ($(findstring 4.4.38+,$(KERNEL_BUILD_PATH)),)
+	DIAG_EXTRA_CFLAGS += -DUBUNTU_1604
+endif
+
 ifneq ($(KERNELRELEASE),)
 	TARGET := diagnose
 	obj-m = $(TARGET).o
@@ -101,17 +192,17 @@ ifneq ($(KERNELRELEASE),)
 		$(TARGET)-objs += pub/remote_stack.o
 	endif
 
-	$(TARGET)-objs += entry.o misc.o symbol.o mm_tree.o stack.o stub.o pupil.o
+	$(TARGET)-objs += entry.o chr_dev.o misc.o symbol.o mm_tree.o stack.o stub.o pupil.o
 	$(TARGET)-objs += kernel/kern_entry.o kernel/mutex.o kernel/load.o kernel/exit.o \
 			kernel/irq_stats.o kernel/irq_delay.o kernel/sys_delay.o \
 			kernel/exec.o kernel/perf.o kernel/run_trace.o kernel/irq_trace.o \
 			kernel/kprobe.o kernel/utilization.o kernel/sched_delay.o kernel/reboot.o \
-			kernel/uprobe.o kernel/sys_cost.o
+			kernel/uprobe.o kernel/sys_cost.o kernel/sig_info.o
 
 	$(TARGET)-objs += mm/mm_entry.o mm/alloc_page.o mm/alloc_top.o mm/high_order.o
 	$(TARGET)-objs += io/io_entry.o
-	$(TARGET)-objs += fs/fs_entry.o fs/orphan.o fs/shm.o fs/cache.o fs/rw_top.o
-	$(TARGET)-objs += net/net_entry.o net/tcp_retrans.o net/drop_packet.o net/ping_delay.o
+	$(TARGET)-objs += fs/fs_entry.o fs/orphan.o fs/shm.o fs/rw_top.o
+	$(TARGET)-objs += net/net_entry.o net/tcp_retrans.o net/drop_packet.o net/ping_delay.o net/net_bandwidth.o
 
 	ifeq ($(EXPERIENTIAL),1)
 		$(TARGET)-objs += test/test.o
@@ -119,6 +210,10 @@ ifneq ($(KERNELRELEASE),)
 
 	ifeq ($(EXPERIENTIAL),1)
 		$(TARGET)-objs += mm/memory_leak.o
+	endif
+
+	ifeq ($(EXPERIENTIAL),1)
+		$(TARGET)-objs += fs/cache.o
 	endif
 else
     include ${shell pwd}/../../vender/module.mk

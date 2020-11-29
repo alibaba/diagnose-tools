@@ -29,7 +29,15 @@ struct list_head *orig_ptype_all;
 
 void (*orig___show_regs)(struct pt_regs *regs, int all);
 #if !defined(DIAG_ARM64)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0) || defined(CENTOS_4_18_193)
+unsigned int (*orig_stack_trace_save_tsk)(struct task_struct *task,
+                                  unsigned long *store, unsigned int size,
+                                  unsigned int skipnr);
+unsigned int (*orig_stack_trace_save_user)(unsigned long *store, unsigned int size);
+#else
 void (*orig_save_stack_trace_user)(struct stack_trace *trace);
+void (*orig_save_stack_trace_tsk)(struct task_struct *tsk, struct stack_trace *trace);
+#endif
 #endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
 void (*orig___do_page_fault)(struct pt_regs *regs,
@@ -79,6 +87,13 @@ struct page *(*orig_follow_page)(struct vm_area_struct *vma, unsigned long addre
 			unsigned int flags);
 #endif
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 0, 0)
+unsigned int (*orig_stack_trace_save_tsk)(struct task_struct *task,
+				  unsigned long *store, unsigned int size,
+				  unsigned int skipnr);
+unsigned int (*orig_stack_trace_save_user)(unsigned long *store, unsigned int size);
+#endif
+
 struct dentry * (*orig_d_find_any_alias)(struct inode *inode);
 
 int (*orig_task_statm)(struct mm_struct *mm,
@@ -104,7 +119,13 @@ static int lookup_syms(void)
 #else
 	LOOKUP_SYMS(text_poke_bp);
 #endif /* LINUX_VERSION_CODE */
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 0, 0) || defined(CENTOS_4_18_193)
+	LOOKUP_SYMS(stack_trace_save_tsk);
+	LOOKUP_SYMS(stack_trace_save_user);
+#else
 	LOOKUP_SYMS(save_stack_trace_user);
+	LOOKUP_SYMS(save_stack_trace_tsk);
+#endif
 #endif /* DIAG_ARM64 */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
@@ -136,16 +157,15 @@ static int lookup_syms(void)
 #endif
 	LOOKUP_SYMS(task_statm);
 
-	orig_d_find_any_alias = (void *)__kallsyms_lookup_name("d_find_any_alias");
-
-	orig_find_task_by_vpid = (void *)__kallsyms_lookup_name("find_task_by_vpid");
-	orig_find_task_by_pid_ns = (void *)__kallsyms_lookup_name("find_task_by_pid_ns");
-	orig_get_task_type = (void *)__kallsyms_lookup_name("get_task_type");
-	orig_kernfs_name = (void *)__kallsyms_lookup_name("kernfs_name");
-	orig_root_cpuacct = (void *)__kallsyms_lookup_name("root_cpuacct");
-	orig_css_next_descendant_pre = (void *)__kallsyms_lookup_name("css_next_descendant_pre");
-	orig_cpuacct_subsys = (void *)__kallsyms_lookup_name("cpuacct_subsys");
-	orig_css_get_next = (void *)__kallsyms_lookup_name("css_get_next");
+	LOOKUP_SYMS_NORET(d_find_any_alias);
+	LOOKUP_SYMS_NORET(find_task_by_vpid);
+	LOOKUP_SYMS_NORET(find_task_by_pid_ns);
+	LOOKUP_SYMS_NORET(get_task_type);
+	LOOKUP_SYMS_NORET(kernfs_name);
+	LOOKUP_SYMS_NORET(root_cpuacct);
+	LOOKUP_SYMS_NORET(css_next_descendant_pre);
+	LOOKUP_SYMS_NORET(cpuacct_subsys);
+	LOOKUP_SYMS_NORET(css_get_next);
 
 	return 0;
 }
@@ -187,15 +207,8 @@ int alidiagnose_symbols_init(void)
 	if (ret)
 		return ret;
 
-	ret = -EINVAL;
-
-	orig___show_regs = (void *)__kallsyms_lookup_name("__show_regs");
-	if (!orig___show_regs)
-		return ret;
-
-	orig_ptype_all = (void *)__kallsyms_lookup_name("ptype_all");
-	if (!orig_ptype_all)
-                return ret;
+	LOOKUP_SYMS(__show_regs);
+	LOOKUP_SYMS(ptype_all);
 
 	return 0;
 }

@@ -47,7 +47,6 @@ struct diag_run_trace_settings run_trace_settings = {
 };
 
 static unsigned int run_trace_alloced;
-static int sys_call_run_trace_activated = 0;
 
 static struct radix_tree_root run_trace_tree;
 static DEFINE_SPINLOCK(tree_lock);
@@ -466,15 +465,16 @@ static void trace_sched_switch_hit(struct rq *rq, struct task_struct *prev,
 	hook_sched_switch(prev, next);
 }
 
-void cb_sys_enter_run_trace(void *__data, struct pt_regs *regs, long id)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
+static void trace_sys_enter_hit(struct pt_regs *regs, long id)
+#else
+static void trace_sys_enter_hit(void *__data, struct pt_regs *regs, long id)
+#endif
 {
 	struct task_info *task_info;
 	struct monitor_info *monitor_info;
 	struct task_struct *leader;
 	unsigned long flags;
-
-	if (!sys_call_run_trace_activated)
-		return;
 
 	leader = current->group_leader ? current->group_leader : current;
 	monitor_info = find_monitor_info(leader);
@@ -923,11 +923,10 @@ static int __activate_run_trace(void)
 	if (ret)
 		goto out_variant_buffer;
 	run_trace_alloced = 1;
-	sys_call_run_trace_activated = 1;
 	msleep(10);
 	hook_tracepoint("sched_switch", trace_sched_switch_hit, NULL);
 	hook_tracepoint("sched_process_exit", trace_sched_process_exit_hit, NULL);
-	//diag_register_cb_sys_enter(trace_sys_enter_hit, NULL);
+	hook_tracepoint("sys_enter", trace_sys_enter_hit, NULL);
 	hook_tracepoint("sys_exit", trace_sys_exit_hit, NULL);
 	hook_tracepoint("sched_wakeup", trace_sched_wakeup_hit, NULL);
 
@@ -984,14 +983,13 @@ static int __deactivate_run_trace(void)
 	}
 	run_trace_settings.timer_us = 0;
 
-	sys_call_run_trace_activated = 0;
 	msleep(10);
 
 	unhook_uprobe(&diag_uprobe_start);
 	unhook_uprobe(&diag_uprobe_stop);
 	unhook_tracepoint("sched_switch", trace_sched_switch_hit, NULL);
 	unhook_tracepoint("sched_process_exit", trace_sched_process_exit_hit, NULL);
-	//diag_unregister_cb_sys_enter(trace_sys_enter_hit, NULL);
+	unhook_tracepoint("sys_enter", trace_sys_enter_hit, NULL);
 	unhook_tracepoint("sys_exit", trace_sys_exit_hit, NULL);
 	unhook_tracepoint("sched_wakeup", trace_sched_wakeup_hit, NULL);
 
@@ -1192,6 +1190,89 @@ int run_trace_syscall(struct pt_regs *regs, long id)
 		offset_stop = SYSCALL_PARAM5(regs);
 
 		ret = do_uprobe(tgid, fd_start, offset_start, fd_stop, offset_stop);
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
+}
+
+long diag_ioctl_run_trace(unsigned int cmd, unsigned long arg)
+{
+	int ret = 0;
+	int pid;
+	unsigned int threshold;
+	struct diag_run_trace_settings settings;
+	struct diag_ioctl_dump_param dump_param;
+	struct diag_run_trace_monitor_syscall monitor_syscall;
+	struct diag_run_trace_uprobe uprobe;
+
+	switch (cmd) {
+	case CMD_RUN_TRACE_SET:
+		if (run_trace_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, (void *)arg, sizeof(struct diag_run_trace_settings));
+			if ((settings.timer_us && settings.timer_us < 10)
+				  || (settings.buf_size_k && (settings.buf_size_k < 200 || settings.buf_size_k > 10 * 1024))) {
+				ret = -EINVAL;
+			}
+			if (!ret) {
+				run_trace_settings = settings;
+			}
+		}
+		break;
+	case CMD_RUN_TRACE_SETTINGS:
+		settings = run_trace_settings;
+		settings.threads_count = atomic64_read(&settings_threads_count);
+		settings.syscall_count = atomic64_read(&settings_syscall_count);
+		ret = copy_to_user((void *)arg, &settings, sizeof(struct diag_run_trace_settings));
+		break;
+	case CMD_RUN_TRACE_START:
+		ret = copy_from_user(&threshold, (void *)arg, sizeof(int));
+		if (!ret) {
+			down_read(&run_trace_sem);
+			ret = start_run_trace(current, threshold, 0);
+			up_read(&run_trace_sem);
+		}
+		break;
+	case CMD_RUN_TRACE_STOP:
+		stop_run_trace(current, 0);
+		ret = 0;
+		break;
+	case CMD_RUN_TRACE_MONITOR_SYSCALL:
+		ret = copy_from_user(&monitor_syscall, (void *)arg,
+			sizeof(struct diag_run_trace_monitor_syscall));
+		if (!ret) {
+			ret = run_trace_set_syscall(monitor_syscall.pid,
+				monitor_syscall.syscall, monitor_syscall.threshold);
+		}
+		break;
+	case CMD_RUN_TRACE_CLEAR_SYSCALL:
+		ret = copy_from_user(&pid, (void *)arg, sizeof(int));
+		if (!ret) {
+			ret = run_trace_clear_syscall(pid);
+		}
+		break;
+	case CMD_RUN_TRACE_DUMP:
+		ret = copy_from_user(&dump_param, (void *)arg, sizeof(struct diag_ioctl_dump_param));
+		if (!run_trace_alloced) {
+			ret = -EINVAL;
+		} else if (!ret) {
+			ret = copy_to_user_variant_buffer(&run_trace_variant_buffer,
+					dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len);
+			record_dump_cmd("run-trace");
+		}
+
+		break;
+	case CMD_RUN_TRACE_UPROBE:
+		ret = copy_from_user(&uprobe, (void *)arg, sizeof(struct diag_run_trace_uprobe));
+		if (!ret) {
+			ret = do_uprobe(uprobe.tgid, uprobe.fd_start,
+				uprobe.offset_start, uprobe.fd_stop, uprobe.offset_stop);
+		}
 		break;
 	default:
 		ret = -ENOSYS;

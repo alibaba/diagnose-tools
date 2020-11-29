@@ -12,12 +12,20 @@
 #ifndef UAPI_UPROBE_H
 #define UAPI_UPROBE_H
 
+#include <linux/ioctl.h>
+
 int uprobe_syscall(struct pt_regs *regs, long id);
 
 #define DIAG_UPROBE_SET (DIAG_BASE_SYSCALL_UPROBE)
 #define DIAG_UPROBE_SETTINGS (DIAG_UPROBE_SET + 1)
 #define DIAG_UPROBE_DUMP (DIAG_UPROBE_SETTINGS + 1)
 
+#define CMD_UPROBE_DUMP (0)
+#define CMD_UPROBE_SET (CMD_UPROBE_DUMP + 1)
+#define CMD_UPROBE_SETTINGS (CMD_UPROBE_SET + 1)
+#define DIAG_IOCTL_UPROBE_DUMP _IOWR(DIAG_IOCTL_TYPE_UPROBE, CMD_UPROBE_DUMP, struct diag_ioctl_dump_param)
+#define DIAG_IOCTL_UPROBE_SET _IOWR(DIAG_IOCTL_TYPE_UPROBE, CMD_UPROBE_SET, struct diag_uprobe_settings)
+#define DIAG_IOCTL_UPROBE_SETTINGS _IOWR(DIAG_IOCTL_TYPE_UPROBE, CMD_UPROBE_SETTINGS, struct diag_uprobe_settings)
 struct diag_uprobe_param_define {
 	char param_name[255];
 	/**
@@ -61,6 +69,7 @@ struct diag_uprobe_settings {
 	int fd;
 	unsigned int offset;
 	struct diag_uprobe_param_define params[DIAG_UPROBE_MAX_PARAMS];
+	unsigned int sample_step;
 };
 
 struct uprobe_detail {

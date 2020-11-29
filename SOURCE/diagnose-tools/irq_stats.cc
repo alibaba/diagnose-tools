@@ -71,10 +71,17 @@ static void do_activate(const char *arg)
 
 	settings.verbose = parse.int_value("verbose");
 
-	ret = -ENOSYS;
-	syscall(DIAG_IRQ_STATS_SET, &ret, &settings, sizeof(struct diag_irq_stats_settings));
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_IRQ_STATS_SET, (long)&settings);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_IRQ_STATS_SET, &ret, &settings, sizeof(struct diag_irq_stats_settings));
+	}
+
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
 	printf("    输出级别：%d\n", settings.verbose);
+	if (ret)
+		return;
 
 	ret = diag_activate("irq-stats");
 	if (ret == 1) {
@@ -122,8 +129,12 @@ static void do_settings(const char *arg)
 	struct params_parser parse(arg);
 	enable_json = parse.int_value("json");
 
-	ret = -ENOSYS;
-	syscall(DIAG_IRQ_STATS_SETTINGS, &ret, &settings, sizeof(struct diag_irq_stats_settings));
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_IRQ_STATS_SETTINGS, (long)&settings);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_IRQ_STATS_SETTINGS, &ret, &settings, sizeof(struct diag_irq_stats_settings));
+	}
 
 	if (1 == enable_json) {
 		return print_settings_in_json(&settings, ret);
@@ -222,9 +233,19 @@ static void do_dump(void)
 	static char variant_buf[1024 * 1024];
 	int len;
 	int ret = 0;
+	struct diag_ioctl_dump_param dump_param = {
+		.user_ptr_len = &len,
+		.user_buf_len = 1024 * 1024,
+		.user_buf = variant_buf,
+	};
 
-	ret = -ENOSYS;
-	syscall(DIAG_IRQ_STATS_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_IRQ_STATS_DUMP, (long)&dump_param);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_IRQ_STATS_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+	}
+
 	if (ret == 0 && len > 0) {
 		int i;
 
@@ -375,13 +396,23 @@ static void do_sls(char *arg)
 	static char variant_buf[1024 * 1024];
 	int len;
 	int ret = 0;
+	struct diag_ioctl_dump_param dump_param = {
+		.user_ptr_len = &len,
+		.user_buf_len = 1024 * 1024,
+		.user_buf = variant_buf,
+	};
 
 	ret = log_config(arg, sls_file, &syslog_enabled);
 	if (ret != 1)
 		return;
 
 	while (1) {
-		syscall(DIAG_IRQ_STATS_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+		if (run_in_host) {
+			ret = diag_call_ioctl(DIAG_IOCTL_IRQ_STATS_DUMP, (long)&dump_param);
+		} else {
+			syscall(DIAG_IRQ_STATS_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+		}
+
 		if (ret == 0 && len > 0) {
 			extract_variant_buffer(variant_buf, len, sls_extract, NULL);
 			write_sls_summary();

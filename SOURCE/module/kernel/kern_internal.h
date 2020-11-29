@@ -21,8 +21,8 @@ extern int diag_load_init(void);
 extern void diag_load_exit(void);
 extern int diag_exit_init(void);
 extern void diag_exit_exit(void);
-extern int diag_syscall_init(void);
-extern void diag_syscall_exit(void);
+extern int diag_sys_delay_init(void);
+extern void diag_sys_delay_exit(void);
 extern int diag_runq_info_init(void);
 extern void diag_runq_info_exit(void);
 extern int diag_rcu_init(void);
@@ -59,4 +59,5 @@ extern int diag_utilization_init(void);
 extern void diag_utilization_exit(void);
 extern int diag_reboot_init(void);
 extern void diag_reboot_exit(void);
-
+extern int diag_sig_info_init(void);
+extern void diag_sig_info_exit(void);

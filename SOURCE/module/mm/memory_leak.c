@@ -373,6 +373,49 @@ int mm_leak_syscall(struct pt_regs *regs, long id)
 	return ret;
 }
 
+long diag_ioctl_mm_leak(unsigned int cmd, unsigned long arg)
+{
+	unsigned int verbose;
+	int ret = 0;
+	struct diag_mm_leak_settings settings;
+	struct diag_ioctl_dump_param_cycle dump_param;
+
+	switch (cmd) {
+	case CMD_MM_LEAK_VERBOSE:
+		ret = copy_from_user(&verbose, (void *)arg, sizeof(unsigned int));
+		if (!ret) {
+			mm_leak_verbose = verbose;
+		}
+		break;
+	case CMD_MM_LEAK_SETTINGS:
+		settings.activated = mm_leak_activated;
+		settings.verbose = mm_leak_verbose;
+		ret = copy_to_user((void *)arg, &settings, sizeof(struct diag_mm_leak_settings));
+		break;
+	case CMD_MM_LEAK_DUMP:
+		ret = copy_from_user(&dump_param, (void *)arg, sizeof(struct diag_ioctl_dump_param_cycle));
+
+		if (!mm_leak_alloced) {
+			ret = -EINVAL;
+		} else if (!ret) {
+			if (dump_param.cycle) {
+				last_dump_addr = 0;
+			}
+
+			do_dump();
+			ret = copy_to_user_variant_buffer(&mm_leak_variant_buffer, 
+				dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len);
+			record_dump_cmd("mm-leak");
+		}
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
+}
+
 int diag_memory_leak_init(void)
 {
 	init_diag_variant_buffer(&mm_leak_variant_buffer, 5 * 1024 * 1024);

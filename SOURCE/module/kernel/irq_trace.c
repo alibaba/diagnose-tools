@@ -429,6 +429,47 @@ int irq_trace_syscall(struct pt_regs *regs, long id)
 	return ret;
 }
 
+long diag_ioctl_irq_trace(unsigned int cmd, unsigned long arg)
+{
+	int ret = 0;
+	struct diag_irq_trace_settings settings;
+	struct diag_ioctl_dump_param dump_param;
+
+	switch (cmd) {
+	case CMD_IRQ_TRACE_SET:
+		if (irq_trace_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, (void *)arg, sizeof(struct diag_irq_trace_settings));
+			if (!ret) {
+				irq_trace_settings = settings;
+			}
+		}
+		break;
+	case CMD_IRQ_TRACE_SETTINGS:
+		settings = irq_trace_settings;
+		ret = copy_to_user((void *)arg, &settings, sizeof(struct diag_irq_trace_settings));
+		break;
+	case CMD_IRQ_TRACE_DUMP:
+		ret = copy_from_user(&dump_param, (void *)arg, sizeof(struct diag_ioctl_dump_param));
+
+		do_dump();
+		if (!irq_trace_alloced) {
+			ret = -EINVAL;
+		} else if (!ret) {
+			ret = copy_to_user_variant_buffer(&irq_trace_variant_buffer,
+					dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len);
+			record_dump_cmd("irq-trace");
+		}
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
+}
+
 static int lookup_syms(void)
 {
 	LOOKUP_SYMS(softirq_vec);

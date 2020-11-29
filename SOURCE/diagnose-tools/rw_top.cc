@@ -60,14 +60,24 @@ static void do_activate(const char *arg)
 	settings.shm = parse.int_value("shm");
 	settings.top = parse.int_value("top");
 	settings.perf = parse.int_value("perf");
+	if (settings.top == 0)
+		settings.top = 100;	
 
-	ret = -ENOSYS;
-	syscall(DIAG_RW_TOP_SET, &ret, &settings, sizeof(struct diag_rw_top_settings));
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_RW_TOP_SET, (long)&settings);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_RW_TOP_SET, &ret, &settings, sizeof(struct diag_rw_top_settings));
+	}
+
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
 	printf("    TOP：%d\n", settings.top);
 	printf("    SHM：%d\n", settings.shm);
 	printf("    PERF：%d\n", settings.perf);
 	printf("    输出级别：%d\n", settings.verbose);
+
+	if (ret)
+		return;
 
 	ret = diag_activate("rw-top");
 	if (ret == 1) {
@@ -118,8 +128,12 @@ static void do_settings(const char *arg)
 	struct params_parser parse(arg);
 	enable_json = parse.int_value("json");
 
-	ret = -ENOSYS;
-	syscall(DIAG_RW_TOP_SETTINGS, &ret, &settings, sizeof(struct diag_rw_top_settings));
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_RW_TOP_SETTINGS, (long)&settings);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_RW_TOP_SETTINGS, &ret, &settings, sizeof(struct diag_rw_top_settings));
+	}
 
 	if (1 == enable_json) {
 		return print_settings_in_json(&settings, ret);
@@ -146,8 +160,6 @@ static int rw_top_extract(void *buf, unsigned int len, void *)
 	if (len == 0)
 		return 0;
 
-	printf("  序号           R-SIZE            W-SIZE          MAP-SIZE           RW-SIZE        文件名\n");
-	
 	et_type = (int *)buf;
 	switch (*et_type) {
 	case et_rw_top_detail:
@@ -155,12 +167,14 @@ static int rw_top_extract(void *buf, unsigned int len, void *)
 			break;
 		detail = (struct rw_top_detail *)buf;
 
-		printf("%5d%18lu%18lu%18lu%18lu        %-100s\n",
+		printf("%5d%18lu%18lu%18lu%18lu%8lu%16s        %-100s\n",
 			detail->seq,
 			detail->r_size,
 			detail->w_size,
 			detail->map_size,
 			detail->rw_size,
+			detail->pid,
+			detail->comm,
 			detail->path_name);
 
 		break;
@@ -184,6 +198,7 @@ static int rw_top_extract(void *buf, unsigned int len, void *)
 				perf->task.comm);
 		diag_printf_proc_chains(&perf->proc_chains);
 		printf("##\n");
+		break;
 	default:
 		break;
 	}
@@ -212,6 +227,8 @@ static int sls_extract(void *buf, unsigned int len, void *)
 		root["w_size"] = Json::Value(detail->w_size);
 		root["map_size"] = Json::Value(detail->map_size);
 		root["rw_size"] = Json::Value(detail->rw_size);
+		root["pid"] = Json::Value(detail->pid);
+		root["comm"] = Json::Value(detail->comm);
 		root["path_name"] = Json::Value(detail->path_name);
 
 		gettimeofday(&tv, NULL);
@@ -236,10 +253,21 @@ static void do_dump(void)
 	static char variant_buf[1024 * 1024];
 	int len;
 	int ret = 0;
+	struct diag_ioctl_dump_param dump_param = {
+		.user_ptr_len = &len,
+		.user_buf_len = 1024 * 1024,
+		.user_buf = variant_buf,
+	};
 
-	ret = -ENOSYS;
-	syscall(DIAG_RW_TOP_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_RW_TOP_DUMP, (long)&dump_param);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_RW_TOP_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+	}
+
 	if (ret == 0) {
+		printf("  序号           R-SIZE            W-SIZE          MAP-SIZE           RW-SIZE     PID          进程名        文件名\n");
 		do_extract(variant_buf, len);
 	}
 }
@@ -247,15 +275,25 @@ static void do_dump(void)
 static void do_sls(char *arg)
 {
 	int ret;
-	static char variant_buf[1024 * 1024];
-
 	int len;
+	static char variant_buf[1024 * 1024];
+	struct diag_ioctl_dump_param dump_param = {
+		.user_ptr_len = &len,
+		.user_buf_len = 1024 * 1024,
+		.user_buf = variant_buf,
+	};
+
 	ret = log_config(arg, sls_file, &syslog_enabled);
 	if (ret != 1)
 		return;
 
 	while (1) {
-		syscall(DIAG_RW_TOP_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+		if (run_in_host) {
+			ret = diag_call_ioctl(DIAG_IOCTL_RW_TOP_DUMP, (long)&dump_param);
+		} else {
+			syscall(DIAG_RW_TOP_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+		}
+
 		if (ret == 0 && len > 0) {
 			extract_variant_buffer(variant_buf, len, sls_extract, NULL);
 		}

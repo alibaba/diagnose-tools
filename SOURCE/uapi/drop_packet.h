@@ -12,6 +12,8 @@
 #ifndef UAPI_DROP_PACKET_H
 #define UAPI_DROP_PACKET_H
 
+#include <linux/ioctl.h>
+
 int drop_packet_syscall(struct pt_regs *regs, long id);
 
 enum pk_direction {
@@ -83,5 +85,12 @@ struct drop_packet_detail {
 	unsigned long sum_len[TRACK_COUNT];
 	unsigned long sum_datalen[TRACK_COUNT];
 };
+
+#define CMD_DROP_PACKET_SET (0)
+#define CMD_DROP_PACKET_SETTINGS (CMD_DROP_PACKET_SET + 1)
+#define CMD_DROP_PACKET_DUMP (CMD_DROP_PACKET_SETTINGS + 1)
+#define DIAG_IOCTL_DROP_PACKET_SET _IOWR(DIAG_IOCTL_TYPE_DROP_PACKET, CMD_DROP_PACKET_SET, struct diag_drop_packet_settings)
+#define DIAG_IOCTL_DROP_PACKET_SETTINGS _IOWR(DIAG_IOCTL_TYPE_DROP_PACKET, CMD_DROP_PACKET_SETTINGS, struct diag_drop_packet_settings)
+#define DIAG_IOCTL_DROP_PACKET_DUMP _IOWR(DIAG_IOCTL_TYPE_DROP_PACKET, CMD_DROP_PACKET_DUMP, struct diag_ioctl_dump_param)
 
 #endif /* UAPI_DROP_PACKET_H */

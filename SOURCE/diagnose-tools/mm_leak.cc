@@ -68,8 +68,13 @@ static void do_verbose(char *arg)
 	if (ret != 1)
 		return;
 
-	ret = -ENOSYS;
-	syscall(DIAG_MM_LEAK_VERBOSE, &ret, verbose);
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_MM_LEAK_VERBOSE, (unsigned long)&verbose);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_MM_LEAK_VERBOSE, &ret, verbose);
+	}
+
 	printf("set verbose for mm-leak: %d, ret is %d\n", verbose, ret);
 }
 
@@ -113,10 +118,22 @@ static void do_dump(void)
 	int len;
 	int ret = 0;
 	unsigned long cycle = 1;
+	struct diag_ioctl_dump_param_cycle dump_param = {
+		.user_ptr_len = &len,
+		.user_buf_len = 1024 * 1024,
+		.user_buf = variant_buf,
+		.cycle = cycle,
+	};
 
+	memset(variant_buf, 0, 1024 * 1024);
 	do {
-		ret = -ENOSYS;
-		syscall(DIAG_MM_LEAK_DUMP, &ret, &len, variant_buf, 5 * 1024 * 1024, cycle);
+		if (run_in_host) {
+			ret = diag_call_ioctl(DIAG_IOCTL_MM_LEAK_DUMP, (long)&dump_param);
+		} else {
+			ret = -ENOSYS;
+			syscall(DIAG_MM_LEAK_DUMP, &ret, &len, variant_buf, 5 * 1024 * 1024, cycle);
+		}
+
 		if (ret == 0 && len > 0) {
 			do_extract(variant_buf, len);
 		}
@@ -130,8 +147,13 @@ static void do_settings(void)
 	struct diag_mm_leak_settings settings;
 	int ret;
 
-	ret = -ENOSYS;
-	syscall(DIAG_MM_LEAK_SETTINGS, &ret, &settings, sizeof(struct diag_mm_leak_settings));
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_MM_LEAK_SETTINGS, (long)&settings);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_MM_LEAK_SETTINGS, &ret, &settings, sizeof(struct diag_mm_leak_settings));
+	}
+
 	if (ret == 0) {
 		printf("功能设置：\n");
 		printf("    是否激活：%s\n", settings.activated ? "√" : "×");

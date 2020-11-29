@@ -54,6 +54,7 @@
 #include "uapi/mm_leak.h"
 #include "uapi/sched_delay.h"
 #include "uapi/reboot.h"
+#include "uapi/net_bandwidth.h"
 
 unsigned long diag_timer_period = 10;
 
@@ -67,6 +68,7 @@ static DEFINE_SEMAPHORE(controller_sem);
 
 struct diag_percpu_context *diag_percpu_context[NR_CPUS];
 unsigned long diag_ignore_jump_check = 0;
+unsigned long open_syscall = 0;
 
 static ssize_t controller_file_read(struct diag_trace_file *trace_file,
 		struct file *file, char __user *buf, size_t size, loff_t *ppos)
@@ -142,8 +144,6 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 			activate_rw_top();
 		} else if (strcmp(func, "fs-shm") == 0) {
 			activate_fs_shm();
-		} else if (strcmp(func, "drop-packet") == 0) {
-			activate_drop_packet();
 		} else if (strcmp(func, "sched-delay") == 0) {
 			activate_sched_delay();
 		} else if (strcmp(func, "reboot") == 0) {
@@ -160,6 +160,10 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 			activate_fs_cache();
 		} else if (strcmp(func, "high-order") == 0) {
 			activate_high_order();
+		} else if (strcmp(func, "net-bandwidth") == 0) {
+			activate_net_bandwidth();
+		} else if (strcmp(func, "sig-info") == 0) {
+			activate_sig_info();
 		}
 		up(&controller_sem);
 		printk("diagnose-tools %s %s\n", cmd, func);
@@ -222,10 +226,26 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 			deactivate_fs_cache();
 		} else if (strcmp(func, "high-order") == 0) {
 			deactivate_high_order();
+		} else if (strcmp(func, "net-bandwidth") == 0) {
+			deactivate_net_bandwidth();
+		} else if (strcmp(func, "sig-info") == 0) {
+			deactivate_sig_info();
 		}
 
 		up(&controller_sem);
 		printk("diagnose-tools %s %s\n", cmd, func);
+	} else if (strcmp(cmd, "syscall") == 0) {
+		char sub[255];
+
+		ret = sscanf(chr, "%255s %255s", cmd, sub);
+		if (ret != 2)
+			return -EINVAL;
+		
+		if (strcmp(sub, "on") == 0) {
+			diag_hook_sys_enter();
+		} else if (strcmp(sub, "off") == 0) {
+			diag_unhook_sys_enter();
+		}
 	}
 
 	return count;
@@ -282,9 +302,11 @@ static void diag_cb_sys_enter(void *data, struct pt_regs *regs, long id)
 	if (id >= DIAG_BASE_SYSCALL) {
 		int ret = -ENOSYS;
 
+		atomic64_inc_return(&diag_nr_running);
+	
 		down(&controller_sem);
 		if (id == DIAG_VERSION) {
-			ret = diag_VERSION;
+			ret = DIAG_VERSION;
 		} else if (id >= DIAG_BASE_SYSCALL_PUPIL
 		   && id < DIAG_BASE_SYSCALL_PUPIL + DIAG_SYSCALL_INTERVAL) {
 			ret = pupil_syscall(regs, id);
@@ -366,8 +388,14 @@ static void diag_cb_sys_enter(void *data, struct pt_regs *regs, long id)
 		} else if (id >= DIAG_BASE_SYSCALL_HIGH_ORDER
 		   && id < DIAG_BASE_SYSCALL_HIGH_ORDER + DIAG_SYSCALL_INTERVAL) {
 			ret = high_order_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_NET_BANDWIDTH
+		   && id < DIAG_BASE_SYSCALL_NET_BANDWIDTH + DIAG_SYSCALL_INTERVAL) {
+			ret = net_bandwidth_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_SIG_INFO
+		   && id < DIAG_BASE_SYSCALL_SIG_INFO + DIAG_SYSCALL_INTERVAL) {
+			ret = sig_info_syscall(regs, id);
 		}
-		
+
 		up(&controller_sem);
 		if (ret != -ENOSYS) {
 			__user int *ret_ptr = (void *)ORIG_PARAM1(regs);
@@ -376,6 +404,8 @@ static void diag_cb_sys_enter(void *data, struct pt_regs *regs, long id)
 				ret = copy_to_user(ret_ptr, &ret, sizeof(int));
 			}
 		}
+
+		atomic64_dec_return(&diag_nr_running);
 	}
 }
 
@@ -385,12 +415,27 @@ static void trace_sys_enter_hit(struct pt_regs *regs, long id)
 static void trace_sys_enter_hit(void *__data, struct pt_regs *regs, long id)
 #endif
 {
-	atomic64_inc_return(&diag_nr_running);
 	diag_cb_sys_enter(NULL, regs, id);
-	cb_sys_enter_run_trace(NULL, regs, id);
-	cb_sys_enter_sys_delay(NULL, regs, id);
-	cb_sys_enter_sys_cost(NULL, regs, id);
-	atomic64_dec_return(&diag_nr_running);
+}
+
+static int sys_enter_hooked = 0;
+
+void diag_hook_sys_enter(void)
+{
+	if (sys_enter_hooked)
+		return;
+
+	hook_tracepoint("sys_enter", trace_sys_enter_hit, NULL);
+	sys_enter_hooked = 1;
+}
+
+void diag_unhook_sys_enter(void)
+{
+	if (!sys_enter_hooked)
+		return;
+
+	unhook_tracepoint("sys_enter", trace_sys_enter_hit, NULL);
+	sys_enter_hooked = 0;
 }
 
 static int __init diagnosis_init(void)
@@ -461,11 +506,16 @@ static int __init diagnosis_init(void)
 	if (ret)
 		goto out_xby_test;
 
-	hook_tracepoint("sys_enter", trace_sys_enter_hit, NULL);
+	ret = diag_dev_init();
+	if (ret)
+		goto out_dev;
+
 	printk("diagnose-tools in diagnosis_init\n");
 
 	return 0;
 
+out_dev:
+	diag_xby_test_exit();
 out_xby_test:
 	diag_fs_exit();
 out_fs:
@@ -499,10 +549,14 @@ static void __exit diagnosis_exit(void)
 
 	printk("diagnose-tools in diagnosis_exit\n");
 
+	if (sys_enter_hooked)
+		diag_unhook_sys_enter();
+
 	diag_linux_proc_exit();
 	msleep(20);
 
-	unhook_tracepoint("sys_enter", trace_sys_enter_hit, NULL);
+	diag_dev_cleanup();
+
 	synchronize_sched();
 
 	/**

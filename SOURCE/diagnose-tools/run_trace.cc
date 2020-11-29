@@ -79,13 +79,20 @@ static void do_activate(const char *arg)
 	settings.buf_size_k = parse.int_value("buf-size-k");
 	settings.timer_us = parse.int_value("timer-us");
 
-	ret = -ENOSYS;
-	syscall(DIAG_RUN_TRACE_SET, &ret, &settings, sizeof(struct diag_run_trace_settings));
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_RUN_TRACE_SET, (long)&settings);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_RUN_TRACE_SET, &ret, &settings, sizeof(struct diag_run_trace_settings));
+	}
+
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
 	printf("    阀值(us)：%d\n", settings.threshold_us);
 	printf("    输出级别：%d\n", settings.verbose);
 	printf("    TIMER_US：%d\n", settings.timer_us);
 	printf("    BUF-SIZE-K：%d\n", settings.buf_size_k);
+	if (ret)
+		return;
 
 	ret = diag_activate("run-trace");
 	if (ret == 1) {
@@ -116,10 +123,14 @@ static void do_settings(const char *arg)
 	struct params_parser parse(arg);
 	enable_json = parse.int_value("json");
 
-	ret = -ENOSYS;
-	syscall(DIAG_RUN_TRACE_SETTINGS, &ret, &settings, sizeof(struct diag_run_trace_settings));
-	if (ret == 0) {
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_RUN_TRACE_SETTINGS, (long)&settings);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_RUN_TRACE_SETTINGS, &ret, &settings, sizeof(struct diag_run_trace_settings));
+	}
 
+	if (ret == 0) {
 		if ( 1 != enable_json)
 		{
 			printf("功能设置：\n");
@@ -163,15 +174,19 @@ static void do_settings(const char *arg)
 static void do_monitor_syscall(char *arg)
 {
 	int ret;
-	unsigned int pid, nr_syscall, threshold_ms;
+	struct diag_run_trace_monitor_syscall params;
 
-	ret = sscanf(arg, "%d %d %d", &pid, &nr_syscall, &threshold_ms);
+	ret = sscanf(arg, "%d %d %d", &params.pid, &params.syscall, &params.threshold);
 	if (ret != 3)
 		return;
-	ret = -ENOSYS;
-	syscall(DIAG_RUN_TRACE_MONITOR_SYSCALL, &ret, pid, nr_syscall, threshold_ms);
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_RUN_TRACE_MONITOR_SYSCALL, (long)&params);
+	} else {
+		syscall(DIAG_RUN_TRACE_MONITOR_SYSCALL, &ret, params.pid, params.syscall, params.threshold);
+	}
+
 	printf("set-syscall for run-trace: pid %d, syscall %d, threshold %dms, ret is %d\n",
-		pid, nr_syscall, threshold_ms, ret);
+		params.pid, params.syscall, params.threshold, ret);
 }
 
 static void do_clear_syscall(char *arg)
@@ -182,8 +197,14 @@ static void do_clear_syscall(char *arg)
 	ret = sscanf(arg, "%d", &pid);
 	if (ret != 1)
 		return;
-	ret = -ENOSYS;
-	syscall(DIAG_RUN_TRACE_CLEAR_SYSCALL, &ret, pid);
+
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_RUN_TRACE_CLEAR_SYSCALL, (long)&pid);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_RUN_TRACE_CLEAR_SYSCALL, &ret, pid);
+	}
+
 	printf("clear-syscall for run-trace: pid %d, ret is %d\n", pid, ret);
 }
 
@@ -193,40 +214,42 @@ static void do_uprobe(const char *arg)
 	struct params_parser parse(arg);
 	string file_start;
 	string file_stop;
-	unsigned long offset_start;
-	unsigned long offset_stop;
-	unsigned long tgid;
-	unsigned long fd_start, fd_stop;
+	struct diag_run_trace_uprobe params;
 
-	tgid = parse.int_value("tgid");
+	params.tgid = parse.int_value("tgid");
 	file_start = parse.string_value("start-file");
 	file_stop = parse.string_value("stop-file");
-	offset_start = parse.int_value("start-offset");
-	offset_stop = parse.int_value("stop-offset");
+	params.offset_start = parse.int_value("start-offset");
+	params.offset_stop = parse.int_value("stop-offset");
 	if (file_start.length() <= 0 || file_stop.length() <= 0
-		|| offset_start <= 0 || offset_stop <= 0
-		|| tgid <= 0) {
+		|| params.offset_start <= 0 || params.offset_stop <= 0
+		|| params.tgid <= 0) {
 		printf("tgid/start-file/stop-file/start-offset/stop-offset param missed\n");
 		return;
 	}
 
-	fd_start = open(file_start.c_str(), O_RDONLY, 0);
-	if(fd_start < 0) {
+	params.fd_start = open(file_start.c_str(), O_RDONLY, 0);
+	if(params.fd_start < 0) {
 		printf("can not open %s\n", file_start.c_str());
 		return;
 	}
-	fd_stop = open(file_stop.c_str(), O_RDONLY, 0);
-	if(fd_stop < 0) {
-		close(fd_start);
+	params.fd_stop = open(file_stop.c_str(), O_RDONLY, 0);
+	if(params.fd_stop < 0) {
+		close(params.fd_start);
 		printf("can not open %s\n", file_stop.c_str());
 		return;
 	}
 
-	ret = -ENOSYS;
-	syscall(DIAG_RUN_TRACE_UPROBE, &ret, tgid, fd_start, offset_start,
-			fd_stop, offset_stop);
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_RUN_TRACE_UPROBE, (long)&params);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_RUN_TRACE_UPROBE, &ret, params.tgid, params.fd_start,
+				params.offset_start, params.offset_start, params.offset_stop);
+	}
+
 	printf("uprobe for run-trace: tgid %lu, start-file: %s, start-offset: %lu, stop-file: %s, stop-offset: %lu, ret is %d\n",
-		tgid, file_start.c_str(), offset_start, file_stop.c_str(), offset_stop, ret);
+		params.tgid, file_start.c_str(), params.offset_start, file_stop.c_str(), params.offset_stop, ret);
 }
 
 static int run_trace_extract_2(void *buf, unsigned int len, void *)
@@ -619,9 +642,19 @@ static void do_dump(void)
 	static char variant_buf[1024 * 1024];
 	int len;
 	int ret = 0;
+	struct diag_ioctl_dump_param dump_param = {
+		.user_ptr_len = &len,
+		.user_buf_len = 1024 * 1024,
+		.user_buf = variant_buf,
+	};
 
-	ret = -ENOSYS;
-	syscall(DIAG_RUN_TRACE_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_RUN_TRACE_DUMP, (long)&dump_param);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_RUN_TRACE_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+	}
+
 	if (ret == 0 && len > 0) {
 		do_extract(variant_buf, len);
 	}
@@ -952,12 +985,17 @@ __attribute__((unused)) static void sls_test(void)
 {
 	int i;
 	struct timeval delay;
-	int ret;
+	int __attribute__ ((unused)) ret;
+	int ms = 100;
 
 	do_activate("");
-	ret = -ENOSYS;
-	//syscall(DIAG_RUN_TRACE_MONITOR_SYSCALL, &ret, 0, 35, 50);
-	syscall(DIAG_RUN_TRACE_START, &ret, 100);
+
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_RUN_TRACE_START, (long)&ms);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_RUN_TRACE_START, &ret, 100);
+	}
 
 	for (i = 0; i < 3000000; i++) {
 		static int tmp = 0;
@@ -973,8 +1011,14 @@ __attribute__((unused)) static void sls_test(void)
 	delay.tv_sec = 0;
 	delay.tv_usec = 100 * 1000; // 20 ms
 	select(0, NULL, NULL, NULL, &delay);
-	ret = -ENOSYS;
-	syscall(DIAG_RUN_TRACE_STOP, &ret);
+
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_RUN_TRACE_STOP, 0);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_RUN_TRACE_STOP, &ret);
+	}
+
 	do_deactivate();
 }
 
@@ -984,6 +1028,11 @@ static void do_sls(char *arg)
 	static char variant_buf[1024 * 1024];
 	int len;
 	int jiffies_sls = 0;
+	struct diag_ioctl_dump_param dump_param = {
+		.user_ptr_len = &len,
+		.user_buf_len = 1024 * 1024,
+		.user_buf = variant_buf,
+	};
 
 	ret = log_config(arg, sls_file, &syslog_enabled);
 	if (ret != 1)
@@ -993,8 +1042,13 @@ static void do_sls(char *arg)
 
 	java_attach_once();
 	while (1) {
-		ret = -ENOSYS;
-		syscall(DIAG_RUN_TRACE_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+		if (run_in_host) {
+			ret = diag_call_ioctl(DIAG_IOCTL_RUN_TRACE_DUMP, (long)&dump_param);
+		} else {
+			ret = -ENOSYS;
+			syscall(DIAG_RUN_TRACE_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+		}
+
 		if (ret == 0 && len > 0) {
 			/**
 			 * 10 min
@@ -1016,12 +1070,16 @@ static void do_sls(char *arg)
 static void do_test(void)
 {
 	int i = 0;
-	int ret;
+	int __attribute__ ((unused)) ret;
 	struct timeval delay;
+	int ms = 100;
 
-	ret = -ENOSYS;
-	//syscall(DIAG_RUN_TRACE_MONITOR_SYSCALL, &ret, 0, 35, 50);
-	syscall(DIAG_RUN_TRACE_START, &ret, 100);
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_RUN_TRACE_START, (long)&ms);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_RUN_TRACE_START, &ret, ms);
+	}
 
 	for (i = 0; i < 3000000; i++) {
 		static int tmp = 0;
@@ -1037,8 +1095,13 @@ static void do_test(void)
 	delay.tv_sec = 0;
 	delay.tv_usec = 100 * 1000; // 20 ms
 	select(0, NULL, NULL, NULL, &delay);
-	ret = -ENOSYS;
-	syscall(DIAG_RUN_TRACE_STOP, &ret);
+
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_RUN_TRACE_STOP, 0);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_RUN_TRACE_STOP, &ret);
+	}
 }
 
 int run_trace_main(int argc, char **argv)

@@ -129,12 +129,12 @@ void __weak diag_exit_exit(void)
 	//
 }
 
-int __weak diag_syscall_init(void)
+int __weak diag_sys_delay_init(void)
 {
 	return 0;
 }
 
-void __weak diag_syscall_exit(void)
+void __weak diag_sys_delay_exit(void)
 {
 	//
 }
@@ -485,6 +485,26 @@ void __weak diag_utilization_exit(void)
 	//
 }
 
+int __weak diag_net_net_bandwidth_init(void)
+{
+	return 0;
+}
+
+void __weak diag_net_net_bandwidth_exit(void)
+{
+	//
+}
+
+int __weak diag_sig_info_init(void)
+{
+	return 0;
+}
+
+void __weak diag_sig_info_exit(void)
+{
+	//
+}
+
 int __weak exit_monitor_syscall(struct pt_regs *regs, long id)
 {
 	return -ENOSYS;
@@ -506,11 +526,6 @@ int __weak load_monitor_syscall(struct pt_regs *regs, long id)
 }
 
 int __weak mutex_monitor_syscall(struct pt_regs *regs, long id)
-{
-	return -ENOSYS;
-}
-
-int __weak perf_syscall(struct pt_regs *regs, long id)
 {
 	return -ENOSYS;
 }
@@ -578,6 +593,16 @@ int __weak kprobe_syscall(struct pt_regs *regs, long id)
 int __weak mm_leak_syscall(struct pt_regs *regs, long id)
 {
 	return -ENOSYS;
+}
+
+int __weak net_bandwidth_syscall(struct pt_regs *regs, long id)
+{
+        return -ENOSYS;
+}
+
+int __weak sig_info_syscall(struct pt_regs *regs, long id)
+{
+        return -ENOSYS;
 }
 
 int __weak activate_run_trace(void)
@@ -785,11 +810,6 @@ int __weak deactivate_sched_delay(void)
 	return -EINVAL;
 }
 
-int __weak reboot_syscall(struct pt_regs *regs, long id)
-{
-	return -ENOSYS;
-}
-
 int __weak activate_reboot(void)
 {
 	return -EINVAL;
@@ -858,11 +878,6 @@ void __weak diag_ping_delay_exit(void)
 {
 }
 
-int __weak uprobe_syscall(struct pt_regs *regs, long id)
-{
-	return -ENOSYS;
-}
-
 int __weak activate_uprobe(void)
 {
 	return -EINVAL;
@@ -929,3 +944,154 @@ int __weak diag_high_order_init(void)
 void __weak diag_high_order_exit(void)
 {
 }
+
+long __weak diag_ioctl_sys_delay(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_sys_cost(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_sched_delay(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_irq_delay(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_irq_stats(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_irq_trace(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_load_monitor(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_run_trace(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_perf(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_kprobe(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_uprobe(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_utilization(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_exit_monitor(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_mutex_monitor(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_exec_monitor(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_alloc_top(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_high_order(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_drop_packet(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_tcp_retrans(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_ping_delay(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_rw_top(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_fs_shm(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_fs_orphan(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_fs_cache(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_reboot(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_net_bandwidth(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+long __weak diag_ioctl_sig_info(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+int __weak perf_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
+}
+
+int __weak deactivate_net_bandwidth(void)
+{
+	return -EINVAL;
+}
+
+int __weak activate_net_bandwidth(void)
+{
+	return -EINVAL;
+}
+

@@ -36,6 +36,7 @@ void usage_exec_monitor(void)
 	printf("        --help exec-monitor help info\n");
 	printf("        --activate\n");
 	printf("            verbose VERBOSE\n");
+	printf("            perf set 1 if want perf detail\n");
 	printf("        --deactivate\n");
 	printf("        --report dump log with text.\n");
 	printf("        --log\n");
@@ -52,11 +53,21 @@ static void do_activate(const char *arg)
 	memset(&settings, 0, sizeof(struct diag_exec_monitor_settings));
 	
 	settings.verbose = parse.int_value("verbose");
+	settings.perf = parse.int_value("perf");
 
-	ret = -ENOSYS;
-	syscall(DIAG_EXEC_MONITOR_SET, &ret, &settings, sizeof(struct diag_exec_monitor_settings));
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_EXEC_MONITOR_SET, (long)&settings);
+	} else {
+		syscall(DIAG_EXEC_MONITOR_SET, &ret, &settings, sizeof(struct diag_exec_monitor_settings));
+	}
+
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
+	printf("    PERF：%d\n", settings.perf);
 	printf("    输出级别：%d\n", settings.verbose);
+	
+	if (ret)
+		return;
+
 	ret = diag_activate("exec-monitor");
 	if (ret == 1) {
 		printf("exec-monitor activated\n");
@@ -84,6 +95,7 @@ static void print_settings_in_json(struct diag_exec_monitor_settings *settings, 
 
 	if (ret == 0) {
 		root["activated"] = Json::Value(settings->activated);
+		root["PERF"] = Json::Value(settings->perf);
 		root["verbose"] = Json::Value(settings->verbose);
 	} else {
 		root["err"] = Json::Value("found exec-monitor settings failed, please check if diagnose-tools is installed correctly or not.");
@@ -103,8 +115,12 @@ static void do_settings(const char *arg)
 	struct params_parser parse(arg);
 	enable_json = parse.int_value("json");
 
-	ret = -ENOSYS;
-	syscall(DIAG_EXEC_MONITOR_SETTINGS, &ret, &settings, sizeof(struct diag_exec_monitor_settings));
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_EXEC_MONITOR_SETTINGS, (long)&settings);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_EXEC_MONITOR_SETTINGS, &ret, &settings, sizeof(struct diag_exec_monitor_settings));
+	}
 
 	if (1 == enable_json) {
 		return print_settings_in_json(&settings, ret);
@@ -113,6 +129,7 @@ static void do_settings(const char *arg)
 	if (ret == 0) {
 		printf("功能设置：\n");
 		printf("    是否激活：%s\n", settings.activated ? "√" : "×");
+		printf("    PERF：%d\n", settings.perf);
 		printf("    输出级别：%d\n", settings.verbose);
 	} else {
 		printf("获取exec-monitor设置失败，请确保正确安装了diagnose-tools工具\n");
@@ -123,6 +140,7 @@ static int exec_monitor_extract(void *buf, unsigned int len, void *)
 {
 	int *et_type;
 	struct exec_monitor_detail *detail;
+	struct exec_monitor_perf *perf;
     symbol sym;
     elf_file file;
 	int i;
@@ -146,6 +164,25 @@ static int exec_monitor_extract(void *buf, unsigned int len, void *)
 		for (i = 0; i < PROCESS_CHAINS_COUNT; i++) {
 			printf("        %s\n", detail->proc_chains.chains[i]);
 		}
+		break;
+	case et_exec_monitor_perf:
+		if (len < sizeof(struct exec_monitor_perf))
+			break;
+		perf = (struct exec_monitor_perf *)buf;
+
+		printf("##CGROUP:[%s]  %d      [%03d]  采样命中\n",
+				perf->task.cgroup_buf,
+				perf->task.pid,
+				0);
+		diag_printf_kern_stack(&perf->kern_stack);
+		diag_printf_user_stack(perf->task.tgid,
+				perf->task.container_tgid,
+				perf->task.comm,
+				&perf->user_stack, 0);
+		printf("#*        0xffffffffffffff %s (UNKNOWN)\n",
+				perf->task.comm);
+		diag_printf_proc_chains(&perf->proc_chains);
+		printf("##\n");
 		break;
 	default:
 		break;
@@ -200,9 +237,20 @@ static void do_dump(void)
 	static char variant_buf[1024 * 1024];
 	int len;
 	int ret = 0;
+	struct diag_ioctl_dump_param dump_param = {
+		.user_ptr_len = &len,
+		.user_buf_len = 1024 * 1024,
+		.user_buf = variant_buf,
+	};
 
-	ret = -ENOSYS;
-	syscall(DIAG_EXEC_MONITOR_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+	memset(variant_buf, 0, 1024 * 1024);
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_EXEC_MONITOR_DUMP, (long)&dump_param);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_EXEC_MONITOR_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+	}
+
 	if (ret == 0) {
 		do_extract(variant_buf, len);
 	}
@@ -213,13 +261,23 @@ static void do_sls(char *arg)
 	int ret;
 	int len;
 	static char variant_buf[1024 * 1024];
+	struct diag_ioctl_dump_param dump_param = {
+		.user_ptr_len = &len,
+		.user_buf_len = 1024 * 1024,
+		.user_buf = variant_buf,
+	};
 
 	ret = log_config(arg, sls_file, &syslog_enabled);
 	if (ret != 1)
 		return;
 
 	while(1) {
-		syscall(DIAG_EXEC_MONITOR_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+		if (run_in_host) {
+			ret = diag_call_ioctl(DIAG_IOCTL_EXEC_MONITOR_DUMP, (long)&dump_param);
+		} else {
+			syscall(DIAG_EXEC_MONITOR_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+		}
+
 		if (ret == 0 && len > 0) {
 			extract_variant_buffer(variant_buf, len, sls_extract, NULL);
 		}

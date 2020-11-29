@@ -12,6 +12,8 @@
 #ifndef UAPI_SYS_DELAY_H
 #define UAPI_SYS_DELAY_H
 
+#include <linux/ioctl.h>
+
 int sys_delay_syscall(struct pt_regs *regs, long id);
 
 //#define DIAG_SYS_DELAY_ACTIVATE (DIAG_BASE_SYSCALL_SYS_DELAY)
@@ -38,5 +40,14 @@ struct sys_delay_detail {
 	struct diag_proc_chains_detail proc_chains;
 	struct diag_raw_stack_detail raw_stack;
 };
+
+#define CMD_SYS_DELAY_SET (0)
+#define CMD_SYS_DELAY_SETTINGS (CMD_SYS_DELAY_SET + 1)
+#define CMD_SYS_DELAY_DUMP (CMD_SYS_DELAY_SETTINGS + 1)
+#define CMD_SYS_DELAY_TEST (CMD_SYS_DELAY_DUMP + 1)
+#define DIAG_IOCTL_SYS_DELAY_SET _IOWR(DIAG_IOCTL_TYPE_SYS_DELAY, CMD_SYS_DELAY_SET, struct diag_sys_delay_settings)
+#define DIAG_IOCTL_SYS_DELAY_SETTINGS _IOWR(DIAG_IOCTL_TYPE_SYS_DELAY, CMD_SYS_DELAY_SETTINGS, struct diag_sys_delay_settings)
+#define DIAG_IOCTL_SYS_DELAY_DUMP _IOWR(DIAG_IOCTL_TYPE_SYS_DELAY, CMD_SYS_DELAY_DUMP, struct diag_ioctl_dump_param)
+#define DIAG_IOCTL_SYS_DELAY_TEST _IOWR(DIAG_IOCTL_TYPE_SYS_DELAY, CMD_SYS_DELAY_TEST, int)
 
 #endif /* UAPI_SYS_DELAY_H */

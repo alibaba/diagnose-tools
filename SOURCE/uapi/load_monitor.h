@@ -12,6 +12,8 @@
 #ifndef UAPI_LOAD_MONITOR_H
 #define UAPI_LOAD_MONITOR_H
 
+#include <linux/ioctl.h>
+
 int load_monitor_syscall(struct pt_regs *regs, long id);
 
 //#define DIAG_LOAD_MONITOR_ACTIVATE (DIAG_BASE_SYSCALL_LOAD_MONITOR)
@@ -62,5 +64,14 @@ struct load_monitor_detail {
 	unsigned int load_d_15_1;
 	unsigned int load_d_15_2;
 };
+
+#define CMD_LOAD_MONITOR_SET (0)
+#define CMD_LOAD_MONITOR_SETTINGS (CMD_LOAD_MONITOR_SET + 1)
+#define CMD_LOAD_MONITOR_DUMP (CMD_LOAD_MONITOR_SETTINGS + 1)
+#define CMD_LOAD_MONITOR_TEST (CMD_LOAD_MONITOR_DUMP + 1)
+#define DIAG_IOCTL_LOAD_MONITOR_SET _IOWR(DIAG_IOCTL_TYPE_LOAD_MONITOR, CMD_LOAD_MONITOR_SET, struct diag_load_monitor_settings)
+#define DIAG_IOCTL_LOAD_MONITOR_SETTINGS _IOWR(DIAG_IOCTL_TYPE_LOAD_MONITOR, CMD_LOAD_MONITOR_SETTINGS, struct diag_load_monitor_settings)
+#define DIAG_IOCTL_LOAD_MONITOR_DUMP _IOWR(DIAG_IOCTL_TYPE_LOAD_MONITOR, CMD_LOAD_MONITOR_DUMP, struct diag_ioctl_dump_param)
+#define DIAG_IOCTL_LOAD_MONITOR_TEST _IOWR(DIAG_IOCTL_TYPE_LOAD_MONITOR, CMD_LOAD_MONITOR_TEST, int)
 
 #endif /* UAPI_LOAD_MONITOR_H */

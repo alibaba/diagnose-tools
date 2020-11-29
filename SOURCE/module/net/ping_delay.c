@@ -56,7 +56,7 @@
 #include "uapi/ping_delay.h"
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0) && !defined(XBY_UBUNTU_1604) \
-	&& !defined(CENTOS_3_10_123_9_3)
+	&& !defined(CENTOS_3_10_123_9_3) && !defined(UBUNTU_1604) && !defined(CENTOS_8U)
 
 __maybe_unused static atomic64_t diag_nr_running = ATOMIC64_INIT(0);
 struct diag_ping_delay_settings ping_delay_settings;
@@ -2022,6 +2022,47 @@ int ping_delay_syscall(struct pt_regs *regs, long id)
 			dump_data();
 			ret = copy_to_user_variant_buffer(&ping_delay_variant_buffer,
 					user_ptr_len, user_buf, user_buf_len);
+			record_dump_cmd("ping-delay");
+		}
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
+}
+
+long diag_ioctl_ping_delay(unsigned int cmd, unsigned long arg)
+{
+	int ret = 0;
+	struct diag_ping_delay_settings settings;
+	struct diag_ioctl_dump_param dump_param;
+
+	switch (cmd) {
+	case CMD_PING_DELAY_SET:
+		if (ping_delay_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, (void *)arg, sizeof(struct diag_ping_delay_settings));
+			if (!ret) {
+				ping_delay_settings = settings;
+			}
+		}
+		break;
+	case CMD_PING_DELAY_SETTINGS:
+		settings = ping_delay_settings;
+		ret = copy_to_user((void *)arg, &settings, sizeof(struct diag_ping_delay_settings));
+		break;
+	case CMD_PING_DELAY_DUMP:
+		ret = copy_from_user(&dump_param, (void *)arg, sizeof(struct diag_ioctl_dump_param));
+
+		if (!ping_delay_alloced) {
+			ret = -EINVAL;
+		} else if(!ret){
+			dump_data();
+			ret = copy_to_user_variant_buffer(&ping_delay_variant_buffer,
+					dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len);
 			record_dump_cmd("ping-delay");
 		}
 		break;

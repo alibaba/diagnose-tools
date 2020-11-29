@@ -47,14 +47,19 @@
 #include "uapi/sched_delay.h"
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32) && \
-	LINUX_VERSION_CODE <= KERNEL_VERSION(4, 20, 0)
+	LINUX_VERSION_CODE <= KERNEL_VERSION(4, 20, 0) \
+	&& !defined(UBUNTU_1604)
 
+#if  defined(CENTOS_8U)
+#define diag_last_queued rh_reserved3
+#else
 #if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
 #define diag_last_queued ali_reserved3
 #elif KERNEL_VERSION(3, 10, 0) <= LINUX_VERSION_CODE
 #define diag_last_queued rh_reserved3
 #else
 #define diag_last_queued rh_reserved[0]
+#endif
 #endif
 
 __maybe_unused static atomic64_t diag_nr_running = ATOMIC64_INIT(0);
@@ -275,6 +280,47 @@ int sched_delay_syscall(struct pt_regs *regs, long id)
 			dump_data();
 			ret = copy_to_user_variant_buffer(&sched_delay_variant_buffer,
 					user_ptr_len, user_buf, user_buf_len);
+			diag_sched_delay_id++;
+			record_dump_cmd("sched-delay");
+		}
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
+}
+
+long diag_ioctl_sched_delay(unsigned int cmd, unsigned long arg)
+{
+	struct diag_ioctl_dump_param dump_param;
+	int ret = 0;
+	static struct diag_sched_delay_settings settings;
+
+	switch (cmd) {
+	case CMD_SCHED_DELAY_SET:
+		if (sched_delay_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, (void *)arg, sizeof(struct diag_sched_delay_settings));
+			if (!ret) {
+				sched_delay_settings = settings;
+			}
+		}
+		break;
+	case CMD_SCHED_DELAY_SETTINGS:
+		settings = sched_delay_settings;
+		ret = copy_to_user((void *)arg, &settings, sizeof(struct diag_sched_delay_settings));
+		break;
+	case CMD_SCHED_DELAY_DUMP:
+		ret = copy_from_user(&dump_param, (void *)arg, sizeof(struct diag_ioctl_dump_param));
+		if (!sched_delay_alloced) {
+			ret = -EINVAL;
+		} else if (!ret) {
+			dump_data();
+			ret = copy_to_user_variant_buffer(&sched_delay_variant_buffer,
+					dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len);
 			diag_sched_delay_id++;
 			record_dump_cmd("sched-delay");
 		}

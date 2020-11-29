@@ -19,6 +19,12 @@ int reboot_syscall(struct pt_regs *regs, long id);
 #define DIAG_REBOOT_VERBOSE (DIAG_BASE_SYSCALL_REBOOT)
 #define DIAG_REBOOT_SETTINGS (DIAG_REBOOT_VERBOSE + 1)
 
+#define CMD_REBOOT_VERBOSE (0)
+#define CMD_REBOOT_SETTINGS (CMD_REBOOT_VERBOSE + 1)
+
+#define DIAG_IOCTL_REBOOT_VERBOSE _IOWR(DIAG_IOCTL_TYPE_REBOOT, CMD_REBOOT_VERBOSE, unsigned int)
+#define DIAG_IOCTL_REBOOT_SETTINGS _IOWR(DIAG_IOCTL_TYPE_REBOOT, CMD_REBOOT_SETTINGS, struct diag_reboot_settings)
+
 struct diag_reboot_settings {
 	unsigned int activated;
 	unsigned int verbose;

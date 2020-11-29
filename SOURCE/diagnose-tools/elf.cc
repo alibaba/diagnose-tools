@@ -308,22 +308,13 @@ bool get_symbol_in_elf(std::set<symbol> &ss, const char *path)
     symbol_sections_ctx si;
     memset(&si, 0, sizeof(si));
     if (symtab_sec) {
-        if (get_symbols_in_section(&si.symtab, elf, symtab_sec, &symtab_shdr, is_reloc) < 0) {
-            elf_end(elf);
-            close(fd);
-        }
+        get_symbols_in_section(&si.symtab, elf, symtab_sec, &symtab_shdr, is_reloc);
     }
     if (dynsym_sec) {
-        if (get_symbols_in_section(&si.symtab_in_dynsym, elf, dynsym_sec, &dynsym_shdr, is_reloc) < 0) {
-            elf_end(elf);
-            close(fd);
-        }
+        get_symbols_in_section(&si.symtab_in_dynsym, elf, dynsym_sec, &dynsym_shdr, is_reloc);
     }
     if (dynsym_sec && plt_sec) {
-        if (get_plt_symbols_in_section(&si.dynsymtab, elf, &plt) < 0) {
-            elf_end(elf);
-            close(fd);
-        }
+        get_plt_symbols_in_section(&si.dynsymtab, elf, &plt);
     }
 
     get_all_symbols(ss, &si, elf);

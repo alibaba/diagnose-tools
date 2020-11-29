@@ -12,13 +12,7 @@
 #ifndef UAPI_PERF_H
 #define UAPI_PERF_H
 
-int perf_syscall(struct pt_regs *regs, long id);
-
-//#define DIAG_PERF_ACTIVATE (DIAG_BASE_SYSCALL_PERF)
-//#define DIAG_PERF_DEACTIVATE (DIAG_PERF_ACTIVATE + 1)
-#define DIAG_PERF_SET (DIAG_BASE_SYSCALL_PERF)
-#define DIAG_PERF_SETTINGS (DIAG_PERF_SET + 1)
-#define DIAG_PERF_DUMP (DIAG_PERF_SETTINGS + 1)
+#include <linux/ioctl.h>
 
 struct diag_perf_settings {
 	unsigned int activated;
@@ -43,5 +37,16 @@ struct perf_detail {
 	struct diag_kern_stack_detail kern_stack;
 	struct diag_user_stack_detail user_stack;
 };
+
+#define CMD_PERF_SET (0)
+#define CMD_PERF_SETTINGS (CMD_PERF_SET + 1)
+#define CMD_PERF_DUMP (CMD_PERF_SETTINGS + 1)
+#define DIAG_IOCTL_PERF_SET _IOWR(DIAG_IOCTL_TYPE_PERF, CMD_PERF_SET, struct diag_perf_settings)
+#define DIAG_IOCTL_PERF_SETTINGS _IOWR(DIAG_IOCTL_TYPE_PERF, CMD_PERF_SETTINGS, struct diag_perf_settings)
+#define DIAG_IOCTL_PERF_DUMP _IOWR(DIAG_IOCTL_TYPE_PERF, CMD_PERF_DUMP, struct diag_ioctl_dump_param)
+
+#define DIAG_PERF_SET (DIAG_BASE_SYSCALL_PERF)
+#define DIAG_PERF_SETTINGS (DIAG_PERF_SET + 1)
+#define DIAG_PERF_DUMP (DIAG_PERF_SETTINGS + 1)
 
 #endif /* UAPI_PERF_H */

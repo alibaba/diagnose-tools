@@ -17,25 +17,27 @@ void usage_test_run_trace(void)
 	printf("        --count loop count\n");
 }
 
-static __attribute__ ((noinline))  void mytest3(void)
-{
-        sleep(1);
-}
+extern "C" {
+	static __attribute__ ((noinline))  void mytest3(void)
+	{
+			sleep(1);
+	}
 
-static __attribute__ ((noinline))  void mytest2(void)
-{
-        mytest3();
-}
+	static __attribute__ ((noinline))  void mytest2(void)
+	{
+			mytest3();
+	}
 
-static __attribute__ ((noinline))  void mytest1(void)
-{
-        mytest2();
-}
+	static __attribute__ ((noinline))  void mytest1(void)
+	{
+			mytest2();
+	}
 
-static __attribute__ ((noinline))  void mytest(void)
-{
-	mytest1();
-	sleep(1);
+	static __attribute__ ((noinline))  void mytest(void)
+	{
+		mytest1();
+		sleep(1);
+	}
 }
 
 int test_run_trace_main(int argc, char *argv[])
@@ -43,6 +45,7 @@ int test_run_trace_main(int argc, char *argv[])
 	int i, count = 2, type = 0, threshold = 1234;
 	int fp = 0;
 	int c;
+	ssize_t __attribute__ ((unused)) size;
 	static struct option long_options[] = {
 			{"help",     no_argument, 0,  0 },
 			{"type",     required_argument, 0,  0 },
@@ -79,11 +82,11 @@ int test_run_trace_main(int argc, char *argv[])
 
 	for (i = 0; i < count; i++) {
 		if (type == 0) {
-			syscall(DIAG_RUN_TRACE_START, threshold);
+			diag_call_ioctl(DIAG_IOCTL_RUN_TRACE_START, (long)&threshold);
 		} else if (type == 1) {
 			fp = open("/proc/ali-linux/diagnose/kern/run-trace-settings", O_WRONLY);
 			if (fp != -1) {
-				write(fp, "start 1234", 11);
+				size = write(fp, "start 1234", 11);
 				close(fp);
 			}
 		} else if (type == 2) {
@@ -95,11 +98,11 @@ int test_run_trace_main(int argc, char *argv[])
 		sleep(1);
 
 		if (type == 0) {
-			syscall(DIAG_RUN_TRACE_STOP);
+			diag_call_ioctl(DIAG_IOCTL_RUN_TRACE_STOP, 0);
 		} else if (type == 1) {
 			fp = open("/proc/ali-linux/diagnose/kern/run-trace-settings", O_WRONLY);
 			if (fp != -1) {
-				write(fp, "stop", 5);
+				size = write(fp, "stop", 5);
 				close(fp);
 			}
 		} else if (type == 2) {

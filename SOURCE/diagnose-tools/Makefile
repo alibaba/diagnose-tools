@@ -3,7 +3,7 @@ VENDER_LDFLAGS ?=
 
 arch=$(shell uname -i)
 ifeq ($(arch),x86_64)
-LDFLAGS = $(VENDER_LDFLAGS) -static-libgcc -static-libstdc++ -lgcc_eh -lunwind-x86_64 -lunwind -lelf -llzma -lz \
+LDFLAGS = $(VENDER_LDFLAGS) -static-libgcc -static-libstdc++ -lgcc_eh -lunwind-x86_64 -lunwind -lelf \
 	-L`pwd` -L/usr/lib64
 else
 LDFLAGS = $(VENDER_LDFLAGS) -static-libgcc -static-libstdc++ -L`pwd` -L/usr/lib64 -lunwind-aarch64 -lunwind -lelf -llzma -lz
@@ -22,7 +22,7 @@ SRCS = $(wildcard *.cc) $(wildcard testcase/pi/*.cc) $(wildcard testcase/memcpy/
 OBJS=$(SRCS:.cc=.o)
 
 all: $(TARGET)
-	strip diagnose-tools
+	strip --strip-debug diagnose-tools
 
 $(TARGET): $(OBJS)
 	$(CXX) $(OBJS) $(LDFLAGS) -o $@

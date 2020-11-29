@@ -344,10 +344,49 @@ int load_monitor_syscall(struct pt_regs *regs, long id)
 	return ret;
 }
 
+long diag_ioctl_load_monitor(unsigned int cmd, unsigned long arg)
+{
+	int ret = 0;
+	struct diag_load_monitor_settings settings;
+	struct diag_ioctl_dump_param dump_param;
+
+	switch (cmd) {
+	case CMD_LOAD_MONITOR_SET:
+		if (load_monitor_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, (void *)arg, sizeof(struct diag_load_monitor_settings));
+			if (!ret) {
+				load_monitor_settings = settings;
+			}
+		}
+		break;
+	case CMD_LOAD_MONITOR_SETTINGS:
+		settings = load_monitor_settings;
+		ret = copy_to_user((void *)arg, &settings, sizeof(struct diag_load_monitor_settings));
+		break;
+	case CMD_LOAD_MONITOR_DUMP:
+		ret = copy_from_user(&dump_param, (void *)arg, sizeof(struct diag_ioctl_dump_param));
+		if (!load_monitor_alloced) {
+			ret = -EINVAL;
+		} else if (!ret) {
+			ret = copy_to_user_variant_buffer(&load_monitor_variant_buffer,
+					dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len);
+			record_dump_cmd("load-monitor");
+		}
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
+}
+
 int diag_load_init(void)
 {
-	orig_avenrun_r = (void *)__kallsyms_lookup_name("avenrun_r");
-	orig_avenrun = (void *)__kallsyms_lookup_name("avenrun");
+	LOOKUP_SYMS_NORET(avenrun_r);
+	LOOKUP_SYMS_NORET(avenrun);
 
 	init_mm_tree(&mm_tree);
 	init_diag_variant_buffer(&load_monitor_variant_buffer, 1 * 1024 * 1024);

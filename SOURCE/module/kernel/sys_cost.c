@@ -165,7 +165,11 @@ static void stop_trace_syscall(struct task_struct *tsk)
 	context->sys_cost.cost[id] += delta_ns;
 }
 
-void cb_sys_enter_sys_cost(void *__data, struct pt_regs *regs, long id)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
+static void trace_sys_enter_hit(struct pt_regs *regs, long id)
+#else
+static void trace_sys_enter_hit(void *__data, struct pt_regs *regs, long id)
+#endif
 {
 	if (!need_trace(current))
 		return;
@@ -207,6 +211,7 @@ static int __activate_sys_cost(void)
 
 	clean_data();
 
+	hook_tracepoint("sys_enter", trace_sys_enter_hit, NULL);
 	hook_tracepoint("sys_exit", trace_sys_exit_hit, NULL);
 	hook_tracepoint("sched_switch", trace_sched_switch, NULL);
 
@@ -217,6 +222,7 @@ out_variant_buffer:
 
 static void __deactivate_sys_cost(void)
 {
+	unhook_tracepoint("sys_enter", trace_sys_enter_hit, NULL);
 	unhook_tracepoint("sys_exit", trace_sys_exit_hit, NULL);
 	unhook_tracepoint("sched_switch", trace_sched_switch, NULL);
 
@@ -324,6 +330,54 @@ int sys_cost_syscall(struct pt_regs *regs, long id)
 		} else {
 			ret = copy_to_user_variant_buffer(&sys_cost_variant_buffer,
 					user_ptr_len, user_buf, user_buf_len);
+			record_dump_cmd("sys-cost");
+		}
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
+}
+
+long diag_ioctl_sys_cost(unsigned int cmd, unsigned long arg)
+{
+	int ret = 0;
+	struct diag_sys_cost_settings settings;
+	struct diag_ioctl_dump_param dump_param;
+	int cpu;
+
+	switch (cmd) {
+	case CMD_SYS_COST_SET:
+		if (sys_cost_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, (void *)arg, sizeof(struct diag_sys_cost_settings));
+			if (!ret) {
+				sys_cost_settings = settings;
+			}
+		}
+		break;
+	case CMD_SYS_COST_SETTINGS:
+		settings = sys_cost_settings;
+		ret = copy_to_user((void *)arg, &settings, sizeof(struct diag_sys_cost_settings));
+		break;
+	case CMD_SYS_COST_DUMP:
+		for_each_possible_cpu(cpu) {
+			if (cpu == smp_processor_id()) {
+				do_dump(NULL);
+			} else {
+				smp_call_function_single(cpu, do_dump, NULL, 1);
+			}
+		}
+		
+		ret = copy_from_user(&dump_param, (void *)arg, sizeof(struct diag_ioctl_dump_param));
+		if (!sys_cost_alloced) {
+			ret = -EINVAL;
+		} else if (!ret){
+			ret = copy_to_user_variant_buffer(&sys_cost_variant_buffer,
+					dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len);
 			record_dump_cmd("sys-cost");
 		}
 		break;

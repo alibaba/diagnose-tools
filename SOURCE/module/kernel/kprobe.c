@@ -147,6 +147,7 @@ static int need_trace(struct task_struct *tsk, struct pt_regs *regs)
 static int kprobe_pre(struct kprobe *p, struct pt_regs *regs)
 {
 	unsigned long flags;
+	int sample = 1;
 
 	atomic64_inc_return(&diag_nr_running);
 	if (!need_trace(current, regs)) {
@@ -154,42 +155,58 @@ static int kprobe_pre(struct kprobe *p, struct pt_regs *regs)
 		return 0;
 	}
 
+	if (kprobe_settings.sample_step > 0) {
+		int count = diag_percpu_context[smp_processor_id()]->kprobe.sample_step;
+
+		if (count < kprobe_settings.sample_step) {
+			count += 1;
+			diag_percpu_context[smp_processor_id()]->kprobe.sample_step = count;
+			sample = 0;
+		} else {
+			diag_percpu_context[smp_processor_id()]->kprobe.sample_step = 0;
+		}
+	}
+
 	if (kprobe_settings.dump_style == 0) {
 		if (kprobe_settings.raw_stack) {
 			struct kprobe_raw_stack_detail *raw_detail;
 
-			raw_detail = &diag_percpu_context[smp_processor_id()]->kprobe_raw_stack_detail;
-			raw_detail->et_type = et_kprobe_raw_detail;
-			do_gettimeofday(&raw_detail->tv);
-			raw_detail->proc_chains.chains[0][0] = 0;
-			dump_proc_chains_simple(current, &raw_detail->proc_chains);
-			diag_task_brief(current, &raw_detail->task);
-			diag_task_kern_stack(current, &raw_detail->kern_stack);
-			diag_task_user_stack(current, &raw_detail->user_stack);
+			if (sample) {
+				raw_detail = &diag_percpu_context[smp_processor_id()]->kprobe.kprobe_raw_stack_detail;
+				raw_detail->et_type = et_kprobe_raw_detail;
+				do_gettimeofday(&raw_detail->tv);
+				raw_detail->proc_chains.chains[0][0] = 0;
+				dump_proc_chains_simple(current, &raw_detail->proc_chains);
+				diag_task_brief(current, &raw_detail->task);
+				diag_task_kern_stack(current, &raw_detail->kern_stack);
+				diag_task_user_stack(current, &raw_detail->user_stack);
 
-			diag_task_raw_stack(current, &raw_detail->raw_stack);
-			diag_variant_buffer_spin_lock(&kprobe_variant_buffer, flags);
-			diag_variant_buffer_reserve(&kprobe_variant_buffer, sizeof(struct kprobe_raw_stack_detail));
-			diag_variant_buffer_write_nolock(&kprobe_variant_buffer, raw_detail, sizeof(struct kprobe_raw_stack_detail));
-			diag_variant_buffer_seal(&kprobe_variant_buffer);
-			diag_variant_buffer_spin_unlock(&kprobe_variant_buffer, flags);
+				diag_task_raw_stack(current, &raw_detail->raw_stack);
+				diag_variant_buffer_spin_lock(&kprobe_variant_buffer, flags);
+
+				diag_variant_buffer_spin_unlock(&kprobe_variant_buffer, flags);
+			}
 		} else {
 			struct kprobe_detail *detail;
 
-			detail = &diag_percpu_context[smp_processor_id()]->kprobe_detail;
-			detail->et_type = et_kprobe_detail;
-			do_gettimeofday(&detail->tv);
-			detail->proc_chains.chains[0][0] = 0;
-			dump_proc_chains_simple(current, &detail->proc_chains);
-			diag_task_brief(current, &detail->task);
-			diag_task_kern_stack(current, &detail->kern_stack);
-			diag_task_user_stack(current, &detail->user_stack);
+			if (sample) {
+				detail = &diag_percpu_context[smp_processor_id()]->kprobe.kprobe_detail;
+				detail->et_type = et_kprobe_detail;
+				do_gettimeofday(&detail->tv);
+				detail->proc_chains.chains[0][0] = 0;
+				dump_proc_chains_simple(current, &detail->proc_chains);
+				diag_task_brief(current, &detail->task);
+				diag_task_kern_stack(current, &detail->kern_stack);
+				diag_task_user_stack(current, &detail->user_stack);
 
-			diag_variant_buffer_spin_lock(&kprobe_variant_buffer, flags);
-			diag_variant_buffer_reserve(&kprobe_variant_buffer, sizeof(struct kprobe_detail));
-			diag_variant_buffer_write_nolock(&kprobe_variant_buffer, detail, sizeof(struct kprobe_detail));
-			diag_variant_buffer_seal(&kprobe_variant_buffer);
-			diag_variant_buffer_spin_unlock(&kprobe_variant_buffer, flags);
+				diag_variant_buffer_spin_lock(&kprobe_variant_buffer, flags);
+
+				diag_variant_buffer_reserve(&kprobe_variant_buffer, sizeof(struct kprobe_raw_stack_detail));
+				diag_variant_buffer_write_nolock(&kprobe_variant_buffer, detail, sizeof(struct kprobe_raw_stack_detail));
+				diag_variant_buffer_seal(&kprobe_variant_buffer);
+				
+				diag_variant_buffer_spin_unlock(&kprobe_variant_buffer, flags);
+			}
 		}
 		
 		
@@ -197,7 +214,7 @@ static int kprobe_pre(struct kprobe *p, struct pt_regs *regs)
 		int i = 0;
 		struct kprobe_detail *detail;
 
-		detail = &diag_percpu_context[smp_processor_id()]->kprobe_detail;
+		detail = &diag_percpu_context[smp_processor_id()]->kprobe.kprobe_detail;
 		detail->et_type = et_kprobe_detail;
 		do_gettimeofday(&detail->tv);
 		detail->proc_chains.chains[0][0] = 0;
@@ -348,6 +365,53 @@ int kprobe_syscall(struct pt_regs *regs, long id)
 		} else {
 			ret = copy_to_user_variant_buffer(&kprobe_variant_buffer,
 					user_ptr_len, user_buf, user_buf_len);
+			record_dump_cmd("kprobe");
+		}
+		break;
+	default:
+		ret = -ENOSYS;
+		break;
+	}
+
+	return ret;
+}
+
+long diag_ioctl_kprobe(unsigned int cmd, unsigned long arg)
+{
+	int ret = 0;
+	struct diag_kprobe_settings settings;
+	struct diag_ioctl_dump_param dump_param;
+
+	switch (cmd) {
+	case CMD_KPROBE_SET:
+		if (kprobe_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, (void *)arg, sizeof(struct diag_kprobe_settings));
+			if (!ret) {
+				if (settings.cpus[0]) {
+					str_to_cpumask(settings.cpus, &kprobe_cpumask);
+				} else {
+					kprobe_cpumask = *cpu_possible_mask;
+				}
+				kprobe_settings = settings;
+			}
+		}
+		break;
+	case CMD_KPROBE_SETTINGS:
+		memset(&settings, 0, sizeof(settings));
+		settings = kprobe_settings;
+		cpumask_to_str(&kprobe_cpumask, settings.cpus, 255);
+		ret = copy_to_user((void *)arg, &settings, sizeof(struct diag_kprobe_settings));
+		break;
+	case CMD_KPROBE_DUMP:
+		ret = copy_from_user(&dump_param, (void *)arg, sizeof(struct diag_ioctl_dump_param));
+
+		if (!kprobe_alloced) {
+			ret = -EINVAL;
+		} else if (!ret) {
+			ret = copy_to_user_variant_buffer(&kprobe_variant_buffer,
+					dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len);
 			record_dump_cmd("kprobe");
 		}
 		break;

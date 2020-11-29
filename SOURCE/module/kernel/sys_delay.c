@@ -46,7 +46,6 @@ struct diag_sys_delay_settings sys_delay_settings = {
 };
 
 static unsigned int sys_delay_alloced;
-static int sys_call_sys_delay_activated;
 static struct kprobe kprobe_kvm_check_async_pf_completion;
 
 static struct diag_variant_buffer sys_delay_variant_buffer;
@@ -86,7 +85,9 @@ int new__cond_resched(void *x)
 	update_sched_time();
 
 	if (should_resched()) {
+		atomic64_inc_return(&diag_nr_running);
 		orig___cond_resched();
+		atomic64_dec_return(&diag_nr_running);
 		return 1;
 	}
 	return 0;
@@ -94,9 +95,13 @@ int new__cond_resched(void *x)
 #else
 #include <linux/preempt.h>
 
+#ifndef preempt_disable_notrace
 #define preempt_disable_notrace()		barrier()
+#endif
 #define preempt_enable_no_resched_notrace()	barrier()
+#ifndef preempt_enable_notrace
 #define preempt_enable_notrace()		barrier()
+#endif
 
 static inline void preempt_latency_start(int val) { }
 static inline void preempt_latency_stop(int val) { }
@@ -141,7 +146,9 @@ int new__cond_resched(void *x)
 	current->cond_resched++;
 #endif
 	if (should_resched(0)) {
+		atomic64_inc_return(&diag_nr_running);
 		preempt_schedule_common();
+		atomic64_dec_return(&diag_nr_running);
 		return 1;
 	}
 	return 0;
@@ -162,11 +169,12 @@ static void trace_sched_switch_hit(struct rq *rq, struct task_struct *prev,
 	update_sched_time();
 }
 
-void cb_sys_enter_sys_delay(void *__data, struct pt_regs *regs, long id)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
+static void trace_sys_enter_hit(struct pt_regs *regs, long id)
+#else
+static void trace_sys_enter_hit(void *__data, struct pt_regs *regs, long id)
+#endif
 {
-	if (!sys_call_sys_delay_activated)
-		return;
-
 	update_sched_time();
 }
 
@@ -276,9 +284,6 @@ static void trace_kvm_exit_hit(u32 exit_reason, unsigned long ip)
 {
 	struct diag_percpu_context *context = get_percpu_context();
 
-	if (!sys_call_sys_delay_activated)
-		return;
-
 	context->sys_delay.sys_delay_in_kvm = 0;
 	update_sched_time();
 }
@@ -304,12 +309,11 @@ static int __activate_sys_delay(void)
 
 	JUMP_CHECK(_cond_resched);
 
-	//diag_register_cb_sys_enter(cb_sys_enter_sys_delay, NULL);
-	sys_call_sys_delay_activated = 1;
 	msleep(10);
 
 	hook_kprobe(&kprobe_kvm_check_async_pf_completion, "kvm_check_async_pf_completion",
 				kprobe_kvm_check_async_pf_completion_pre, NULL);
+	hook_tracepoint("sys_enter", trace_sys_enter_hit, NULL);
 	hook_tracepoint("sched_switch", trace_sched_switch_hit, NULL);
 	hook_tracepoint("kvm_entry", trace_kvm_entry_hit, NULL);
 	hook_tracepoint("kvm_exit", trace_kvm_exit_hit, NULL);
@@ -343,10 +347,9 @@ int activate_sys_delay(void)
 
 static void __deactivate_sys_delay(void)
 {
-	//diag_unregister_cb_sys_enter(cb_sys_enter_sys_delay, NULL);
-	sys_call_sys_delay_activated = 0;
 	msleep(10);
 
+	unhook_tracepoint("sys_enter", trace_sys_enter_hit, NULL);
 	unhook_tracepoint("sched_switch", trace_sched_switch_hit, NULL);
 	unhook_tracepoint("kvm_entry", trace_kvm_entry_hit, NULL);
 	unhook_tracepoint("kvm_exit", trace_kvm_exit_hit, NULL);
@@ -457,10 +460,55 @@ int sys_delay_syscall(struct pt_regs *regs, long id)
 	return ret;
 }
 
+long diag_ioctl_sys_delay(unsigned int cmd, unsigned long arg)
+{
+	long ret = -EINVAL;
+	struct diag_sys_delay_settings settings;
+	struct diag_ioctl_dump_param dump_param;
+	int ms = 0;
+
+	switch (cmd) {
+	case CMD_SYS_DELAY_SET:
+		if (sys_delay_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, (void *)arg, sizeof(struct diag_sys_delay_settings));
+			if (!ret) {
+				sys_delay_settings = settings;
+			}
+		}
+		break;
+	case CMD_SYS_DELAY_SETTINGS:
+		settings = sys_delay_settings;
+		ret = copy_to_user((void *)arg, &settings, sizeof(struct diag_sys_delay_settings));
+		break;
+	case CMD_SYS_DELAY_DUMP:
+		ret = copy_from_user(&dump_param, (void *)arg, sizeof(struct diag_ioctl_dump_param));
+		if (!sys_delay_alloced) {
+			ret = -EINVAL;
+		} if (!ret) {
+			ret = copy_to_user_variant_buffer(&sys_delay_variant_buffer,
+				dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len);
+			record_dump_cmd("sys-delay");
+		}
+		break;
+	case CMD_SYS_DELAY_TEST:
+		ret = copy_from_user(&ms, (void *)arg, sizeof(int));
+		if (!ret) {
+			ret = do_test(ms);
+		}
+		break;
+	default:
+		break;
+	}
+
+	return ret;
+}
+
 static int lookup_syms(void)
 {
 	LOOKUP_SYMS(_cond_resched);
-#if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
+#if KERNEL_VERSION(4, 4, 0) <= LINUX_VERSION_CODE
 	LOOKUP_SYMS(__schedule);
 #else
 	LOOKUP_SYMS(__cond_resched);
@@ -474,7 +522,7 @@ static void jump_init(void)
 	JUMP_INIT(_cond_resched);
 }
 
-int diag_syscall_init(void)
+int diag_sys_delay_init(void)
 {
 	if (lookup_syms())
 		return -EINVAL;
@@ -489,7 +537,7 @@ int diag_syscall_init(void)
 	return 0;
 }
 
-void diag_syscall_exit(void)
+void diag_sys_delay_exit(void)
 {
 	if (sys_delay_settings.activated)
 		deactivate_sys_delay();

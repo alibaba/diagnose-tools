@@ -12,6 +12,8 @@
 #ifndef UAPI_PUPIL_H
 #define UAPI_PUPIL_H
 
+#include <linux/ioctl.h>
+
 struct pupil_task_info {
 	int et_type;
 	int pid;
@@ -22,7 +24,6 @@ int pupil_syscall(struct pt_regs *regs, long id);
 
 #define DIAG_PUPIL_TASK_DUMP (DIAG_BASE_SYSCALL_PUPIL)
 #define DIAG_PUPIL_TASK_PID (DIAG_PUPIL_TASK_DUMP + 1)
-#define DIAG_PUPIL_TASK_TGID (DIAG_PUPIL_TASK_PID + 1)
 
 struct pupil_task_detail {
 	int et_type;
@@ -36,4 +37,10 @@ struct pupil_task_detail {
 };
 
 int pupil_task_info(int argc, char **argv);
+
+#define CMD_PUPIL_TASK_DUMP (0)
+#define CMD_PUPIL_TASK_PID (CMD_PUPIL_TASK_DUMP + 1)
+#define DIAG_IOCTL_PUPIL_TASK_DUMP _IOWR(DIAG_IOCTL_TYPE_PUPIL, CMD_PUPIL_TASK_DUMP, struct diag_ioctl_dump_param)
+#define DIAG_IOCTL_PUPIL_TASK_PID _IOWR(DIAG_IOCTL_TYPE_PUPIL, CMD_PUPIL_TASK_PID, int)
+
 #endif /* UAPI_PUPIL_H */

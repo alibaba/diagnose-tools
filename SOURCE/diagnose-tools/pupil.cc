@@ -35,7 +35,6 @@ void usage_pupil(void)
 	printf("    task-info dump task-info\n");
 	printf("        --help task-info help info\n");
 	printf("        --pid thread id intend to dump\n");
-	printf("        --tgid process group intend to dump\n");
 }
 
 static void do_pid(char *arg)
@@ -49,26 +48,12 @@ static void do_pid(char *arg)
 		return;
 	}
 
-	ret = -ENOSYS;
-	syscall(DIAG_PUPIL_TASK_PID, &ret, pid);
-	if (ret) {
-		printf("	获取线程信息错误： %d\n", ret);
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_PUPIL_TASK_PID, (long)&pid);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_PUPIL_TASK_PID, &ret, pid);
 	}
-}
-
-static void do_tgid(char *arg)
-{
-	int tgid = 0;
-	int ret;
-
-	sscanf(optarg, "%d", &tgid);
-	if (tgid <= 0) {
-		usage_pupil();
-		return;
-	}
-
-	ret = -ENOSYS;
-	syscall(DIAG_PUPIL_TASK_TGID, &ret, tgid);
 
 	if (ret) {
 		printf("	获取线程信息错误： %d\n", ret);
@@ -103,10 +88,10 @@ static int task_info_extract(void *buf, unsigned int len, void *)
 				detail->task.pid,
 				seq);
 		diag_printf_kern_stack(&detail->kern_stack);
-		diag_printf_user_stack(detail->task.tgid,
+		diag_printf_raw_stack(detail->task.tgid,
 				detail->task.container_tgid,
 				detail->task.comm,
-				&detail->user_stack);
+				&detail->raw_stack);
 		printf("#*        0xffffffffffffff %s (UNKNOWN)\n",
 				detail->task.comm);
 		diag_printf_proc_chains(&detail->proc_chains);
@@ -131,13 +116,23 @@ static void do_dump(const char *arg)
 	int len;
 	int ret = 0;
 	struct params_parser parse(arg);
+	struct diag_ioctl_dump_param dump_param = {
+		.user_ptr_len = &len,
+		.user_buf_len = 5 * 1024 * 1024,
+		.user_buf = variant_buf,
+	};
 
 	report_reverse = parse.int_value("reverse");
 
 	memset(variant_buf, 0, 5 * 1024 * 1024);
-	ret = -ENOSYS;
-	syscall(DIAG_PUPIL_TASK_DUMP, &ret, &len, variant_buf, 5 * 1024 * 1024);
-	if (ret == 0 && len > 0) {
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_PUPIL_TASK_DUMP, (long)&dump_param);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_PUPIL_TASK_DUMP, &ret, &len, variant_buf, 5 * 1024 * 1024);
+	}
+
+	if (ret == 0) {
 		do_extract(variant_buf, len);
 	}
 }
@@ -148,7 +143,6 @@ int pupil_task_info(int argc, char *argv[])
 			{"help",     no_argument, 0,  0 },
 			{"report",     optional_argument, 0,  0 },
 			{"pid",     required_argument, 0,  0 },
-			{"tgid",     required_argument, 0,  0 },
 			{0,         0,                 0,  0 }
 		};
 	int c;
@@ -170,9 +164,6 @@ int pupil_task_info(int argc, char *argv[])
 			break;
 		case 2:
 			do_pid(optarg);
-			break;
-		case 3:
-			do_tgid(optarg);
 			break;
 		default:
 			usage_pupil();

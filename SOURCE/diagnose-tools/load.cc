@@ -35,6 +35,7 @@ using namespace std;
 
 static char sls_file[256];
 static int syslog_enabled;
+static int process_chains = 0;
 
 void usage_load_monitor(void)
 {
@@ -68,8 +69,13 @@ static void do_activate(const char *arg)
 	settings.verbose = parse.int_value("verbose");
 	settings.style = parse.int_value("style");
 
-	ret = -ENOSYS;
-	syscall(DIAG_LOAD_MONITOR_SET, &ret, &settings, sizeof(struct diag_load_monitor_settings));
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_LOAD_MONITOR_SET, (long)&settings);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_LOAD_MONITOR_SET, &ret, &settings, sizeof(struct diag_load_monitor_settings));
+	}
+
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
 	printf("    Load：\t%d\n", settings.threshold_load);
 	printf("    Load.R：\t%d\n", settings.threshold_load_r);
@@ -77,6 +83,8 @@ static void do_activate(const char *arg)
 	printf("    Task.D：\t%d\n", settings.threshold_task_d);
 	printf("    输出级别：\t%d\n", settings.verbose);
 	printf("    STYLE：\t%d\n", settings.style);
+	if (ret)
+		return;
 
 	ret = diag_activate("load-monitor");
 	if (ret == 1) {
@@ -107,8 +115,13 @@ static void do_settings(const char *arg)
 	struct params_parser parse(arg);
 	enable_json = parse.int_value("json");
 
-	ret = -ENOSYS;
-	syscall(DIAG_LOAD_MONITOR_SETTINGS, &ret, &settings, sizeof(struct diag_load_monitor_settings));
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_LOAD_MONITOR_SETTINGS, (long)&settings);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_LOAD_MONITOR_SETTINGS, &ret, &settings, sizeof(struct diag_load_monitor_settings));
+	}
+
 	if (ret == 0) {
 		if (1 != enable_json)
 		{
@@ -202,7 +215,7 @@ static int load_monitor_extract(void *buf, unsigned int len, void *)
 
 		printf("#*        0xffffffffffffff %s (UNKNOWN)\n",
 				tsk_info->task.comm);
-		diag_printf_proc_chains(&tsk_info->proc_chains);
+		diag_printf_proc_chains(&tsk_info->proc_chains, 0, process_chains);
 		printf("##\n");
 
 		tsk_info++;
@@ -220,14 +233,27 @@ static void do_extract(char *buf, int len)
 	extract_variant_buffer(buf, len, load_monitor_extract, NULL);
 }
 
-static void do_dump(void)
+static void do_dump(const char *arg)
 {
 	static char variant_buf[1024 * 1024];
+	struct params_parser parse(arg);
 	int len;
 	int ret = 0;
+	struct diag_ioctl_dump_param dump_param = {
+		.user_ptr_len = &len,
+		.user_buf_len = 1024 * 1024,
+		.user_buf = variant_buf,
+	};
 
-	ret = -ENOSYS;
-	syscall(DIAG_LOAD_MONITOR_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+	process_chains = parse.int_value("process-chains");
+
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_LOAD_MONITOR_DUMP, (long)&dump_param);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_LOAD_MONITOR_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+	}
+
 	if (ret == 0) {
 		do_extract(variant_buf, len);
 	}
@@ -324,14 +350,24 @@ static void do_sls(char *arg)
 	int ret;
 	static char variant_buf[1024 * 1024];
 	int len;
+	struct diag_ioctl_dump_param dump_param = {
+		.user_ptr_len = &len,
+		.user_buf_len = 1024 * 1024,
+		.user_buf = variant_buf,
+	};
 
 	ret = log_config(arg, sls_file, &syslog_enabled);
 	if (ret != 1)
 		return;
 
 	while (1) {
-		ret = -ENOSYS;
-		syscall(DIAG_LOAD_MONITOR_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+		if (run_in_host) {
+			ret = diag_call_ioctl(DIAG_IOCTL_LOAD_MONITOR_DUMP, (long)&dump_param);
+		} else {
+			ret = -ENOSYS;
+			syscall(DIAG_LOAD_MONITOR_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+		}
+
 		if (ret == 0) {
 			pid_cmdline.clear();
 			extract_variant_buffer(variant_buf, len, sls_extract, NULL);
@@ -348,7 +384,7 @@ int load_monitor_main(int argc, char **argv)
 			{"activate",     optional_argument, 0,  0 },
 			{"deactivate", no_argument,       0,  0 },
 			{"settings",     optional_argument, 0,  0 },
-			{"report",     no_argument, 0,  0 },
+			{"report",     optional_argument, 0,  0 },
 			{"log",     required_argument, 0,  0 },
 			{0,         0,                 0,  0 }
 		};
@@ -366,7 +402,7 @@ int load_monitor_main(int argc, char **argv)
 		if (c == -1)
 			break;
 		switch (option_index) {
-		case 10:
+		case 0:
 			usage_load_monitor();
 			break;
 	  case 1:
@@ -379,7 +415,7 @@ int load_monitor_main(int argc, char **argv)
 			do_settings(optarg ? optarg : "");
 			break;
 		case 4:
-			do_dump();
+			do_dump(optarg ? optarg : "");
 			break;
 		case 5:
 			do_sls(optarg);

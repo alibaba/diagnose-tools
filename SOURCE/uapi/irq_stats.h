@@ -12,6 +12,8 @@
 #ifndef UAPI_IRQ_STATS_H
 #define UAPI_IRQ_STATS_H
 
+#include <linux/ioctl.h>
+
 int irq_stats_syscall(struct pt_regs *regs, long id);
 
 //#define DIAG_IRQ_STATS_ACTIVATE (DIAG_BASE_SYSCALL_IRQ_STATS)
@@ -70,5 +72,12 @@ struct irq_stats_timer_summary {
 	void *max_func;
     unsigned long max_time;
 };
+
+#define CMD_IRQ_STATS_SET (0)
+#define CMD_IRQ_STATS_SETTINGS (CMD_IRQ_STATS_SET + 1)
+#define CMD_IRQ_STATS_DUMP (CMD_IRQ_STATS_SETTINGS + 1)
+#define DIAG_IOCTL_IRQ_STATS_SET _IOWR(DIAG_IOCTL_TYPE_IRQ_STATS, CMD_IRQ_STATS_SET, struct diag_irq_stats_settings)
+#define DIAG_IOCTL_IRQ_STATS_SETTINGS _IOWR(DIAG_IOCTL_TYPE_IRQ_STATS, CMD_IRQ_STATS_SETTINGS, struct diag_irq_stats_settings)
+#define DIAG_IOCTL_IRQ_STATS_DUMP _IOWR(DIAG_IOCTL_TYPE_IRQ_STATS, CMD_IRQ_STATS_DUMP, struct diag_ioctl_dump_param)
 
 #endif /* UAPI_IRQ_STATS_H */

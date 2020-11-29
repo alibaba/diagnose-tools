@@ -36,9 +36,11 @@ struct diagnose_func {
 	diagnose_fp func;
 };
 
+unsigned long run_in_host = 0;
+
 static int report_version(int argc, char **argv)
 {
-	printf("diagnose-tools tools version 2.0-rc1\n");
+	printf("diagnose-tools tools version 2.1-rc3\n");
 	exit(0);
 }
 
@@ -92,6 +94,8 @@ static int usage(int argc, char **argv)
 	usage_test_md5();
 	usage_test_run_trace();
 	usage_pupil();
+	usage_net_bandwidth();
+	usage_sig_info();
 
 	printf("\n");
 	printf("/***************************************************************************/\n");
@@ -106,17 +110,17 @@ static int usage(int argc, char **argv)
 
 static int do_install(int argc, char **argv)
 {
-	system("\\cp -f /usr/diagnose-tools/libperfmap.so /tmp");
-	system("/usr/diagnose-tools/diagnose-tools.sh install");
+	int ret;
 
-	return 0;
+	ret = system("\\cp -f /usr/diagnose-tools/libperfmap.so /tmp");
+	ret = system("/usr/diagnose-tools/diagnose-tools.sh install");
+
+	return ret;
 }
 
 static int do_uninstall(int argc, char **argv)
 {
-	system("/usr/diagnose-tools/diagnose-tools.sh uninstall");
-
-	return 0;
+	return	system("/usr/diagnose-tools/diagnose-tools.sh uninstall");
 }
 
 int do_flame(int argc, char *argv[])
@@ -130,6 +134,7 @@ int do_flame(int argc, char *argv[])
 	char *input = NULL;
 	char *output = NULL;
 	char cmd[1024];
+	int __attribute__ ((unused)) ret;
 
 	while (1) {
 		int option_index = -1;
@@ -160,7 +165,7 @@ int do_flame(int argc, char *argv[])
 	sprintf(cmd, "cat %s | awk \'{if (substr($1,1,1) == \"#\") {print substr($0, 3)}}\' " \
 		"| c++filt | /usr/diagnose-tools/flame-graph/stackcollapse.pl " \
 		"| /usr/diagnose-tools/flame-graph/flamegraph.pl > %s", input, output);
-	system(cmd);
+	ret = system(cmd);
 
 	return 0;
 }
@@ -205,6 +210,9 @@ static struct diagnose_func all_funcs[] {
 	{"test-md5", md5_main},
 	{"test-run-trace", test_run_trace_main},
 	{"sys-cost", sys_cost_main},
+	{"net-bandwidth", net_bandwidth_main},
+	{"sig-info", sig_info_main},
+	{"test", testcase_main},
 };
 
 int main(int argc, char* argv[])
@@ -212,14 +220,20 @@ int main(int argc, char* argv[])
 	unsigned int i;
 	diagnose_fp func = usage;
 	unsigned int version = -1;
+	int fd;
 
-	syscall(DIAG_VERSION, &version);
-	if (version != diag_VERSION && version != -1UL && version != 0xffffffffU) {
-		printf("严重警告，diagnose-tools工具与内核模块版本不匹配。\n");
-		printf("期望的版本号：%lx, 运行的模块版本号：%x\n",
-			(unsigned long)diag_VERSION,
-			version);
-		return -1;
+	fd = open("/dev/diagnose-tools", O_RDWR, 0);
+	if (fd > 0) {
+		run_in_host = 1;
+		version = ioctl(fd, DIAG_IOCTL_VERSION_ALL, 0);
+		close(fd);
+		if (version != DIAG_VERSION && version != -1UL && version != 0xffffffffU) {
+			printf("严重警告，diagnose-tools工具与内核模块版本不匹配。\n");
+			printf("期望的版本号：%lx, 运行的模块版本号：%x\n",
+				(unsigned long)DIAG_VERSION,
+				version);
+			return -1;
+		}
 	}
 
 	if (argc <= 1) {
