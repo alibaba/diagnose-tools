@@ -183,7 +183,9 @@ static int kprobe_pre(struct kprobe *p, struct pt_regs *regs)
 
 				diag_task_raw_stack(current, &raw_detail->raw_stack);
 				diag_variant_buffer_spin_lock(&kprobe_variant_buffer, flags);
-
+                                diag_variant_buffer_reserve(&kprobe_variant_buffer, sizeof(struct kprobe_raw_stack_detail));
+                                diag_variant_buffer_write_nolock(&kprobe_variant_buffer, raw_detail, sizeof(struct kprobe_raw_stack_detail));
+                                diag_variant_buffer_seal(&kprobe_variant_buffer);
 				diag_variant_buffer_spin_unlock(&kprobe_variant_buffer, flags);
 			}
 		} else {
@@ -201,8 +203,8 @@ static int kprobe_pre(struct kprobe *p, struct pt_regs *regs)
 
 				diag_variant_buffer_spin_lock(&kprobe_variant_buffer, flags);
 
-				diag_variant_buffer_reserve(&kprobe_variant_buffer, sizeof(struct kprobe_raw_stack_detail));
-				diag_variant_buffer_write_nolock(&kprobe_variant_buffer, detail, sizeof(struct kprobe_raw_stack_detail));
+				diag_variant_buffer_reserve(&kprobe_variant_buffer, sizeof(struct kprobe_detail));
+				diag_variant_buffer_write_nolock(&kprobe_variant_buffer, detail, sizeof(struct kprobe_detail));
 				diag_variant_buffer_seal(&kprobe_variant_buffer);
 				
 				diag_variant_buffer_spin_unlock(&kprobe_variant_buffer, flags);
