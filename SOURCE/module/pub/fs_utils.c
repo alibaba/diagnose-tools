@@ -30,7 +30,7 @@ void diag_inode_short_name(struct inode *inode, char *path_name, int size)
 	dentry = orig_d_find_any_alias(inode);
 	if (dentry) {
 		strncpy(path_name, dentry->d_name.name, min(size, (int)dentry->d_name.len));
-		path_name[size - 1] = 0;
+		path_name[min(size - 1, (int)dentry->d_name.len)] = 0;
 		dput(dentry);
 	}
 }
