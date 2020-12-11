@@ -419,6 +419,7 @@ struct diag_percpu_context {
 	struct exit_monitor_map exit_monitor_map;
 	struct irq_delay_detail irq_delay_detail;
 	struct perf_detail perf_detail;
+	struct perf_raw_detail perf_raw_detail;
 	struct sys_delay_detail sys_delay_detail;
 	struct sched_delay_dither sched_delay_dither;
 

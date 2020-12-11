@@ -103,7 +103,7 @@ run_trace() {
 }
 
 perf() {
-	eval "$DIAG_CMD perf --deactivate --activate='style=1 idle=1 bvt=1' --settings"
+	eval "$DIAG_CMD perf --deactivate --activate='style=1 idle=1 bvt=1 raw-stack=1' --settings"
 	sleep 1
 	eval "$DIAG_CMD perf --report --deactivate" | tee perf.log
 	eval "$DIAG_CMD flame --input=perf.log --output=perf.svg"
@@ -114,7 +114,7 @@ perf() {
 	eval "$DIAG_CMD perf --report"
 	sleep 1
 	eval "$DIAG_CMD perf --report='out=perf.out'"
-	eval "$DIAG_CMD perf --report='in=perf.out'"
+	eval "$DIAG_CMD perf --report='in=perf.out'" | tee perf.log
 	eval "$DIAG_CMD perf --deactivate"
 }
 

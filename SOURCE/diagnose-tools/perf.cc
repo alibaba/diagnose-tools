@@ -54,6 +54,7 @@ void usage_perf(void)
 	printf("            idle set 1 if want monitor idle\n");
 	printf("            bvt set 1 if want monitor idle\n");
 	printf("            sys set 1 if want monitor syscall only\n");
+	printf("            raw-stack output raw stack\n");
 	printf("        --deactivate\n");
 	printf("        --report dump log with text/file.\n");
 	printf("        --test testcase for perf.\n");
@@ -75,6 +76,7 @@ static void do_activate(const char *arg)
 	settings.idle = parse.int_value("idle");
 	settings.bvt = parse.int_value("bvt");
 	settings.sys = parse.int_value("sys");
+	settings.raw_stack = parse.int_value("raw-stack");
 
 	str = parse.string_value("comm");
 	if (str.length() > 0) {
@@ -103,6 +105,7 @@ static void do_activate(const char *arg)
 	printf("    IDLE：\t%d\n", settings.idle);
 	printf("    BVT：\t%d\n", settings.bvt);
 	printf("    SYS：\t%d\n", settings.sys);
+	printf("    RAW-STACK：%lu\n", settings.raw_stack);
 	
 	if (ret)
 		return;
@@ -156,7 +159,7 @@ static void do_settings(const char *arg)
 			printf("    BVT：\t%d\n", settings.bvt);
 			printf("    SYS：\t%d\n", settings.sys);
 			printf("    STYLE：\t%d\n", settings.style);
-			printf("    输出级别：\t%d\n", settings.verbose);
+			printf("    RAW-STACK：%lu\n", settings.raw_stack);
 		}
 		else
 		{
@@ -195,6 +198,7 @@ static int perf_extract(void *buf, unsigned int len, void *)
 {
 	int *et_type;
 	struct perf_detail *detail;
+	struct perf_raw_detail *raw_detail;
 	static int seq;
 
 	if (len == 0)
@@ -237,6 +241,27 @@ static int perf_extract(void *buf, unsigned int len, void *)
 			diag_printf_proc_chains(&detail->proc_chains, report_reverse);
 			printf("##\n");
 		}
+
+		break;
+	case et_perf_raw_detail:
+		if (len < sizeof(struct perf_raw_detail))
+			break;
+		raw_detail = (struct perf_raw_detail *)buf;
+
+		seq++;
+		printf("##CGROUP:[%s]  %d      [%03d]  采样命中\n",
+				raw_detail->task.cgroup_buf,
+				raw_detail->task.pid,
+				seq);
+		diag_printf_kern_stack(&raw_detail->kern_stack, report_reverse);
+		diag_printf_raw_stack(raw_detail->task.tgid,
+			raw_detail->task.container_tgid,
+			raw_detail->task.comm,
+			&raw_detail->raw_stack);
+		printf("#*        0xffffffffffffff %s (UNKNOWN)\n",
+				raw_detail->task.comm);
+		diag_printf_proc_chains(&raw_detail->proc_chains, report_reverse);
+		printf("##\n");
 
 		break;
 	default:
@@ -292,12 +317,6 @@ static void do_dump(const char *arg)
 				fout.close();
 			}
 		} else {
-			if (run_in_host) {
-				ret = diag_call_ioctl(DIAG_IOCTL_PERF_DUMP, (long)&dump_param);
-			} else {
-				ret = -ENOSYS;
-				syscall(DIAG_PERF_DUMP, &ret, &len, variant_buf, 50 * 1024 * 1024);
-			}
 			if (ret == 0 && len > 0) {
 				java_attach_once();
 				do_extract(variant_buf, len);

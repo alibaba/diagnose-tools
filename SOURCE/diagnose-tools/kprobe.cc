@@ -100,6 +100,7 @@ static void do_activate(const char *arg)
 	printf("    进程名称：%s\n", settings.comm);
 	printf("    函数名称：%s\n", settings.func);
 	printf("    CPUS：%s\n", settings.cpus);
+	printf("    RAW-STACK：%lu\n", settings.raw_stack);
 	printf("    输出级别：%d\n", settings.verbose);
 
 	if (ret)

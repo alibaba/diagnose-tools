@@ -116,28 +116,51 @@ __maybe_unused static void trace_sched_process_exit_hit(struct task_struct *tsk)
 void perf_timer(struct diag_percpu_context *context)
 {
 	unsigned long flags;
-	struct perf_detail *detail;
 
 	if (!need_trace(current)) {
 		return;
 	}
 
-	detail = &diag_percpu_context[smp_processor_id()]->perf_detail;
-	if (detail) {
-		detail->et_type = et_perf_detail;
-		detail->id = perf_id;
-		detail->seq = perf_seq;
-		do_gettimeofday(&detail->tv);
-		diag_task_brief(current, &detail->task);
-		diag_task_kern_stack(current, &detail->kern_stack);
-		diag_task_user_stack(current, &detail->user_stack);
-		detail->proc_chains.chains[0][0] = 0;
-		dump_proc_chains_argv(perf_settings.style, &mm_tree, current, &detail->proc_chains);
-		diag_variant_buffer_spin_lock(&perf_variant_buffer, flags);
-		diag_variant_buffer_reserve(&perf_variant_buffer, sizeof(struct perf_detail));
-		diag_variant_buffer_write_nolock(&perf_variant_buffer, detail, sizeof(struct perf_detail));
-		diag_variant_buffer_seal(&perf_variant_buffer);
-		diag_variant_buffer_spin_unlock(&perf_variant_buffer, flags);
+	if (perf_settings.raw_stack) {
+		struct perf_raw_detail *raw_detail;
+		raw_detail = &diag_percpu_context[smp_processor_id()]->perf_raw_detail;
+
+		if (raw_detail) {
+			raw_detail->et_type = et_perf_raw_detail;
+			raw_detail->id = perf_id;
+			raw_detail->seq = perf_seq;
+			do_gettimeofday(&raw_detail->tv);
+			diag_task_brief(current, &raw_detail->task);
+			diag_task_kern_stack(current, &raw_detail->kern_stack);
+			diag_task_raw_stack(current, &raw_detail->raw_stack);
+			raw_detail->proc_chains.chains[0][0] = 0;
+			dump_proc_chains_argv(perf_settings.style, &mm_tree, current, &raw_detail->proc_chains);
+			diag_variant_buffer_spin_lock(&perf_variant_buffer, flags);
+			diag_variant_buffer_reserve(&perf_variant_buffer, sizeof(struct perf_raw_detail));
+			diag_variant_buffer_write_nolock(&perf_variant_buffer, raw_detail, sizeof(struct perf_raw_detail));
+			diag_variant_buffer_seal(&perf_variant_buffer);
+			diag_variant_buffer_spin_unlock(&perf_variant_buffer, flags);
+		}
+	} else {
+		struct perf_detail *detail;
+		detail = &diag_percpu_context[smp_processor_id()]->perf_detail;
+		
+		if (detail) {
+			detail->et_type = et_perf_detail;
+			detail->id = perf_id;
+			detail->seq = perf_seq;
+			do_gettimeofday(&detail->tv);
+			diag_task_brief(current, &detail->task);
+			diag_task_kern_stack(current, &detail->kern_stack);
+			diag_task_user_stack(current, &detail->user_stack);
+			detail->proc_chains.chains[0][0] = 0;
+			dump_proc_chains_argv(perf_settings.style, &mm_tree, current, &detail->proc_chains);
+			diag_variant_buffer_spin_lock(&perf_variant_buffer, flags);
+			diag_variant_buffer_reserve(&perf_variant_buffer, sizeof(struct perf_detail));
+			diag_variant_buffer_write_nolock(&perf_variant_buffer, detail, sizeof(struct perf_detail));
+			diag_variant_buffer_seal(&perf_variant_buffer);
+			diag_variant_buffer_spin_unlock(&perf_variant_buffer, flags);
+		}
 	}
 }
 
