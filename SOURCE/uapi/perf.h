@@ -25,6 +25,7 @@ struct diag_perf_settings {
 	unsigned int idle;
 	unsigned int bvt;
 	unsigned int sys;
+	unsigned long raw_stack;
 };
 
 struct perf_detail {
@@ -36,6 +37,17 @@ struct perf_detail {
 	struct diag_task_detail task;
 	struct diag_kern_stack_detail kern_stack;
 	struct diag_user_stack_detail user_stack;
+};
+
+struct perf_raw_detail {
+	int et_type;
+	unsigned long id;
+	unsigned long seq;
+	struct timeval tv;
+	struct diag_proc_chains_detail proc_chains;
+	struct diag_task_detail task;
+	struct diag_kern_stack_detail kern_stack;
+	struct diag_raw_stack_detail raw_stack;
 };
 
 #define CMD_PERF_SET (0)

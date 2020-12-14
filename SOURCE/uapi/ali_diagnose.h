@@ -372,6 +372,7 @@ enum diag_record_id {
 
 	et_perf_base = et_mutex_monitor_base + DIAG_EVENT_TYPE_INTERVAL,
 	et_perf_detail,
+	et_perf_raw_detail,
 
 	et_proc_monitor_base = et_perf_base + DIAG_EVENT_TYPE_INTERVAL,
 	et_proc_monitor_summary,
