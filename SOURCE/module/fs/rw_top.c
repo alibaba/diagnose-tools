@@ -315,6 +315,9 @@ static int kprobe_vfs_write_pre(struct kprobe *p, struct pt_regs *regs)
 	return 0;
 }
 
+#ifndef MAX_RW_COUNT
+#define MAX_RW_COUNT (INT_MAX & PAGE_MASK)
+#endif
 static size_t get_iov_size(struct iovec __user *uvector,
 	unsigned long nr_segs)
 {
