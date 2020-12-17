@@ -72,6 +72,12 @@ static struct diag_variant_buffer rw_top_variant_buffer;
 static struct kprobe diag_kprobe_filemap_fault;
 static struct kprobe diag_kprobe_vfs_read;
 static struct kprobe diag_kprobe_vfs_write;
+static struct kprobe diag_kprobe_vfs_readv;
+static struct kprobe diag_kprobe_vfs_writev;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
+static struct kprobe diag_kprobe_aio_read;
+static struct kprobe diag_kprobe_aio_write;
+#endif
 
 enum rw_type {
 	RW_READ,
@@ -301,6 +307,100 @@ static int kprobe_vfs_write_pre(struct kprobe *p, struct pt_regs *regs)
 	return 0;
 }
 
+static size_t get_iov_size(struct iovec __user *uvector,
+	unsigned long nr_segs)
+{
+	unsigned long seg;
+	size_t ret = 0;
+	struct iovec *iov;
+
+	if (nr_segs > UIO_MAXIOV) {
+		return 0;
+	}
+
+	iov = diag_percpu_context[smp_processor_id()]->rw_top.uvector;
+	pagefault_disable();
+	if (__copy_from_user_inatomic(iov, uvector, nr_segs * sizeof(*uvector))) {
+		pagefault_enable();
+		return 0;
+	}
+	pagefault_enable();
+
+	for (seg = 0; seg < nr_segs; seg++) {
+		ssize_t len = (ssize_t)iov[seg].iov_len;
+
+		if (len < 0) {
+			return 0;
+		}
+		
+		if (len > MAX_RW_COUNT - ret) {
+			len = MAX_RW_COUNT - ret;
+			iov[seg].iov_len = len;
+		}
+		ret += len;
+	}
+
+	return ret;
+}
+
+static int kprobe_vfs_readv_pre(struct kprobe *p, struct pt_regs *regs)
+{
+	struct file *file = (void *)ORIG_PARAM1(regs);
+	struct iovec __user *uvector = (void *)ORIG_PARAM2(regs);
+	unsigned long vlen = (unsigned long)ORIG_PARAM3(regs);
+	size_t len;
+
+	len = get_iov_size(uvector, vlen);
+	hook_rw(0, file, len);
+
+	return 0;
+}
+
+static int kprobe_vfs_writev_pre(struct kprobe *p, struct pt_regs *regs)
+{
+	struct file *file = (void *)ORIG_PARAM1(regs);
+	struct iovec __user *uvector = (void *)ORIG_PARAM2(regs);
+	unsigned long vlen = (unsigned long)ORIG_PARAM3(regs);
+	size_t len;
+
+	len = get_iov_size(uvector, vlen);
+	hook_rw(1, file, len);
+
+	return 0;
+}
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
+static int kprobe_aio_read_pre(struct kprobe *p, struct pt_regs *regs)
+{
+	struct kiocb *req = (void *)ORIG_PARAM1(regs);
+	struct iocb *iocb = (void *)ORIG_PARAM2(regs);
+	struct file *file;
+	
+	file = req->ki_filp;
+	if (!file)
+		return 0;
+
+	hook_rw(0, file, iocb->aio_nbytes);
+
+	return 0;
+}
+
+static int kprobe_aio_write_pre(struct kprobe *p, struct pt_regs *regs)
+{
+	struct kiocb *req = (void *)ORIG_PARAM1(regs);
+	struct iocb *iocb = (void *)ORIG_PARAM2(regs);
+	struct file *file;
+	
+	file = req->ki_filp;
+	if (!file)
+		return 0;
+
+	hook_rw(1, file, iocb->aio_nbytes);
+
+	return 0;
+}
+#endif
+
 static int __activate_rw_top(void)
 {
 	int ret = 0;
@@ -316,6 +416,16 @@ static int __activate_rw_top(void)
 				kprobe_vfs_read_pre, NULL);
 	hook_kprobe(&diag_kprobe_vfs_write, "vfs_write",
 				kprobe_vfs_write_pre, NULL);
+	hook_kprobe(&diag_kprobe_vfs_readv, "vfs_readv",
+				kprobe_vfs_readv_pre, NULL);
+	hook_kprobe(&diag_kprobe_vfs_writev, "vfs_writev",
+				kprobe_vfs_writev_pre, NULL);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
+	hook_kprobe(&diag_kprobe_aio_read, "aio_read",
+				kprobe_aio_read_pre, NULL);
+	hook_kprobe(&diag_kprobe_aio_write, "aio_write",
+				kprobe_aio_write_pre, NULL);
+#endif
 	return 1;
 out_variant_buffer:
 	return 0;
@@ -328,7 +438,12 @@ static void __deactivate_rw_top(void)
 	unhook_kprobe(&diag_kprobe_filemap_fault);
 	unhook_kprobe(&diag_kprobe_vfs_read);
 	unhook_kprobe(&diag_kprobe_vfs_write);
-
+	unhook_kprobe(&diag_kprobe_vfs_readv);
+	unhook_kprobe(&diag_kprobe_vfs_writev);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
+	unhook_kprobe(&diag_kprobe_aio_read);
+	unhook_kprobe(&diag_kprobe_aio_write);
+#endif
 	synchronize_sched();
 	msleep(10);
 	nr_running = atomic64_read(&diag_nr_running);

@@ -440,6 +440,7 @@ struct diag_percpu_context {
 
 	struct {
 		struct rw_top_perf perf;
+		struct iovec uvector[UIO_MAXIOV];
 	} rw_top;
 
 	struct utilization_detail utilization_detail;
