@@ -128,7 +128,7 @@ void backup_diag_variant_buffer(struct diag_variant_buffer *buffer)
 			buffer->product.len = buffer->product.len + buffer->buffers[1].pos;
 		}
 		if (buffer->buffers[0].pos) {
-			memcpy(buffer->product.data,
+			memcpy(buffer->product.data + buffer->product.len,
 				buffer->buffers[0].data, buffer->buffers[0].pos);
 			buffer->product.len = buffer->product.len + buffer->buffers[0].pos;
 		}
@@ -139,7 +139,7 @@ void backup_diag_variant_buffer(struct diag_variant_buffer *buffer)
 			buffer->product.len = buffer->product.len + buffer->buffers[0].pos;
 		}
 		if (buffer->buffers[1].pos) {
-			memcpy(buffer->product.data,
+			memcpy(buffer->product.data + buffer->product.len,
 				buffer->buffers[1].data, buffer->buffers[1].pos);
 			buffer->product.len = buffer->product.len + buffer->buffers[1].pos;
 		}
