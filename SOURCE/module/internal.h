@@ -30,6 +30,7 @@ static inline void __percpu_counter_add(struct percpu_counter *fbc,
 	percpu_counter_add_batch(fbc, amount, batch);
 }
 #endif
+#include <linux/uio.h>
 
 #include <linux/sched.h>
 #include <linux/binfmts.h>
@@ -440,6 +441,9 @@ struct diag_percpu_context {
 
 	struct {
 		struct rw_top_perf perf;
+#ifndef UIO_MAXIOV
+#define UIO_MAXIOV 1024
+#endif
 		struct iovec uvector[UIO_MAXIOV];
 	} rw_top;
 

@@ -38,6 +38,7 @@
 #include <linux/fsnotify.h>
 #include <linux/backing-dev.h>
 #include <linux/aio.h>
+#include <linux/file.h>
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 12, 0) && LINUX_VERSION_CODE <= KERNEL_VERSION(5, 8, 0) \
 	&& !defined(UBUNTU_1604)
@@ -77,6 +78,13 @@ static struct kprobe diag_kprobe_vfs_writev;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
 static struct kprobe diag_kprobe_aio_read;
 static struct kprobe diag_kprobe_aio_write;
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
+DEFINE_ORIG_FUNC(unsigned long, sys_io_submit, 3,
+		aio_context_t, ctx_id,
+		long, nr,
+                struct iocb __user * __user *, iocbpp);
+long (*orig_do_io_submit)(aio_context_t ctx_id, long nr,
+		  struct iocb __user *__user *iocbpp, bool compat);
 #endif
 
 enum rw_type {
@@ -399,6 +407,56 @@ static int kprobe_aio_write_pre(struct kprobe *p, struct pt_regs *regs)
 
 	return 0;
 }
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
+static void hook_sys_io_submit(aio_context_t ctx_id, long nr,
+                struct iocb __user * __user * iocbpp)
+{
+	int i;
+	size_t len = 0;
+
+	if (unlikely(nr < 0))
+		return;
+
+	if (unlikely(nr > UIO_MAXIOV))
+		return;
+
+	for (i = 0; i < nr; i++) {
+		struct iocb __user *user_iocb;
+		struct iocb tmp;
+		struct file *filp;
+
+		if (unlikely(__get_user(user_iocb, iocbpp + i))) {
+			break;
+		}
+
+		if (unlikely(copy_from_user(&tmp, user_iocb, sizeof(tmp)))) {
+			break;
+		}
+
+		len = tmp.aio_nbytes;
+		filp = fget(tmp.aio_fildes);
+		if (filp == NULL)
+			break;
+		hook_rw(tmp.aio_lio_opcode == IOCB_CMD_PWRITE || tmp.aio_lio_opcode == IOCB_CMD_PWRITEV ? 1 : 0,
+			filp, tmp.aio_nbytes);
+		
+		fput(filp);
+	}
+	
+}
+
+unsigned long new_sys_io_submit(aio_context_t ctx_id, long nr,
+                struct iocb __user * __user * iocbpp)
+{
+	unsigned long ret;
+
+	atomic64_inc_return(&diag_nr_running);
+	hook_sys_io_submit(ctx_id, nr, iocbpp);
+	ret = orig_do_io_submit(ctx_id, nr, iocbpp, 0);
+	atomic64_dec_return(&diag_nr_running);
+
+	return ret;
+}
 #endif
 
 static int __activate_rw_top(void)
@@ -426,6 +484,9 @@ static int __activate_rw_top(void)
 	hook_kprobe(&diag_kprobe_aio_write, "aio_write",
 				kprobe_aio_write_pre, NULL);
 #endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+	JUMP_INSTALL(sys_io_submit);
+#endif
 	return 1;
 out_variant_buffer:
 	return 0;
@@ -443,6 +504,9 @@ static void __deactivate_rw_top(void)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
 	unhook_kprobe(&diag_kprobe_aio_read);
 	unhook_kprobe(&diag_kprobe_aio_write);
+#endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+	JUMP_REMOVE(sys_io_submit);
 #endif
 	synchronize_sched();
 	msleep(10);
@@ -675,6 +739,10 @@ long diag_ioctl_rw_top(unsigned int cmd, unsigned long arg)
 static int lookup_syms(void)
 {
 	LOOKUP_SYMS(shmem_inode_operations);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+	LOOKUP_SYMS(sys_io_submit);
+	LOOKUP_SYMS(do_io_submit);
+#endif
 
 	return 0;
 }
@@ -685,6 +753,10 @@ int diag_rw_top_init(void)
 		return -EINVAL;
 
 	init_diag_variant_buffer(&rw_top_variant_buffer, 1 * 1024 * 1024);
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+	JUMP_INIT(sys_io_submit);
+#endif
 
 	INIT_RADIX_TREE(&file_tree, GFP_ATOMIC);
 
