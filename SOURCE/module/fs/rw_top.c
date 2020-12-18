@@ -258,24 +258,45 @@ static void hook_rw(enum rw_type rw_type, struct file *file, size_t count)
 		atomic64_add(count, &info->rw_size[rw_type]);
 		atomic64_add(count, &info->rw_size[RW_ALL]);
 		if (rw_top_settings.perf) {
-			struct rw_top_perf *perf;
+			if (rw_top_settings.raw_stack) {
+				struct rw_top_raw_perf *perf;
 
-			perf = &diag_percpu_context[smp_processor_id()]->rw_top.perf;
-			perf->et_type = et_rw_top_perf;
-			perf->id = 0;
-			perf->seq = 0;
-			do_gettimeofday(&perf->tv);
-			diag_task_brief(current, &perf->task);
-			diag_task_kern_stack(current, &perf->kern_stack);
-			diag_task_user_stack(current, &perf->user_stack);
-			perf->proc_chains.chains[0][0] = 0;
-			memcpy(perf->path_name, info->path_name, DIAG_PATH_LEN);
-			dump_proc_chains_simple(current, &perf->proc_chains);
-			diag_variant_buffer_spin_lock(&rw_top_variant_buffer, flags);
-			diag_variant_buffer_reserve(&rw_top_variant_buffer, sizeof(struct rw_top_perf));
-			diag_variant_buffer_write_nolock(&rw_top_variant_buffer, perf, sizeof(struct rw_top_perf));
-			diag_variant_buffer_seal(&rw_top_variant_buffer);
-			diag_variant_buffer_spin_unlock(&rw_top_variant_buffer, flags);
+				perf = &diag_percpu_context[smp_processor_id()]->rw_top.raw_perf;
+				perf->et_type = et_rw_top_raw_perf;
+				perf->id = 0;
+				perf->seq = 0;
+				do_gettimeofday(&perf->tv);
+				diag_task_brief(current, &perf->task);
+				diag_task_kern_stack(current, &perf->kern_stack);
+				diag_task_raw_stack(current, &perf->raw_stack);
+				perf->proc_chains.chains[0][0] = 0;
+				memcpy(perf->path_name, info->path_name, DIAG_PATH_LEN);
+				dump_proc_chains_simple(current, &perf->proc_chains);
+				diag_variant_buffer_spin_lock(&rw_top_variant_buffer, flags);
+				diag_variant_buffer_reserve(&rw_top_variant_buffer, sizeof(struct rw_top_raw_perf));
+				diag_variant_buffer_write_nolock(&rw_top_variant_buffer, perf, sizeof(struct rw_top_raw_perf));
+				diag_variant_buffer_seal(&rw_top_variant_buffer);
+				diag_variant_buffer_spin_unlock(&rw_top_variant_buffer, flags);
+			} else {
+				struct rw_top_perf *perf;
+
+				perf = &diag_percpu_context[smp_processor_id()]->rw_top.perf;
+				perf->et_type = et_rw_top_perf;
+				perf->id = 0;
+				perf->seq = 0;
+				do_gettimeofday(&perf->tv);
+				diag_task_brief(current, &perf->task);
+				diag_task_kern_stack(current, &perf->kern_stack);
+				diag_task_user_stack(current, &perf->user_stack);
+				perf->proc_chains.chains[0][0] = 0;
+				memcpy(perf->path_name, info->path_name, DIAG_PATH_LEN);
+				dump_proc_chains_simple(current, &perf->proc_chains);
+				diag_variant_buffer_spin_lock(&rw_top_variant_buffer, flags);
+				diag_variant_buffer_reserve(&rw_top_variant_buffer, sizeof(struct rw_top_perf));
+				diag_variant_buffer_write_nolock(&rw_top_variant_buffer, perf, sizeof(struct rw_top_perf));
+				diag_variant_buffer_seal(&rw_top_variant_buffer);
+				diag_variant_buffer_spin_unlock(&rw_top_variant_buffer, flags);
+			}
 		}
 	}
 }
@@ -318,6 +339,7 @@ static int kprobe_vfs_write_pre(struct kprobe *p, struct pt_regs *regs)
 #ifndef MAX_RW_COUNT
 #define MAX_RW_COUNT (INT_MAX & PAGE_MASK)
 #endif
+
 static size_t get_iov_size(struct iovec __user *uvector,
 	unsigned long nr_segs)
 {
@@ -401,7 +423,7 @@ static int kprobe_aio_write_pre(struct kprobe *p, struct pt_regs *regs)
 	struct kiocb *req = (void *)ORIG_PARAM1(regs);
 	struct iocb *iocb = (void *)ORIG_PARAM2(regs);
 	struct file *file;
-	
+
 	file = req->ki_filp;
 	if (!file)
 		return 0;
@@ -742,10 +764,6 @@ long diag_ioctl_rw_top(unsigned int cmd, unsigned long arg)
 static int lookup_syms(void)
 {
 	LOOKUP_SYMS(shmem_inode_operations);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
-	LOOKUP_SYMS(sys_io_submit);
-	LOOKUP_SYMS(do_io_submit);
-#endif
 
 	return 0;
 }
@@ -756,10 +774,6 @@ int diag_rw_top_init(void)
 		return -EINVAL;
 
 	init_diag_variant_buffer(&rw_top_variant_buffer, 1 * 1024 * 1024);
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
-	JUMP_INIT(sys_io_submit);
-#endif
 
 	INIT_RADIX_TREE(&file_tree, GFP_ATOMIC);
 

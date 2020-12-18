@@ -218,7 +218,7 @@ rw_top() {
 	losetup /dev/loop0 ./apsarapangu.data
 	mkfs -t ext4 /dev/loop0
 	mount /dev/loop0 /apsarapangu/
-	eval "$DIAG_CMD rw-top --deactivate -activate=\"perf=1 verbose=1\" --settings"
+	eval "$DIAG_CMD rw-top --deactivate -activate=\"raw-stack=1 perf=1 verbose=1\" --settings"
 	echo test: `date` >> /apsarapangu/diagnose-tools.1.log
 	echo test: `date` >> /apsarapangu/diagnose-tools.2.log
 	echo test: `date` >> /apsarapangu/diagnose-tools.2.log
@@ -230,6 +230,8 @@ rw_top() {
 	umount /dev/loop0
 	losetup -d /dev/loop0
 	rm ./apsarapangu.data
+	cp rw-top.log rw-top.txt
+	cp rw-top.svg rw-top.bak
 }
 
 fs_shm() {

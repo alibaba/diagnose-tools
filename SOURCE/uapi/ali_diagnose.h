@@ -403,6 +403,7 @@ enum diag_record_id {
 	et_rw_top_base = et_runq_info_base + DIAG_EVENT_TYPE_INTERVAL,
 	et_rw_top_detail,
 	et_rw_top_perf,
+	et_rw_top_raw_perf,
 
 	et_sys_delay_base = et_rw_top_base + DIAG_EVENT_TYPE_INTERVAL,
 	et_sys_delay_detail,

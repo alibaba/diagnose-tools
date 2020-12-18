@@ -54,6 +54,7 @@ int main()
 
         close(fd);
         io_destroy(ctx);
+	sleep(2);
         return 0;
 }
 

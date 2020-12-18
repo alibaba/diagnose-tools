@@ -441,6 +441,7 @@ struct diag_percpu_context {
 
 	struct {
 		struct rw_top_perf perf;
+		struct rw_top_raw_perf raw_perf;
 #ifndef UIO_MAXIOV
 #define UIO_MAXIOV 1024
 #endif

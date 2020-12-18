@@ -28,6 +28,7 @@ struct diag_rw_top_settings {
 	unsigned int top;
 	unsigned int shm;
 	unsigned int perf;
+	unsigned long raw_stack;
 };
 
 struct rw_top_detail {
@@ -52,6 +53,18 @@ struct rw_top_perf {
 	struct diag_task_detail task;
 	struct diag_kern_stack_detail kern_stack;
 	struct diag_user_stack_detail user_stack;
+	char path_name[DIAG_PATH_LEN];
+};
+
+struct rw_top_raw_perf {
+	int et_type;
+	unsigned long id;
+	unsigned long seq;
+	struct timeval tv;
+	struct diag_proc_chains_detail proc_chains;
+	struct diag_task_detail task;
+	struct diag_kern_stack_detail kern_stack;
+	struct diag_raw_stack_detail raw_stack;
 	char path_name[DIAG_PATH_LEN];
 };
 
