@@ -464,7 +464,6 @@ static void hook_sys_io_submit(aio_context_t ctx_id, long nr,
 			break;
 		hook_rw(tmp.aio_lio_opcode == IOCB_CMD_PWRITE || tmp.aio_lio_opcode == IOCB_CMD_PWRITEV ? 1 : 0,
 			filp, tmp.aio_nbytes);
-		
 		fput(filp);
 	}
 	
@@ -764,7 +763,10 @@ long diag_ioctl_rw_top(unsigned int cmd, unsigned long arg)
 static int lookup_syms(void)
 {
 	LOOKUP_SYMS(shmem_inode_operations);
-
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+	LOOKUP_SYMS(do_io_submit);
+	LOOKUP_SYMS(sys_io_submit);
+#endif
 	return 0;
 }
 
@@ -773,8 +775,10 @@ int diag_rw_top_init(void)
 	if (lookup_syms())
 		return -EINVAL;
 
-	init_diag_variant_buffer(&rw_top_variant_buffer, 1 * 1024 * 1024);
-
+	init_diag_variant_buffer(&rw_top_variant_buffer, 50 * 1024 * 1024);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+	JUMP_INIT(sys_io_submit);
+#endif
 	INIT_RADIX_TREE(&file_tree, GFP_ATOMIC);
 
 	if (rw_top_settings.activated)
