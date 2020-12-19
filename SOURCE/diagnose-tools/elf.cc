@@ -20,6 +20,10 @@
 #include <errno.h>
 
 #include "elf.h"
+#include "attach.h"
+#include "internal.h"
+
+static int first_init = 0;
 
 struct sym_section_ctx {
     Elf_Data *syms;
@@ -216,15 +220,26 @@ bool search_symbol(const std::set<symbol> &ss, symbol &sym)
     return false;
 }
 
-bool get_symbol_in_elf(std::set<symbol> &ss, const char *path)
+bool get_symbol_in_elf(std::set<symbol> &ss, const char *path, int pid, const char *mnt_ns_name)
 {
-    int is_reloc = 0;
+    if (!first_init) {
+        first_init = true;
+        init_global_env();
+    }
 
+    int mnt_fd = -1;
+    if (pid > 0) {
+        mnt_fd = attach_mount_namespace(pid, mnt_ns_name);
+    }
+
+    int is_reloc = 0;
     elf_version(EV_CURRENT);
     int fd = open(path, O_RDONLY);
     if (fd < 0) {
+        detach_mount_namespace(mnt_fd);
         return false;
     }
+    detach_mount_namespace(mnt_fd);
     Elf *elf = elf_begin(fd, ELF_C_READ, NULL);
     if (elf == NULL) {
         close(fd);
