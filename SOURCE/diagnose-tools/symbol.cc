@@ -20,8 +20,6 @@
 void restore_global_env();
 int attach_ns_env(int pid);
 
-//using namespace boost::icl;
-
 symbol_parser g_symbol_parser;
 
 bool symbol_parser::add_pid_maps(int pid, size_t start, size_t end, size_t offset, const char *name)
@@ -242,7 +240,7 @@ bool symbol_parser::load_kernel()
     return true;
 }
 
-bool symbol_parser::load_elf(const elf_file &file)
+bool symbol_parser::load_elf(pid_t pid, const elf_file &file)
 {
     std::map<elf_file, std::set<symbol> >::iterator it;
     it = file_symbols.find(file);
@@ -251,7 +249,7 @@ bool symbol_parser::load_elf(const elf_file &file)
     if (it != file_symbols.end()) {
         return true;
     }
-    if (get_symbol_in_elf(syms, file.filename.c_str())) {
+    if (get_symbol_in_elf(syms, file.filename.c_str(), pid, file.mnt_ns_name.c_str())) {
         file_symbols.insert(make_pair(file, std::move(syms)));
         return true;
     }
@@ -274,15 +272,26 @@ bool symbol_parser::find_kernel_symbol(symbol &sym)
 
 bool symbol_parser::get_symbol_info(int pid, symbol &sym, elf_file &file)
 {
-    std::map<int, proc_vma>::iterator it;
-    it = machine_vma.find(pid);
-    proc_vma proc;
-    if (it == machine_vma.end()) {
+    std::map<int, proc_vma>::iterator proc_vma_info;
+    proc_vma_info = machine_vma.find(pid);
+    if (proc_vma_info == machine_vma.end()) {
         if (!load_pid_maps(pid)) {
             printf("load pid maps failed\n");
             return false;
         }
     }
+
+    char mnt_ns_path[128];
+    char mnt_ns_name[128];
+
+    if (!linux_2_6_x) {
+        sprintf(mnt_ns_path, "/proc/%d/ns/mnt", pid);
+        if (readlink(mnt_ns_path, mnt_ns_name, sizeof(mnt_ns_name)) < 0) {
+            return false;
+        }
+        file.mnt_ns_name = mnt_ns_name;
+    }
+
 
     vma area(sym.ip);
     if (!find_vma(pid, area)) {
@@ -308,7 +317,10 @@ bool symbol_parser::find_elf_symbol(symbol &sym, const elf_file &file, int pid, 
     it = file_symbols.find(file);
     std::set<symbol> ss;
     if (it == file_symbols.end()) {
-        if (!load_elf(file)) {
+        if (pid == pid_ns) {
+            pid = -1;
+        }
+        if (!load_elf(pid, file)) {
             return false;
         }
         it = file_symbols.find(file);
@@ -339,14 +351,14 @@ vma* symbol_parser::find_vma(pid_t pid, size_t pc)
 
 bool symbol_parser::find_vma(pid_t pid, vma &vm)
 {
-    std::map<int, proc_vma>::iterator it;
-    it = machine_vma.find(pid);
-    if (it == machine_vma.end()) {
+    std::map<int, proc_vma>::iterator proc_vma_map;
+    proc_vma_map = machine_vma.find(pid);
+    if (proc_vma_map == machine_vma.end()) {
         return false;
     }
     
-    proc_vma::const_iterator vmit = it->second.upper_bound(vm.pc);
-    if (vmit == it->second.end()) {
+    proc_vma::const_iterator vmit = proc_vma_map->second.upper_bound(vm.pc);
+    if (vmit == proc_vma_map->second.end()) {
         printf("no address in memory maps\n");
         return false;
     }
@@ -354,7 +366,7 @@ bool symbol_parser::find_vma(pid_t pid, vma &vm)
         printf("no address in memory maps\n");
         return false;
     }
-    if (vmit != it->second.begin()) {
+    if (vmit != proc_vma_map->second.begin()) {
         --vmit;
     }
     
