@@ -242,7 +242,6 @@ void diag_dev_cleanup(void)
     }
 
     if (diag_dev_class != NULL) {
-        class_unregister(diag_dev_class);
         class_destroy(diag_dev_class);
     }
 
