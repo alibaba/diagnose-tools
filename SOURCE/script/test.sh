@@ -230,8 +230,6 @@ rw_top() {
 	umount /dev/loop0
 	losetup -d /dev/loop0
 	rm ./apsarapangu.data
-	cp rw-top.log rw-top.txt
-	cp rw-top.svg rw-top.bak
 }
 
 fs_shm() {

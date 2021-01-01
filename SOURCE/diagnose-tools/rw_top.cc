@@ -275,12 +275,12 @@ static void do_extract(char *buf, int len)
 
 static void do_dump(void)
 {
-	static char variant_buf[1024 * 1024];
+	static char variant_buf[50 * 1024 * 1024];
 	int len;
 	int ret = 0;
 	struct diag_ioctl_dump_param dump_param = {
 		.user_ptr_len = &len,
-		.user_buf_len = 1024 * 1024,
+		.user_buf_len = 50 * 1024 * 1024,
 		.user_buf = variant_buf,
 	};
 
@@ -288,7 +288,7 @@ static void do_dump(void)
 		ret = diag_call_ioctl(DIAG_IOCTL_RW_TOP_DUMP, (long)&dump_param);
 	} else {
 		ret = -ENOSYS;
-		syscall(DIAG_RW_TOP_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+		syscall(DIAG_RW_TOP_DUMP, &ret, &len, variant_buf, 50 * 1024 * 1024);
 	}
 
 	if (ret == 0) {
@@ -301,10 +301,10 @@ static void do_sls(char *arg)
 {
 	int ret;
 	int len;
-	static char variant_buf[1024 * 1024];
+	static char variant_buf[50 * 1024 * 1024];
 	struct diag_ioctl_dump_param dump_param = {
 		.user_ptr_len = &len,
-		.user_buf_len = 1024 * 1024,
+		.user_buf_len = 50 * 1024 * 1024,
 		.user_buf = variant_buf,
 	};
 
@@ -316,7 +316,7 @@ static void do_sls(char *arg)
 		if (run_in_host) {
 			ret = diag_call_ioctl(DIAG_IOCTL_RW_TOP_DUMP, (long)&dump_param);
 		} else {
-			syscall(DIAG_RW_TOP_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+			syscall(DIAG_RW_TOP_DUMP, &ret, &len, variant_buf, 50 * 1024 * 1024);
 		}
 
 		if (ret == 0 && len > 0) {

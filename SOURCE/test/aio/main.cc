@@ -25,36 +25,44 @@ int main()
         printf("open: %s\n", strerror(errno));
 
         char* buf;
-        errcode = posix_memalign((void**)&buf, sysconf(_SC_PAGESIZE), sysconf(_SC_PAGESIZE));
+        errcode = posix_memalign((void**)&buf, sysconf(_SC_PAGESIZE), sysconf(_SC_PAGESIZE) * 100);
         printf("posix_memalign: %s\n", strerror(errcode));
 
         strcpy(buf, "hello xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
 
-        struct iocb *iocbpp = (struct iocb *)malloc(sizeof(struct iocb));
-        memset(iocbpp, 0, sizeof(struct iocb));
+	struct iocb *iocbpp = (struct iocb *)malloc(sizeof(struct iocb));
+	while (1) {
+		int i;
 
-        iocbpp[0].data           = buf;
-        iocbpp[0].aio_lio_opcode = IO_CMD_PWRITE;
-        iocbpp[0].aio_reqprio    = 0;
-        iocbpp[0].aio_fildes     = fd;
+		for (i = 0; i <  100; i++) {
+	        	memset(iocbpp, 0, sizeof(struct iocb));
 
-        iocbpp[0].u.c.buf    = buf;
-        iocbpp[0].u.c.nbytes = sysconf(_SC_PAGESIZE);//strlen(buf); // 这个值必须按512字节对齐
-        iocbpp[0].u.c.offset = 0; // 这个值必须按512字节对齐
+		        iocbpp[0].data           = buf;
+	        	iocbpp[0].aio_lio_opcode = IO_CMD_PWRITE;
+	        	iocbpp[0].aio_reqprio    = 0;
+		        iocbpp[0].aio_fildes     = fd;
 
-        // 提交异步操作，异步写磁盘
-        int n = io_submit(ctx, 1, &iocbpp);
-        printf("==io_submit==: %d:%s\n", n, strerror(-n));
+        		iocbpp[0].u.c.buf    = buf;
+		        iocbpp[0].u.c.nbytes = sysconf(_SC_PAGESIZE) * 100;//strlen(buf); // 这个值必须按512字节对齐
+        		iocbpp[0].u.c.offset = 0; // 这个值必须按512字节对齐
 
-        struct io_event events[10];
-        struct timespec timeout = {1, 100};
-        // 检查写磁盘情况，类似于epoll_wait或select
-        n = io_getevents(ctx, 1, 10, events, &timeout);
-        printf("io_getevents: %d:%s\n", n, strerror(-n));
+		        // 提交异步操作，异步写磁盘
+        		int n = io_submit(ctx, 1, &iocbpp);
+	        	printf("==io_submit==: %d:%s\n", n, strerror(-n));
 
-        close(fd);
+	        	struct io_event events[10];
+		        struct timespec timeout = {1, 100};
+        		// 检查写磁盘情况，类似于epoll_wait或select
+		        n = io_getevents(ctx, 1, 10, events, &timeout);
+        		printf("io_getevents: %d:%s\n", n, strerror(-n));
+		}
+		usleep(200000);
+	}
+
+	close(fd);
         io_destroy(ctx);
-	sleep(2);
+	free(iocbpp);
+
         return 0;
 }
 
