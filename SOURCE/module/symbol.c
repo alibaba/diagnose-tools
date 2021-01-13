@@ -106,6 +106,9 @@ atomic64_t xby_debug_counter3;
 atomic64_t xby_debug_counter4;
 atomic64_t xby_debug_counter5;
 
+int *orig_kptr_restrict;
+
+
 static int lookup_syms(void)
 {
 	LOOKUP_SYMS(text_mutex);
@@ -156,6 +159,7 @@ static int lookup_syms(void)
 	LOOKUP_SYMS(follow_page_mask);
 #endif
 	LOOKUP_SYMS(task_statm);
+	LOOKUP_SYMS(kptr_restrict);
 
 	LOOKUP_SYMS_NORET(d_find_any_alias);
 	LOOKUP_SYMS_NORET(find_task_by_vpid);
