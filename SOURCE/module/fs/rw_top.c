@@ -75,6 +75,7 @@ static struct kprobe diag_kprobe_vfs_read;
 static struct kprobe diag_kprobe_vfs_write;
 static struct kprobe diag_kprobe_vfs_readv;
 static struct kprobe diag_kprobe_vfs_writev;
+static struct kprobe diag_kprobe_vfs_fsync_range;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
 static struct kprobe diag_kprobe_aio_read;
 static struct kprobe diag_kprobe_aio_write;
@@ -336,6 +337,19 @@ static int kprobe_vfs_write_pre(struct kprobe *p, struct pt_regs *regs)
 	return 0;
 }
 
+static int kprobe_vfs_fsync_range_pre(struct kprobe *p, struct pt_regs *regs)
+{
+	struct file *file = (void *)ORIG_PARAM1(regs);
+	loff_t start = ORIG_PARAM2(regs);
+	loff_t end = ORIG_PARAM3(regs);
+	size_t count;
+
+	count = end > start ? (end - start) : 0;
+	hook_rw(RW_WRITE, file, count);
+
+	return 0;
+}
+
 #ifndef MAX_RW_COUNT
 #define MAX_RW_COUNT (INT_MAX & PAGE_MASK)
 #endif
@@ -502,6 +516,8 @@ static int __activate_rw_top(void)
 				kprobe_vfs_readv_pre, NULL);
 	hook_kprobe(&diag_kprobe_vfs_writev, "vfs_writev",
 				kprobe_vfs_writev_pre, NULL);
+	hook_kprobe(&diag_kprobe_vfs_fsync_range, "vfs_fsync_range",
+				kprobe_vfs_fsync_range_pre, NULL);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
 	hook_kprobe(&diag_kprobe_aio_read, "aio_read",
 				kprobe_aio_read_pre, NULL);
@@ -525,6 +541,7 @@ static void __deactivate_rw_top(void)
 	unhook_kprobe(&diag_kprobe_vfs_write);
 	unhook_kprobe(&diag_kprobe_vfs_readv);
 	unhook_kprobe(&diag_kprobe_vfs_writev);
+	unhook_kprobe(&diag_kprobe_vfs_fsync_range);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
 	unhook_kprobe(&diag_kprobe_aio_read);
 	unhook_kprobe(&diag_kprobe_aio_write);
