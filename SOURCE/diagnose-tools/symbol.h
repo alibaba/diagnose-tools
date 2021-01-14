@@ -32,6 +32,7 @@ struct elf_file {
     size_t		  table_data;
     std::string filename;
     std::string buildid;
+    std::string mnt_ns_name;
     int type;
 
     // TODO get builid from elf header or build hash for elf
@@ -56,11 +57,10 @@ struct elf_file {
     }
 
     bool operator<  (const elf_file &rhs) const {
+        if (buildid == rhs.buildid) {
+            return mnt_ns_name < rhs.mnt_ns_name;
+        }
         return buildid < rhs.buildid;
-    }
-
-    bool operator> (const elf_file &rhs) const {
-        return buildid > rhs.buildid;
     }
 };
 
@@ -76,10 +76,6 @@ struct symbol {
     void reset(size_t va) { start = end = 0; ip = va; }
     bool operator< (const symbol &sym) const {
         return sym.ip < start;
-    }
-    
-    bool operator> (const symbol &sym) const {
-        return sym.ip > end;
     }
 };
 
@@ -126,10 +122,6 @@ struct vma {
     }
 };
 
-static inline bool operator==(const vma &lhs, const vma &rhs) {
-    return lhs.start == rhs.start && lhs.end == rhs.end && lhs.name == rhs.name;
-}
-
 class symbol_parser {
 private:
     typedef std::map<size_t, vma> proc_vma;
@@ -156,7 +148,7 @@ public:
 
 private:
     bool load_pid_maps(int pid);
-    bool load_elf(const elf_file& file);
+    bool load_elf(pid_t pid, const elf_file& file);
     bool load_perf_map(int pid, int pid_ns);
 };
 

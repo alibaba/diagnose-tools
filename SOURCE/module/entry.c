@@ -510,6 +510,10 @@ static int __init diagnosis_init(void)
 	if (ret)
 		goto out_dev;
 
+	if (orig_kptr_restrict) {
+		*orig_kptr_restrict = 0;
+	}
+
 	printk("diagnose-tools in diagnosis_init\n");
 
 	return 0;

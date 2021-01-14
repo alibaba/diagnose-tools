@@ -38,6 +38,7 @@
 #include <linux/fsnotify.h>
 #include <linux/backing-dev.h>
 #include <linux/aio.h>
+#include <linux/file.h>
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 12, 0) && LINUX_VERSION_CODE <= KERNEL_VERSION(5, 8, 0) \
 	&& !defined(UBUNTU_1604)
@@ -72,6 +73,19 @@ static struct diag_variant_buffer rw_top_variant_buffer;
 static struct kprobe diag_kprobe_filemap_fault;
 static struct kprobe diag_kprobe_vfs_read;
 static struct kprobe diag_kprobe_vfs_write;
+static struct kprobe diag_kprobe_vfs_readv;
+static struct kprobe diag_kprobe_vfs_writev;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
+static struct kprobe diag_kprobe_aio_read;
+static struct kprobe diag_kprobe_aio_write;
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
+DEFINE_ORIG_FUNC(unsigned long, sys_io_submit, 3,
+		aio_context_t, ctx_id,
+		long, nr,
+                struct iocb __user * __user *, iocbpp);
+long (*orig_do_io_submit)(aio_context_t ctx_id, long nr,
+		  struct iocb __user *__user *iocbpp, bool compat);
+#endif
 
 enum rw_type {
 	RW_READ,
@@ -244,24 +258,45 @@ static void hook_rw(enum rw_type rw_type, struct file *file, size_t count)
 		atomic64_add(count, &info->rw_size[rw_type]);
 		atomic64_add(count, &info->rw_size[RW_ALL]);
 		if (rw_top_settings.perf) {
-			struct rw_top_perf *perf;
+			if (rw_top_settings.raw_stack) {
+				struct rw_top_raw_perf *perf;
 
-			perf = &diag_percpu_context[smp_processor_id()]->rw_top.perf;
-			perf->et_type = et_rw_top_perf;
-			perf->id = 0;
-			perf->seq = 0;
-			do_gettimeofday(&perf->tv);
-			diag_task_brief(current, &perf->task);
-			diag_task_kern_stack(current, &perf->kern_stack);
-			diag_task_user_stack(current, &perf->user_stack);
-			perf->proc_chains.chains[0][0] = 0;
-			memcpy(perf->path_name, info->path_name, DIAG_PATH_LEN);
-			dump_proc_chains_simple(current, &perf->proc_chains);
-			diag_variant_buffer_spin_lock(&rw_top_variant_buffer, flags);
-			diag_variant_buffer_reserve(&rw_top_variant_buffer, sizeof(struct rw_top_perf));
-			diag_variant_buffer_write_nolock(&rw_top_variant_buffer, perf, sizeof(struct rw_top_perf));
-			diag_variant_buffer_seal(&rw_top_variant_buffer);
-			diag_variant_buffer_spin_unlock(&rw_top_variant_buffer, flags);
+				perf = &diag_percpu_context[smp_processor_id()]->rw_top.raw_perf;
+				perf->et_type = et_rw_top_raw_perf;
+				perf->id = 0;
+				perf->seq = 0;
+				do_gettimeofday(&perf->tv);
+				diag_task_brief(current, &perf->task);
+				diag_task_kern_stack(current, &perf->kern_stack);
+				diag_task_raw_stack(current, &perf->raw_stack);
+				perf->proc_chains.chains[0][0] = 0;
+				memcpy(perf->path_name, info->path_name, DIAG_PATH_LEN);
+				dump_proc_chains_simple(current, &perf->proc_chains);
+				diag_variant_buffer_spin_lock(&rw_top_variant_buffer, flags);
+				diag_variant_buffer_reserve(&rw_top_variant_buffer, sizeof(struct rw_top_raw_perf));
+				diag_variant_buffer_write_nolock(&rw_top_variant_buffer, perf, sizeof(struct rw_top_raw_perf));
+				diag_variant_buffer_seal(&rw_top_variant_buffer);
+				diag_variant_buffer_spin_unlock(&rw_top_variant_buffer, flags);
+			} else {
+				struct rw_top_perf *perf;
+
+				perf = &diag_percpu_context[smp_processor_id()]->rw_top.perf;
+				perf->et_type = et_rw_top_perf;
+				perf->id = 0;
+				perf->seq = 0;
+				do_gettimeofday(&perf->tv);
+				diag_task_brief(current, &perf->task);
+				diag_task_kern_stack(current, &perf->kern_stack);
+				diag_task_user_stack(current, &perf->user_stack);
+				perf->proc_chains.chains[0][0] = 0;
+				memcpy(perf->path_name, info->path_name, DIAG_PATH_LEN);
+				dump_proc_chains_simple(current, &perf->proc_chains);
+				diag_variant_buffer_spin_lock(&rw_top_variant_buffer, flags);
+				diag_variant_buffer_reserve(&rw_top_variant_buffer, sizeof(struct rw_top_perf));
+				diag_variant_buffer_write_nolock(&rw_top_variant_buffer, perf, sizeof(struct rw_top_perf));
+				diag_variant_buffer_seal(&rw_top_variant_buffer);
+				diag_variant_buffer_spin_unlock(&rw_top_variant_buffer, flags);
+			}
 		}
 	}
 }
@@ -301,6 +336,153 @@ static int kprobe_vfs_write_pre(struct kprobe *p, struct pt_regs *regs)
 	return 0;
 }
 
+#ifndef MAX_RW_COUNT
+#define MAX_RW_COUNT (INT_MAX & PAGE_MASK)
+#endif
+
+static size_t get_iov_size(struct iovec __user *uvector,
+	unsigned long nr_segs)
+{
+	unsigned long seg;
+	size_t ret = 0;
+	struct iovec *iov;
+
+	if (nr_segs > UIO_MAXIOV) {
+		return 0;
+	}
+
+	iov = diag_percpu_context[smp_processor_id()]->rw_top.uvector;
+	pagefault_disable();
+	if (__copy_from_user_inatomic(iov, uvector, nr_segs * sizeof(*uvector))) {
+		pagefault_enable();
+		return 0;
+	}
+	pagefault_enable();
+
+	for (seg = 0; seg < nr_segs; seg++) {
+		ssize_t len = (ssize_t)iov[seg].iov_len;
+
+		if (len < 0) {
+			return 0;
+		}
+		
+		if (len > MAX_RW_COUNT - ret) {
+			len = MAX_RW_COUNT - ret;
+			iov[seg].iov_len = len;
+		}
+		ret += len;
+	}
+
+	return ret;
+}
+
+static int kprobe_vfs_readv_pre(struct kprobe *p, struct pt_regs *regs)
+{
+	struct file *file = (void *)ORIG_PARAM1(regs);
+	struct iovec __user *uvector = (void *)ORIG_PARAM2(regs);
+	unsigned long vlen = (unsigned long)ORIG_PARAM3(regs);
+	size_t len;
+
+	len = get_iov_size(uvector, vlen);
+	hook_rw(0, file, len);
+
+	return 0;
+}
+
+static int kprobe_vfs_writev_pre(struct kprobe *p, struct pt_regs *regs)
+{
+	struct file *file = (void *)ORIG_PARAM1(regs);
+	struct iovec __user *uvector = (void *)ORIG_PARAM2(regs);
+	unsigned long vlen = (unsigned long)ORIG_PARAM3(regs);
+	size_t len;
+
+	len = get_iov_size(uvector, vlen);
+	hook_rw(1, file, len);
+
+	return 0;
+}
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
+static int kprobe_aio_read_pre(struct kprobe *p, struct pt_regs *regs)
+{
+	struct kiocb *req = (void *)ORIG_PARAM1(regs);
+	struct iocb *iocb = (void *)ORIG_PARAM2(regs);
+	struct file *file;
+	
+	file = req->ki_filp;
+	if (!file)
+		return 0;
+
+	hook_rw(0, file, iocb->aio_nbytes);
+
+	return 0;
+}
+
+static int kprobe_aio_write_pre(struct kprobe *p, struct pt_regs *regs)
+{
+	struct kiocb *req = (void *)ORIG_PARAM1(regs);
+	struct iocb *iocb = (void *)ORIG_PARAM2(regs);
+	struct file *file;
+
+	file = req->ki_filp;
+	if (!file)
+		return 0;
+
+	hook_rw(1, file, iocb->aio_nbytes);
+
+	return 0;
+}
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
+static void hook_sys_io_submit(aio_context_t ctx_id, long nr,
+                struct iocb __user * __user * iocbpp)
+{
+	int i;
+	size_t len = 0;
+
+	if (unlikely(nr < 0))
+		return;
+
+	if (unlikely(nr > UIO_MAXIOV))
+		return;
+
+	for (i = 0; i < nr; i++) {
+		struct iocb __user *user_iocb;
+		struct iocb tmp;
+		struct file *filp;
+
+		if (unlikely(__get_user(user_iocb, iocbpp + i))) {
+			break;
+		}
+
+		if (unlikely(copy_from_user(&tmp, user_iocb, sizeof(tmp)))) {
+			break;
+		}
+
+		len = tmp.aio_nbytes;
+		filp = fget(tmp.aio_fildes);
+		if (filp == NULL)
+			break;
+		hook_rw(tmp.aio_lio_opcode == IOCB_CMD_PWRITE || tmp.aio_lio_opcode == IOCB_CMD_PWRITEV ? 1 : 0,
+			filp, tmp.aio_nbytes);
+		fput(filp);
+	}
+	
+}
+
+unsigned long new_sys_io_submit(aio_context_t ctx_id, long nr,
+                struct iocb __user * __user * iocbpp)
+{
+	unsigned long ret;
+
+	atomic64_inc_return(&diag_nr_running);
+	hook_sys_io_submit(ctx_id, nr, iocbpp);
+	ret = orig_do_io_submit(ctx_id, nr, iocbpp, 0);
+	atomic64_dec_return(&diag_nr_running);
+
+	return ret;
+}
+#endif
+
 static int __activate_rw_top(void)
 {
 	int ret = 0;
@@ -316,6 +498,19 @@ static int __activate_rw_top(void)
 				kprobe_vfs_read_pre, NULL);
 	hook_kprobe(&diag_kprobe_vfs_write, "vfs_write",
 				kprobe_vfs_write_pre, NULL);
+	hook_kprobe(&diag_kprobe_vfs_readv, "vfs_readv",
+				kprobe_vfs_readv_pre, NULL);
+	hook_kprobe(&diag_kprobe_vfs_writev, "vfs_writev",
+				kprobe_vfs_writev_pre, NULL);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
+	hook_kprobe(&diag_kprobe_aio_read, "aio_read",
+				kprobe_aio_read_pre, NULL);
+	hook_kprobe(&diag_kprobe_aio_write, "aio_write",
+				kprobe_aio_write_pre, NULL);
+#endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+	JUMP_INSTALL(sys_io_submit);
+#endif
 	return 1;
 out_variant_buffer:
 	return 0;
@@ -328,7 +523,15 @@ static void __deactivate_rw_top(void)
 	unhook_kprobe(&diag_kprobe_filemap_fault);
 	unhook_kprobe(&diag_kprobe_vfs_read);
 	unhook_kprobe(&diag_kprobe_vfs_write);
-
+	unhook_kprobe(&diag_kprobe_vfs_readv);
+	unhook_kprobe(&diag_kprobe_vfs_writev);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
+	unhook_kprobe(&diag_kprobe_aio_read);
+	unhook_kprobe(&diag_kprobe_aio_write);
+#endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+	JUMP_REMOVE(sys_io_submit);
+#endif
 	synchronize_sched();
 	msleep(10);
 	nr_running = atomic64_read(&diag_nr_running);
@@ -560,7 +763,10 @@ long diag_ioctl_rw_top(unsigned int cmd, unsigned long arg)
 static int lookup_syms(void)
 {
 	LOOKUP_SYMS(shmem_inode_operations);
-
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+	LOOKUP_SYMS(do_io_submit);
+	LOOKUP_SYMS(sys_io_submit);
+#endif
 	return 0;
 }
 
@@ -569,8 +775,10 @@ int diag_rw_top_init(void)
 	if (lookup_syms())
 		return -EINVAL;
 
-	init_diag_variant_buffer(&rw_top_variant_buffer, 1 * 1024 * 1024);
-
+	init_diag_variant_buffer(&rw_top_variant_buffer, 50 * 1024 * 1024);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+	JUMP_INIT(sys_io_submit);
+#endif
 	INIT_RADIX_TREE(&file_tree, GFP_ATOMIC);
 
 	if (rw_top_settings.activated)

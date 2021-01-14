@@ -41,6 +41,7 @@ void usage_rw_top(void)
 	printf("          top how many items to dump\n");
 	printf("          shm set 1 if want dump shm\n");
 	printf("          perf set 1 if want perf detail\n");
+	printf("          raw-stack output raw stack\n");
 	printf("        --deactivate\n");
 	printf("        --report dump log with text.\n");
 	printf("        --log\n");
@@ -60,6 +61,7 @@ static void do_activate(const char *arg)
 	settings.shm = parse.int_value("shm");
 	settings.top = parse.int_value("top");
 	settings.perf = parse.int_value("perf");
+	settings.raw_stack = parse.int_value("raw-stack");
 	if (settings.top == 0)
 		settings.top = 100;	
 
@@ -146,6 +148,7 @@ static void do_settings(const char *arg)
 		printf("    SHM：%d\n", settings.shm);
 		printf("    PERF：%d\n", settings.perf);
 		printf("    输出级别：%d\n", settings.verbose);
+		printf("    RAW-STACK：%lu\n", settings.raw_stack);
 	} else {
 		printf("获取rw-top设置失败，请确保正确安装了diagnose-tools工具\n");
 	}
@@ -156,6 +159,7 @@ static int rw_top_extract(void *buf, unsigned int len, void *)
 	int *et_type;
 	struct rw_top_detail *detail;
 	struct rw_top_perf *perf;
+	struct rw_top_raw_perf *raw_perf;
 
 	if (len == 0)
 		return 0;
@@ -197,6 +201,27 @@ static int rw_top_extract(void *buf, unsigned int len, void *)
 		printf("#*        0xffffffffffffff %s (UNKNOWN)\n",
 				perf->task.comm);
 		diag_printf_proc_chains(&perf->proc_chains);
+		printf("##\n");
+		break;
+	case et_rw_top_raw_perf:
+		if (len < sizeof(struct rw_top_raw_perf))
+			break;
+		raw_perf = (struct rw_top_raw_perf *)buf;
+
+		printf("##CGROUP:[%s]  %d      [%03d]  采样命中\n",
+				raw_perf->task.cgroup_buf,
+				raw_perf->task.pid,
+				0);
+		printf("#*        0xffffffffffffff %s (UNKNOWN)\n",
+				raw_perf->path_name);
+		diag_printf_kern_stack(&raw_perf->kern_stack);
+		diag_printf_raw_stack(raw_perf->task.tgid,
+			raw_perf->task.container_tgid,
+			raw_perf->task.comm,
+			&raw_perf->raw_stack);
+		printf("#*        0xffffffffffffff %s (UNKNOWN)\n",
+				raw_perf->task.comm);
+		diag_printf_proc_chains(&raw_perf->proc_chains);
 		printf("##\n");
 		break;
 	default:
@@ -250,12 +275,12 @@ static void do_extract(char *buf, int len)
 
 static void do_dump(void)
 {
-	static char variant_buf[1024 * 1024];
+	static char variant_buf[50 * 1024 * 1024];
 	int len;
 	int ret = 0;
 	struct diag_ioctl_dump_param dump_param = {
 		.user_ptr_len = &len,
-		.user_buf_len = 1024 * 1024,
+		.user_buf_len = 50 * 1024 * 1024,
 		.user_buf = variant_buf,
 	};
 
@@ -263,7 +288,7 @@ static void do_dump(void)
 		ret = diag_call_ioctl(DIAG_IOCTL_RW_TOP_DUMP, (long)&dump_param);
 	} else {
 		ret = -ENOSYS;
-		syscall(DIAG_RW_TOP_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+		syscall(DIAG_RW_TOP_DUMP, &ret, &len, variant_buf, 50 * 1024 * 1024);
 	}
 
 	if (ret == 0) {
@@ -276,10 +301,10 @@ static void do_sls(char *arg)
 {
 	int ret;
 	int len;
-	static char variant_buf[1024 * 1024];
+	static char variant_buf[50 * 1024 * 1024];
 	struct diag_ioctl_dump_param dump_param = {
 		.user_ptr_len = &len,
-		.user_buf_len = 1024 * 1024,
+		.user_buf_len = 50 * 1024 * 1024,
 		.user_buf = variant_buf,
 	};
 
@@ -291,7 +316,7 @@ static void do_sls(char *arg)
 		if (run_in_host) {
 			ret = diag_call_ioctl(DIAG_IOCTL_RW_TOP_DUMP, (long)&dump_param);
 		} else {
-			syscall(DIAG_RW_TOP_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+			syscall(DIAG_RW_TOP_DUMP, &ret, &len, variant_buf, 50 * 1024 * 1024);
 		}
 
 		if (ret == 0 && len > 0) {

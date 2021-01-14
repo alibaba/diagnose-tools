@@ -51,8 +51,8 @@ err:
 extern unsigned long run_in_host;
 #endif
 
-#define XBY_VERSION					"diagnose-tools 2.1-rc3"
-#define DIAG_VERSION		((2 << 24) | (1 << 16) | 0x0003)
+#define XBY_VERSION					"diagnose-tools 2.1-release"
+#define DIAG_VERSION		((2 << 24) | (1 << 16) | 0xffff)
 
 #define DIAG_DEV_NAME "diagnose-tools"
 
@@ -403,6 +403,7 @@ enum diag_record_id {
 	et_rw_top_base = et_runq_info_base + DIAG_EVENT_TYPE_INTERVAL,
 	et_rw_top_detail,
 	et_rw_top_perf,
+	et_rw_top_raw_perf,
 
 	et_sys_delay_base = et_rw_top_base + DIAG_EVENT_TYPE_INTERVAL,
 	et_sys_delay_detail,

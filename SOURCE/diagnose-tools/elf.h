@@ -17,6 +17,6 @@
 
 #include "symbol.h"
 
-bool get_symbol_in_elf(std::set<symbol> &ss, const char *path);
+bool get_symbol_in_elf(std::set<symbol> &ss, const char *path, int pid, const char *mnt_ns_name);
 bool search_symbol(const std::set<symbol> &ss, symbol &sym);
 #endif

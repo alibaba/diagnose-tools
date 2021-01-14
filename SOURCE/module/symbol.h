@@ -116,6 +116,7 @@ extern unsigned int (*orig_stack_trace_save_tsk)(struct task_struct *task,
 				  unsigned int skipnr);
 extern unsigned int (*orig_stack_trace_save_user)(unsigned long *store, unsigned int size);
 
+extern int *orig_kptr_restrict;
 int alidiagnose_symbols_init(void);
 void alidiagnose_symbols_exit(void);
 
