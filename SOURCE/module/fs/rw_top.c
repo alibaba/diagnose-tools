@@ -340,12 +340,7 @@ static int kprobe_vfs_write_pre(struct kprobe *p, struct pt_regs *regs)
 static int kprobe_vfs_fsync_range_pre(struct kprobe *p, struct pt_regs *regs)
 {
 	struct file *file = (void *)ORIG_PARAM1(regs);
-	loff_t start = ORIG_PARAM2(regs);
-	loff_t end = ORIG_PARAM3(regs);
-	size_t count;
-
-	count = (end > start) ? (end - start) : 0;
-	hook_rw(RW_WRITE, file, count);
+	hook_rw(RW_WRITE, file, 1);
 
 	return 0;
 }
