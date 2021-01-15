@@ -9,6 +9,7 @@
  *
  */
 
+#include <assert.h>
 #include <sched.h>
 #include <stdio.h>
 #include <string.h>
@@ -21,6 +22,7 @@
 #include <string.h>
 #include <stdio.h>     /* for printf */
 #include <stdlib.h>    /* for exit */
+#include <stdio_ext.h>
 
 #include <set>
 
@@ -215,32 +217,172 @@ static struct diagnose_func all_funcs[] {
 	{"test", testcase_main},
 };
 
+#define BUF_LEN 4096
+#define WHITESPACE        " \t\n\r"
+#define strneq(a, b, n) (strncmp((a), (b), (n)) == 0)
+#define streq(a,b) (strcmp((a),(b)) == 0)
+
+int is_pid_1_has_environ(const char *field) {
+	bool done = false;
+	FILE *f = NULL;
+	int r = 0;
+	size_t l;
+
+	assert(field);
+
+	f = fopen("/proc/1/environ", "re");
+	if (!f)
+		return 0;
+
+	(void) __fsetlocking(f, FSETLOCKING_BYCALLER);
+
+	l = strlen(field);
+
+	do {
+		char line[BUF_LEN];
+		size_t i;
+
+		for (i = 0; i < sizeof(line)-1; i++) {
+			int c;
+
+			c = getc(f);
+			if ((c == EOF)) {
+				done = true;
+				break;
+			} else if (c == 0)
+				break;
+
+			line[i] = c;
+		}
+		line[i] = 0;
+
+		if (strneq(line, field, l) && line[l] == '=') {
+			r = 1;
+			goto out;
+		}
+
+	} while (!done);
+
+out:
+	fclose(f);
+	return r;
+}
+
+enum {
+	IS_IN_HOST = 0,
+	IS_IN_CONTAINER
+};
+
+/**
+ * Retrieve one field from a file like /proc/self/status.  pattern
+ * should not include whitespace or the delimiter (':'). pattern matches only
+ * the beginning of a line. Whitespace before ':' is skipped. Whitespace and
+ * zeros after the ':' will be skipped. field must be freed afterwards.
+ * terminator specifies the terminating characters of the field value (not
+ * included in the value).
+ */
+int get_proc_field(const char *filename, const char *pattern, const char *terminator, char **field) {
+	char status[BUF_LEN] = {0};
+	char *t, *f;
+	size_t len;
+	int r;
+
+	assert(terminator);
+	assert(filename);
+	assert(pattern);
+	assert(field);
+
+	int fd = open(filename, O_RDONLY);
+	if (fd < 0)
+		return -errno;
+
+	r = read(fd, &status, BUF_LEN - 1);
+	if (r < 0)
+		return r;
+
+	t = status;
+
+	do {
+		bool pattern_ok;
+
+		do {
+			t = strstr(t, pattern);
+			if (!t)
+				return -ENOENT;
+
+			/* Check that pattern occurs in beginning of line. */
+			pattern_ok = (t == status || t[-1] == '\n');
+
+			t += strlen(pattern);
+
+		} while (!pattern_ok);
+
+		t += strspn(t, " \t");
+		if (!*t)
+			return -ENOENT;
+
+	} while (*t != ':');
+
+	t++;
+
+
+	if (*t) {
+		t += strspn(t, " \t");
+
+		/* Also skip zeros, because when this is used for
+		 * capabilities, we don't want the zeros. This way the
+		 * same capability set always maps to the same string,
+		 * irrespective of the total capability set size. For
+		 * other numbers it shouldn't matter. */
+		t += strspn(t, "0");
+		/* Back off one char if there's nothing but whitespace
+		   and zeros */
+		if (!*t || isspace(*t))
+			t--;
+	}
+
+	len = strcspn(t, terminator);
+
+	f = strndup(t, len);
+	if (!f)
+		return -ENOMEM;
+
+	*field = f;
+	return 0;
+}
+
+static int detect_container_by_pid_2(void) {
+	char *s = NULL;
+	int r;
+
+	r = get_proc_field("/proc/2/status", "PPid", WHITESPACE, &s);
+	if (r >= 0) {
+		if (streq(s, "0"))
+			r = IS_IN_HOST;
+		else
+			r = IS_IN_CONTAINER;
+	} else if (r == -ENOENT)
+		r = IS_IN_CONTAINER;
+	else {
+		printf("Failed to read /proc/2/status: %d\n", r);
+		r = IS_IN_HOST;
+	}
+
+	free(s);
+	return r;
+}
+
 static int check_in_host(void)
 {
-	static char result_buf[1024], command[1024];
-	FILE *fp;
+	int r;
 
-	snprintf(command, sizeof(command), "systemd-detect-virt"); 
-	/*执行预先设定的命令，并读出该命令的标准输出*/
-	fp = popen(command, "r");
-	if (NULL == fp) {
-		return 0;
-	}
-
-	while (fgets(result_buf, sizeof(result_buf), fp) != NULL) {
-		/*为了下面输出好看些，把命令返回的换行符去掉*/
-		if (strncmp("none\n", result_buf, 1024) == 0) {
-			pclose(fp);
-			return 1;
-		}
-		if (strncmp("kvm\n", result_buf, 1024) == 0) {
-			pclose(fp);
-			return 1;
-		}
-	}
-
-	pclose(fp);
-	return 0;
+	if (is_pid_1_has_environ("container"))
+		r = IS_IN_CONTAINER;
+	else 
+		r = detect_container_by_pid_2();
+	printf("diagnose-tool is running in %s\n", r == IS_IN_HOST ? 
+			"HOST" : "CONTAINER");
+	return r;
 }
 
 int main(int argc, char* argv[])
