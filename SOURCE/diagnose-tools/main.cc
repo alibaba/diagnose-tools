@@ -215,6 +215,35 @@ static struct diagnose_func all_funcs[] {
 	{"test", testcase_main},
 };
 
+static int check_in_host(void)
+{
+	static char result_buf[1024], command[1024];
+	int rc = 0; // 用于接收命令返回值
+	FILE *fp;
+
+	snprintf(command, sizeof(command), "systemd-detect-virt"); 
+	/*执行预先设定的命令，并读出该命令的标准输出*/
+	fp = popen(command, "r");
+	if (NULL == fp) {
+		return 0;
+	}
+
+	while (fgets(result_buf, sizeof(result_buf), fp) != NULL) {
+		/*为了下面输出好看些，把命令返回的换行符去掉*/
+		if (strncmp("none\n", result_buf, 1024) == 0) {
+			pclose(fp);
+			return 1;
+		}
+		if (strncmp("kvm\n", result_buf, 1024) == 0) {
+			pclose(fp);
+			return 1;
+		}
+	}
+
+	pclose(fp);
+	return 0;
+}
+
 int main(int argc, char* argv[])
 {
 	unsigned int i;
@@ -222,9 +251,9 @@ int main(int argc, char* argv[])
 	unsigned int version = -1;
 	int fd;
 
+	run_in_host = check_in_host();
 	fd = open("/dev/diagnose-tools", O_RDWR, 0);
 	if (fd > 0) {
-		run_in_host = 1;
 		version = ioctl(fd, DIAG_IOCTL_VERSION_ALL, 0);
 		close(fd);
 		if (version != DIAG_VERSION && version != -1UL && version != 0xffffffffU) {
