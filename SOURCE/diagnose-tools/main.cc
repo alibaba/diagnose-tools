@@ -218,7 +218,6 @@ static struct diagnose_func all_funcs[] {
 static int check_in_host(void)
 {
 	static char result_buf[1024], command[1024];
-	int rc = 0; // 用于接收命令返回值
 	FILE *fp;
 
 	snprintf(command, sizeof(command), "systemd-detect-virt"); 
