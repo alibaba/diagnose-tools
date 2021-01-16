@@ -269,8 +269,8 @@ out:
 }
 
 enum {
-	IS_IN_HOST = 0,
-	IS_IN_CONTAINER
+	RUN_IN_HOST = 0,
+	RUN_IN_CONTAINER
 };
 
 /**
@@ -358,14 +358,14 @@ static int detect_container_by_pid_2(void) {
 	r = get_proc_field("/proc/2/status", "PPid", WHITESPACE, &s);
 	if (r >= 0) {
 		if (streq(s, "0"))
-			r = IS_IN_HOST;
+			r = RUN_IN_HOST;
 		else
-			r = IS_IN_CONTAINER;
+			r = RUN_IN_CONTAINER;
 	} else if (r == -ENOENT)
-		r = IS_IN_CONTAINER;
+		r = RUN_IN_CONTAINER;
 	else {
 		printf("Failed to read /proc/2/status: %d\n", r);
-		r = IS_IN_HOST;
+		r = RUN_IN_HOST;
 	}
 
 	free(s);
@@ -377,12 +377,13 @@ static int check_in_host(void)
 	int r;
 
 	if (is_pid_1_has_environ("container"))
-		r = IS_IN_CONTAINER;
+		r = RUN_IN_CONTAINER;
 	else 
 		r = detect_container_by_pid_2();
-	printf("diagnose-tool is running in %s\n", r == IS_IN_HOST ? 
+	printf("diagnose-tool is running in %s\n", r == RUN_IN_HOST ? 
 			"HOST" : "CONTAINER");
-	return r;
+
+	return r == RUN_IN_HOST;
 }
 
 int main(int argc, char* argv[])
