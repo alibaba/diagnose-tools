@@ -314,6 +314,7 @@ void diag_sls_task(struct diag_task_detail *tsk_info, Json::Value &task)
 	task["tgid"] = Json::Value(tsk_info->tgid);
 	task["container_pid"] = Json::Value(tsk_info->container_pid);
 	task["container_tgid"] = Json::Value(tsk_info->container_tgid);
+	task["task_type"] = Json::Value(tsk_info->task_type);
 	if (0 == tsk_info->state) {
 		task["state"] = Json::Value("R");
 	} else if (tsk_info->state & 2) {

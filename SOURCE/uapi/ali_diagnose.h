@@ -471,6 +471,7 @@ struct diag_task_detail {
 	int container_pid;
 	int container_tgid;
 	long state;
+	int task_type;
 	char comm[TASK_COMM_LEN];
 };
 
