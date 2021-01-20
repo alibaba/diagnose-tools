@@ -155,6 +155,8 @@ struct diag_ioctl_dump_param_cycle {
 
 #define DIAG_PATH_LEN 100
 
+#define DIAG_DEVICE_LEN 32
+
 #define DIAG_NR_SOFTIRQS 15
 
 #include "uapi/variant_buffer.h"

@@ -64,6 +64,7 @@
 static atomic64_t diag_nr_running = ATOMIC64_INIT(0);
 struct diag_rw_top_settings rw_top_settings = {
 	.top = 20,
+	.device_name = "",
 };
 
 static unsigned long rw_top_alloced = 0;
@@ -101,6 +102,7 @@ struct file_info {
 	struct list_head list;
 	struct inode *f_inode;
 	char path_name[DIAG_PATH_LEN];
+	char device_name[DIAG_DEVICE_LEN];
 	unsigned long pid;
 	char comm[TASK_COMM_LEN];
 	atomic64_t rw_size[NR_RW_TYPE];
@@ -166,6 +168,9 @@ static struct file_info *find_alloc_file_info(struct file *file,
 	if (f_inode == NULL)
 		return NULL;
 
+	if (strlen(rw_top_settings.device_name) != 0 && !strstr(rw_top_settings.device_name, file->f_inode->i_sb->s_id))
+		return NULL;
+
 	rw_key = task->pid | (unsigned long)f_inode;
 
 	info = radix_tree_lookup(&file_tree, rw_key);
@@ -186,6 +191,8 @@ static struct file_info *find_alloc_file_info(struct file *file,
 			info->f_inode = f_inode;
 			strncpy(info->path_name, ret_path, DIAG_PATH_LEN);
 			info->path_name[DIAG_PATH_LEN - 1] = 0;
+			strncpy(info->device_name, file->f_inode->i_sb->s_id, DIAG_DEVICE_LEN);
+			info->device_name[DIAG_DEVICE_LEN - 1] = 0;
 
 			info->pid = task->pid;
 			strncpy(info->comm, task->comm, TASK_COMM_LEN);
@@ -272,6 +279,7 @@ static void hook_rw(enum rw_type rw_type, struct file *file, size_t count)
 				diag_task_raw_stack(current, &perf->raw_stack);
 				perf->proc_chains.chains[0][0] = 0;
 				memcpy(perf->path_name, info->path_name, DIAG_PATH_LEN);
+				memcpy(perf->device_name, info->device_name, DIAG_DEVICE_LEN);
 				dump_proc_chains_simple(current, &perf->proc_chains);
 				diag_variant_buffer_spin_lock(&rw_top_variant_buffer, flags);
 				diag_variant_buffer_reserve(&rw_top_variant_buffer, sizeof(struct rw_top_raw_perf));
@@ -291,6 +299,7 @@ static void hook_rw(enum rw_type rw_type, struct file *file, size_t count)
 				diag_task_user_stack(current, &perf->user_stack);
 				perf->proc_chains.chains[0][0] = 0;
 				memcpy(perf->path_name, info->path_name, DIAG_PATH_LEN);
+				memcpy(perf->device_name, info->device_name, DIAG_DEVICE_LEN);
 				dump_proc_chains_simple(current, &perf->proc_chains);
 				diag_variant_buffer_spin_lock(&rw_top_variant_buffer, flags);
 				diag_variant_buffer_reserve(&rw_top_variant_buffer, sizeof(struct rw_top_perf));
@@ -619,6 +628,7 @@ static int do_show(void)
 		detail.map_size = atomic64_read(&file_info->rw_size[RW_FILEMAP_FAULT]);
 		detail.rw_size = atomic64_read(&file_info->rw_size[RW_ALL]);
 		strncpy(detail.path_name, file_info->path_name, DIAG_PATH_LEN);
+		strncpy(detail.device_name, file_info->device_name, DIAG_DEVICE_LEN);
 		detail.pid = file_info->pid;
 		strncpy(detail.comm, file_info->comm, TASK_COMM_LEN);
 		detail.comm[TASK_COMM_LEN - 1] = 0;
