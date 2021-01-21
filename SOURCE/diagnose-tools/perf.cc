@@ -288,10 +288,13 @@ static void do_dump(const char *arg)
 	};
 	string in_file;
 	string out_file;
+        string inlist_file;
+        string line = "";
 
 	report_reverse = parse.int_value("reverse");
 	in_file = parse.string_value("in");
 	out_file = parse.string_value("out");
+	inlist_file = parse.string_value("inlist");
 
 	memset(variant_buf, 0, 50 * 1024 * 1024);
 	if (in_file.length() > 0) {
@@ -301,8 +304,25 @@ static void do_dump(const char *arg)
 		if (len > 0) {
 			java_attach_once();
 			do_extract(variant_buf, len);
+                        fin.close();
 		}
-	} else {
+       } else if(inlist_file.length() > 0) {
+               ifstream in(inlist_file);
+               if(in) {
+                       while (getline(in, line)){
+                               ifstream fin(line.c_str());
+                               fin.read(variant_buf, 50 * 1024 * 1024);
+                               len = fin.gcount();
+                               if (len > 0) {
+                                       java_attach_once();
+                                       do_extract(variant_buf, len);
+                                       memset(variant_buf, 0, 50 * 1024 * 1024);
+                               }
+                               fin.close();
+                       }
+               in.close(); 
+	       }	
+       }else{
 		if (run_in_host) {
 			ret = diag_call_ioctl(DIAG_IOCTL_PERF_DUMP, (long)&dump_param);
 		} else {
