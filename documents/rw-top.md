@@ -33,6 +33,7 @@ diagnose-tools rw-top --activate
 * verbose 设置输出信息的详细程度
 * top 设置输出列表的长度，默认值是20。
 * shm 如果设置为1,将只监控对共享内存文件的读写。
+* device 用于指定需要监控的磁盘，如 /dev/vdb
 
 例如，如下命令设置输出列表长度为100：
 ```
@@ -45,6 +46,7 @@ diagnose-tools rw-top --activate='top=100'
     SHM：0
     PERF: 0
     输出级别：0
+    DEVICE: 
 ```
 如果失败，将输出：
 ```
@@ -53,6 +55,7 @@ diagnose-tools rw-top --activate='top=100'
     SHM：0
     PERF: 0
     输出级别：0
+    DEVICE: 
 ```
 
 ###  测试用例
@@ -74,6 +77,7 @@ diagnose-tools rw-top --settings
     SHM：0
     PERF1
     输出级别：1
+    DEVICE: vdb
 ```
 ###  查看结果
 执行如下命令查看本功能的输出结果：
@@ -82,8 +86,8 @@ diagnose-tools rw-top --report
 ```
 输出结果示例如下：
 ```
-  序号           R-SIZE            W-SIZE          MAP-SIZE           RW-SIZE        文件名
-    1                 0             66375                 0             66375        /apsarapangu/tmp.txt 
+  序号           R-SIZE            W-SIZE          MAP-SIZE           RW-SIZE        设备        文件名
+    1                 0             66375                 0             66375       vda1        /apsarapangu/tmp.txt 
 ```
 输出结果中，包含了写数量排名前100名的文件名/读写长度。
 ###  关闭功能

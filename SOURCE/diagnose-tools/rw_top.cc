@@ -42,6 +42,7 @@ void usage_rw_top(void)
 	printf("          shm set 1 if want dump shm\n");
 	printf("          perf set 1 if want perf detail\n");
 	printf("          raw-stack output raw stack\n");
+	printf("          device the device which you are insterested in\n");
 	printf("        --deactivate\n");
 	printf("        --report dump log with text.\n");
 	printf("        --log\n");
@@ -54,6 +55,7 @@ static void do_activate(const char *arg)
 	int ret = 0;
 	struct params_parser parse(arg);
 	struct diag_rw_top_settings settings;
+	string str;
 
 	memset(&settings, 0, sizeof(struct diag_rw_top_settings));
 	
@@ -62,6 +64,12 @@ static void do_activate(const char *arg)
 	settings.top = parse.int_value("top");
 	settings.perf = parse.int_value("perf");
 	settings.raw_stack = parse.int_value("raw-stack");
+	
+	str = parse.string_value("device");
+	if (str.length() > 0) {
+		strncpy(settings.device_name, str.c_str(), DIAG_DEVICE_LEN);
+		settings.device_name[DIAG_DEVICE_LEN - 1] = 0;
+	}
 	if (settings.top == 0)
 		settings.top = 100;	
 
@@ -77,6 +85,7 @@ static void do_activate(const char *arg)
 	printf("    SHM：%d\n", settings.shm);
 	printf("    PERF：%d\n", settings.perf);
 	printf("    输出级别：%d\n", settings.verbose);
+	printf("    DEVICE: %s\n", settings.device_name);
 
 	if (ret)
 		return;
@@ -149,6 +158,7 @@ static void do_settings(const char *arg)
 		printf("    PERF：%d\n", settings.perf);
 		printf("    输出级别：%d\n", settings.verbose);
 		printf("    RAW-STACK：%lu\n", settings.raw_stack);
+		printf("    DEVICE: %s\n", settings.device_name);
 	} else {
 		printf("获取rw-top设置失败，请确保正确安装了diagnose-tools工具\n");
 	}
@@ -171,7 +181,7 @@ static int rw_top_extract(void *buf, unsigned int len, void *)
 			break;
 		detail = (struct rw_top_detail *)buf;
 
-		printf("%5d%18lu%18lu%18lu%18lu%8lu%16s        %-100s\n",
+		printf("%5d%18lu%18lu%18lu%18lu%8lu%16s%32s        %-100s\n",
 			detail->seq,
 			detail->r_size,
 			detail->w_size,
@@ -179,6 +189,7 @@ static int rw_top_extract(void *buf, unsigned int len, void *)
 			detail->rw_size,
 			detail->pid,
 			detail->comm,
+			detail->device_name,
 			detail->path_name);
 
 		break;
@@ -191,8 +202,8 @@ static int rw_top_extract(void *buf, unsigned int len, void *)
 				perf->task.cgroup_buf,
 				perf->task.pid,
 				0);
-		printf("#*        0xffffffffffffff %s (UNKNOWN)\n",
-				perf->path_name);
+		printf("#*        0xffffffffffffff %s    %s (UNKNOWN)\n",
+				perf->path_name, perf->device_name);
 		diag_printf_kern_stack(&perf->kern_stack);
 		diag_printf_user_stack(perf->task.tgid,
 				perf->task.container_tgid,
@@ -212,8 +223,8 @@ static int rw_top_extract(void *buf, unsigned int len, void *)
 				raw_perf->task.cgroup_buf,
 				raw_perf->task.pid,
 				0);
-		printf("#*        0xffffffffffffff %s (UNKNOWN)\n",
-				raw_perf->path_name);
+		printf("#*        0xffffffffffffff %s    %s (UNKNOWN)\n",
+				raw_perf->path_name, raw_perf->device_name);
 		diag_printf_kern_stack(&raw_perf->kern_stack);
 		diag_printf_raw_stack(run_in_host ? raw_perf->task.tgid : raw_perf->task.container_tgid,
 			raw_perf->task.container_tgid,
@@ -292,7 +303,7 @@ static void do_dump(void)
 	}
 
 	if (ret == 0) {
-		printf("  序号           R-SIZE            W-SIZE          MAP-SIZE           RW-SIZE     PID          进程名        文件名\n");
+		printf("  序号           R-SIZE            W-SIZE          MAP-SIZE           RW-SIZE     PID          进程名                            设备        文件名\n");
 		do_extract(variant_buf, len);
 	}
 }
