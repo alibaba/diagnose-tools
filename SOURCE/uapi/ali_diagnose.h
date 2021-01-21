@@ -514,6 +514,7 @@ struct diag_inode_detail {
 	unsigned long inode_block_bytes;
 };
 
+#ifndef __KERNEL__
 static inline void extract_variant_buffer(char *buf, unsigned int len, int (*func)(void *, unsigned int, void *), void *arg)
 {
 	unsigned int pos = 0;
@@ -543,5 +544,6 @@ static inline void extract_variant_buffer(char *buf, unsigned int len, int (*fun
 
 	chdir(dir);
 }
+#endif
 
 #endif /* UAPI_DIAG_H */
