@@ -695,10 +695,15 @@ int java_attach_once(void)
 {
     NAMESPACE_MAP ns_map;
     PROCESS_MAP root_map;
-         
+
+    char buf[1024] = {0};
+
+    getcwd(buf, sizeof(buf));
+
     signal(SIGPIPE, SIG_IGN);
     agent_fd = open(LIB_AGENT, 0);
     if (agent_fd < 0) {
+        chdir(buf);
         printf("%s not exist.\n", LIB_AGENT);
         return 1;
     }
@@ -708,6 +713,7 @@ int java_attach_once(void)
         attach_java_process(root_map, 1);
     } else {
         if (cur_ns.open_ns_fd(1)) {
+            chdir(buf);
             printf("ns file not found.\n");
             return 1;
         }
@@ -716,6 +722,7 @@ int java_attach_once(void)
         attach_java_process(ns_map, 1);
     }
 
+    chdir(buf);
     return 0;
 }
 
