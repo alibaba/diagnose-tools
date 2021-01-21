@@ -88,7 +88,7 @@ static int task_info_extract(void *buf, unsigned int len, void *)
 				detail->task.pid,
 				seq);
 		diag_printf_kern_stack(&detail->kern_stack);
-		diag_printf_raw_stack(detail->task.tgid,
+		diag_printf_raw_stack(run_in_host ? detail->task.tgid : detail->task.container_tgid,
 				detail->task.container_tgid,
 				detail->task.comm,
 				&detail->raw_stack);

@@ -336,7 +336,7 @@ static int uprobe_extract(void *buf, unsigned int len, void *)
 		printf("#*        0xffffffffffffff %s (UNKNOWN)\n",
 				raw_detail->task.comm);
 #else
-		diag_printf_raw_stack(raw_detail->task.tgid,
+		diag_printf_raw_stack(run_in_host ? raw_detail->task.tgid : raw_detail->task.container_tgid,
 				raw_detail->task.container_tgid,
 				raw_detail->task.comm,
 				&raw_detail->raw_stack);

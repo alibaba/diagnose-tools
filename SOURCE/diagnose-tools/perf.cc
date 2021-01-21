@@ -254,7 +254,7 @@ static int perf_extract(void *buf, unsigned int len, void *)
 				raw_detail->task.pid,
 				seq);
 		diag_printf_kern_stack(&raw_detail->kern_stack, report_reverse);
-		diag_printf_raw_stack(raw_detail->task.tgid,
+		diag_printf_raw_stack(run_in_host ? raw_detail->task.tgid : raw_detail->task.container_tgid,
 			raw_detail->task.container_tgid,
 			raw_detail->task.comm,
 			&raw_detail->raw_stack);

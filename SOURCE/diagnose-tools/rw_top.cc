@@ -215,7 +215,7 @@ static int rw_top_extract(void *buf, unsigned int len, void *)
 		printf("#*        0xffffffffffffff %s (UNKNOWN)\n",
 				raw_perf->path_name);
 		diag_printf_kern_stack(&raw_perf->kern_stack);
-		diag_printf_raw_stack(raw_perf->task.tgid,
+		diag_printf_raw_stack(run_in_host ? raw_perf->task.tgid : raw_perf->task.container_tgid,
 			raw_perf->task.container_tgid,
 			raw_perf->task.comm,
 			&raw_perf->raw_stack);

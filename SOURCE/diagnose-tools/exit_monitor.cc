@@ -190,7 +190,7 @@ static int exit_monitor_extract(void *buf, unsigned int len, void *)
             }
 		}
 
-		diag_printf_raw_stack(detail->task.tgid,
+		diag_printf_raw_stack(run_in_host ? detail->task.tgid : detail->task.container_tgid,
 				detail->task.container_tgid,
 				detail->task.comm,
 				&detail->raw_stack);
