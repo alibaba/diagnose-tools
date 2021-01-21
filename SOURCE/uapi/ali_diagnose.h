@@ -521,9 +521,9 @@ static inline void extract_variant_buffer(char *buf, unsigned int len, int (*fun
 	void *rec;
 	int rec_len;
 
-    char buf[1024] = {0};
+    char dir[1024] = {0};
 
-    getcwd(buf, sizeof(buf));
+    getcwd(dir, sizeof(dir));
 
 	while (pos < len) {
 		head = (struct diag_variant_buffer_head *)(buf + pos);
@@ -541,7 +541,7 @@ static inline void extract_variant_buffer(char *buf, unsigned int len, int (*fun
 		pos += head->len;
 	}
 
-	chdir(buf);
+	chdir(dir);
 }
 
 #endif /* UAPI_DIAG_H */
