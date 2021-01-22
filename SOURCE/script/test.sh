@@ -214,10 +214,7 @@ ping_delay() {
 }
 
 rw_top() {
-	dd of=./apsarapangu.data if=/dev/zero bs=10M count=1
-	losetup /dev/loop0 ./apsarapangu.data
-	mkfs -t ext4 /dev/loop0
-	mount /dev/loop0 /apsarapangu/
+	mkdir /apsarapangu
 	eval "$DIAG_CMD rw-top --deactivate -activate=\"raw-stack=1 perf=1 verbose=1\" --settings"
 	echo test: `date` >> /apsarapangu/diagnose-tools.1.log
 	echo test: `date` >> /apsarapangu/diagnose-tools.2.log
@@ -227,9 +224,6 @@ rw_top() {
 	eval "$DIAG_CMD rw-top --report --deactivate" > rw-top.log
         eval "$DIAG_CMD flame --input=rw-top.log --output=rw-top.svg"
         echo "火焰图位于rw-top.svg"
-	umount /dev/loop0
-	losetup -d /dev/loop0
-	rm ./apsarapangu.data
 }
 
 fs_shm() {
