@@ -168,7 +168,8 @@ static struct file_info *find_alloc_file_info(struct file *file,
 	if (f_inode == NULL)
 		return NULL;
 
-	if (strlen(rw_top_settings.device_name) != 0 && !strstr(rw_top_settings.device_name, file->f_inode->i_sb->s_id))
+	if (rw_top_settings.device_name[0] != 0
+	    && strncmp(rw_top_settings.device_name, file->f_inode->i_sb->s_id, DIAG_DEVICE_LEN) != 0)
 		return NULL;
 
 	rw_key = task->pid | (unsigned long)f_inode;
