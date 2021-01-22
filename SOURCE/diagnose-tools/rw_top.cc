@@ -47,11 +47,11 @@ void usage_rw_top(void)
 	printf("          device the device which you are insterested in\n");
 	printf("        --deactivate\n");
 	printf("        --report dump log with text.\n");
-	printf("          out output raw stack into special file.\n")
-	printf("          in input one raw-stack file to extract.\n")
-	printf("          inlist input filename including raw-stack file list to extract .\n")
-	printf("          input filename including raw-stack file list to extract .\n")
-	printf("          console get raw-stack file list from console to extract .\n")
+	printf("          out output raw stack into special file.\n");
+	printf("          in input one raw-stack file to extract.\n");
+	printf("          inlist input filename including raw-stack file list to extract .\n");
+	printf("          input filename including raw-stack file list to extract .\n");
+	printf("          console get raw-stack file list from console to extract .\n");
 	printf("        --log\n");
 	printf("          sls=/tmp/1.log store in file\n");
 	printf("          syslog=1 store in syslog\n");
