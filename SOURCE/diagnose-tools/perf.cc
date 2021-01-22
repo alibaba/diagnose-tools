@@ -280,6 +280,7 @@ static void do_dump(const char *arg)
 	static char variant_buf[50 * 1024 * 1024];
 	int len;
 	int ret = 0;
+	int console=0;
 	struct params_parser parse(arg);
 	struct diag_ioctl_dump_param dump_param = {
 		.user_ptr_len = &len,
@@ -290,14 +291,31 @@ static void do_dump(const char *arg)
 	string out_file;
         string inlist_file;
         string line = "";
+	string input_line;
 
 	report_reverse = parse.int_value("reverse");
+	console = parse.int_value("console");
 	in_file = parse.string_value("in");
 	out_file = parse.string_value("out");
 	inlist_file = parse.string_value("inlist");
 
 	memset(variant_buf, 0, 50 * 1024 * 1024);
-	if (in_file.length() > 0) {
+	if (console) {
+		java_attach_once();
+		while (cin) {
+			getline(cin, input_line);
+			if (!cin.eof()){
+				ifstream fin(input_line, ios::binary);
+				fin.read(variant_buf, 50 * 1024 * 1024);
+				len = fin.gcount();
+				if (len > 0) {
+					do_extract(variant_buf, len);
+					memset(variant_buf, 0, 50 * 1024 * 1024);
+				}
+				fin.close();
+			 }	
+		}	
+	} else if (in_file.length() > 0) {
 		ifstream fin(in_file, ios::binary);
 		fin.read(variant_buf, 50 * 1024 * 1024);
 		len = fin.gcount();
