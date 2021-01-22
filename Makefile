@@ -83,6 +83,7 @@ test:
 	rm tmp.txt -f
 	rm *.svg -f
 	rm *.log -f
+	rm *.raw -f
 
 clean:
 	cd SOURCE/module/; make clean

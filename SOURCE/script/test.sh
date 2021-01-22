@@ -103,19 +103,23 @@ run_trace() {
 }
 
 perf() {
-	eval "$DIAG_CMD perf --deactivate --activate='style=1 idle=1 bvt=1 raw-stack=1' --settings"
-	sleep 1
-	eval "$DIAG_CMD perf --report --deactivate" > perf.log
-	eval "$DIAG_CMD flame --input=perf.log --output=perf.svg"
-	echo "火焰图位于perf.svg"
+	eval "$DIAG_CMD perf --deactivate --activate='raw-stack=0 style=2 idle=1 bvt=1' --settings"
 
-	eval "$DIAG_CMD perf --deactivate --activate='style=0 idle=1 bvt=1'"
-	sleep 1
-	eval "$DIAG_CMD perf --report" > perf.log
-	sleep 1
-	eval "$DIAG_CMD perf --report='out=perf.out'"
-	eval "$DIAG_CMD perf --report='in=perf.out'" > perf.log
+	files=""
+	for i in `seq 2`; do
+		sleep 1
+		file="perf.${i}.raw"
+		files+="${file}\n"
+    		eval "$DIAG_CMD perf --report=\"out=$file\""
+	done
+	eval "$DIAG_CMD perf --report=\"console=1\"" > perf.log << EOF
+`echo -e ${files}`
+EOF
+
 	eval "$DIAG_CMD perf --deactivate"
+
+	eval "$DIAG_CMD flame --input=perf.log --output=perf.svg"
+        echo "火焰图位于perf.svg"
 }
 
 kprobe() {
