@@ -225,9 +225,27 @@ rw_top() {
 	echo test: `date` >> /apsarapangu/diagnose-tools.2.log
 	echo test: `date` >> /apsarapangu/diagnose-tools.2.log
 	sleep 1
-	eval "$DIAG_CMD rw-top --report --deactivate" > rw-top.log
-        eval "$DIAG_CMD flame --input=rw-top.log --output=rw-top.svg"
-        echo "火焰图位于rw-top.svg"
+	
+	files=""
+        for i in `seq 2`; do
+                sleep 1
+                file="rw-top.${i}.raw"
+                files+="${file}\n"
+                eval "$DIAG_CMD rw-top --report=\"out=$file\""
+        done
+
+        eval "$DIAG_CMD rw-top --report=\"console=1\"" > rw-top.1.log << EOF
+`echo -e ${files}`
+EOF
+        eval "$DIAG_CMD flame --input=rw-top.1.log --output=rw-top.1.svg"
+        echo "火焰图位于rw-top.1.svg"
+
+	
+	ls -l rw-top.*.raw |awk '{print $NF}' > rw-top.txt
+        eval "$DIAG_CMD rw-top --report=\"inlist=rw-top.txt\"" > rw-top.2.log
+
+        eval "$DIAG_CMD flame --input=rw-top.2.log --output=rw-top.2.svg"
+        echo "火焰图位于rw-top.2.svg"
 }
 
 fs_shm() {
