@@ -16,7 +16,12 @@ diagnose-tools rw-top --help
           shm set 1 if want dump shm
           perf set 1 if want perf detail
         --deactivate
-        --report dump log with text.
+        --report dump log with text
+	   out output raw stack into special file
+           in input one raw-stack file to extract
+           inlist input filename including raw-stack file list to extract
+           input filename including raw-stack file list to extract
+           console get raw-stack file list from console to extract
         --log
           sls=/tmp/1.log store in file
           syslog=1 store in syslog.
@@ -90,6 +95,20 @@ diagnose-tools rw-top --report
     1                 0             66375                 0             66375       vda1        /apsarapangu/tmp.txt 
 ```
 输出结果中，包含了写数量排名前100名的文件名/读写长度。
+
+### 输出raw-stack到文件
+执行如下命令查看本功能的输出结果：
+```
+diagnose-tools rw-top --report="out=xxx.raw"
+```
+
+### 解析raw-stack文件的符号表
+执行如下命令查看本功能的输出结果：
+```
+diagnose-tools rw-top --report="in=xxx.raw"
+```
+
+输出raw-stack到文件
 ###  关闭功能
 通过如下命令关闭本功能：
 ```
