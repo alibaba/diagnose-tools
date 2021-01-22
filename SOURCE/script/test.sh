@@ -124,9 +124,17 @@ EOF
 
 kprobe() {
 	eval "$DIAG_CMD kprobe --deactivate --activate='probe=hrtimer_interrupt'"
-	sleep 1
-	eval "$DIAG_CMD kprobe --report --deactivate --settings" > kprobe.log
-	eval "$DIAG_CMD flame --input=kprobe.log --output=kprobe.svg"
+        files=""
+        for i in `seq 2`; do
+                sleep 1
+                file="kprobe.${i}.raw"
+                files+="${file}\n"
+                eval "$DIAG_CMD kprobe --report=\"out=$file\""
+        done
+        eval "$DIAG_CMD kprobe --report=\"console=1\"" > kprobe.log << EOF
+`echo -e ${files}`
+EOF
+        eval "$DIAG_CMD flame --input=kprobe.log --output=kprobe.svg"
         echo "火焰图位于kprobe.svg"
 }
 

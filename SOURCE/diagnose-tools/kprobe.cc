@@ -222,21 +222,12 @@ static int kprobe_extract(void *buf, unsigned int len, void *)
 				seq,
 				detail->tv.tv_sec, detail->tv.tv_usec);
 		diag_printf_kern_stack(&detail->kern_stack);
-#if 1
 		diag_printf_user_stack(detail->task.tgid,
 				detail->task.container_tgid,
 				detail->task.comm,
 				&detail->user_stack, 0);
 		printf("#*        0xffffffffffffff %s (UNKNOWN)\n",
 				detail->task.comm);
-#else
-		diag_printf_raw_stack(detail->task.tgid,
-				detail->task.container_tgid,
-				detail->task.comm,
-				&detail->raw_stack);
-		printf("#*        0xffffffffffffff %s (UNKNOWN)\n",
-				detail->task.comm);
-#endif
 		diag_printf_proc_chains(&detail->proc_chains);
 		printf("##\n");
 
@@ -257,21 +248,12 @@ static int kprobe_extract(void *buf, unsigned int len, void *)
 				seq,
 				raw_detail->tv.tv_usec, raw_detail->tv.tv_usec);
 		diag_printf_kern_stack(&raw_detail->kern_stack);
-#if 0
-		diag_printf_user_stack(raw_detail->task.tgid,
-				raw_detail->task.container_tgid,
-				raw_detail->task.comm,
-				&raw_detail->user_stack, 0);
-		printf("#*        0xffffffffffffff %s (UNKNOWN)\n",
-				raw_detail->task.comm);
-#else
 		diag_printf_raw_stack(run_in_host ? raw_detail->task.tgid : raw_detail->task.container_tgid,
 				raw_detail->task.container_tgid,
 				raw_detail->task.comm,
 				&raw_detail->raw_stack);
 		printf("#*        0xffffffffffffff %s (UNKNOWN)\n",
 				raw_detail->task.comm);
-#endif
 		diag_printf_proc_chains(&raw_detail->proc_chains);
 		printf("##\n");
 
