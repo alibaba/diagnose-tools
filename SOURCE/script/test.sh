@@ -125,15 +125,17 @@ EOF
 kprobe() {
 	eval "$DIAG_CMD kprobe --deactivate --activate='probe=hrtimer_interrupt'"
         files=""
-        for i in `seq 2`; do
+        for i in `seq 10`; do
                 sleep 1
-                file="kprobe.${i}.raw"
+                file="__kprobe.${i}.raw"
                 files+="${file}\n"
                 eval "$DIAG_CMD kprobe --report=\"out=$file\""
         done
-        eval "$DIAG_CMD kprobe --report=\"console=1\"" > kprobe.log << EOF
-`echo -e ${files}`
+echo -e "${files}"
+        eval "systemd-run --scope -p MemoryLimit=1000M $DIAG_CMD kprobe --report=\"console=1\"" > kprobe.log << EOF
+`echo -e "${files}"`
 EOF
+
         eval "$DIAG_CMD flame --input=kprobe.log --output=kprobe.svg"
         echo "火焰图位于kprobe.svg"
 }

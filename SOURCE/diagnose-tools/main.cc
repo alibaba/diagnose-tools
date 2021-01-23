@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <getopt.h>
+#include <sys/resource.h>
 
 #include <sys/time.h>
 #include <string.h>
@@ -386,12 +387,70 @@ static int check_in_host(void)
 	return r == RUN_IN_HOST;
 }
 
+static void pr_limits(char *name, int resource)
+{
+	struct rlimit   limit;
+
+	if (getrlimit(resource, &limit) < 0)
+		printf("getrlimit error for %s", name);
+	printf("%-14s ", name);
+	if (limit.rlim_cur == RLIM_INFINITY)
+		printf("(infinite) ");
+	else
+		printf("%10ld ", limit.rlim_cur);
+	if (limit.rlim_max == RLIM_INFINITY)
+		printf("(infinite) ");
+	else
+		printf("%10ld ", limit.rlim_max);
+	putchar((int)'\n');
+}
+
+static void limit_resource(void)
+{
+	struct rlimit rlim_new;
+
+	rlim_new.rlim_cur = rlim_new.rlim_max = 1024 * 1024;
+	if (setrlimit(RLIMIT_CORE, &rlim_new) != 0) {
+		printf("set RLIMIT_CORE error\n");
+		exit(errno);
+	}
+
+	rlim_new.rlim_cur = rlim_new.rlim_max = 1024 * 1024 * 1024;
+	if (setrlimit(RLIMIT_FSIZE, &rlim_new) != 0) {
+		printf("set RLIMIT_FSIZE error\n");
+		exit(errno);
+	}
+
+	rlim_new.rlim_cur = rlim_new.rlim_max = 1024;
+	if (setrlimit(RLIMIT_NOFILE, &rlim_new) != 0) {
+		printf("set RLIMIT_NOFILE error\n");
+		exit(errno);
+	}
+
+	rlim_new.rlim_cur = rlim_new.rlim_max = 4 * 1024 * 1024 * 1024UL;
+	if (setrlimit(RLIMIT_AS, &rlim_new) != 0) {
+		printf("set RLIMIT_AS error\n");
+		exit(errno);
+	}
+}
+
+static void report_limit(void)
+{
+	pr_limits((char *)"RLIMIT_CORE", RLIMIT_CORE);
+	pr_limits((char *)"RLIMIT_FSIZE", RLIMIT_FSIZE);
+	pr_limits((char *)"RLIMIT_NOFILE", RLIMIT_NOFILE);
+	pr_limits((char *)"RLIMIT_AS", RLIMIT_AS);
+}
+
 int main(int argc, char* argv[])
 {
 	unsigned int i;
 	diagnose_fp func = usage;
 	unsigned int version = -1;
 	int fd;
+
+	limit_resource();
+	report_limit();
 
 	run_in_host = check_in_host();
 	fd = open("/dev/diagnose-tools", O_RDWR, 0);
