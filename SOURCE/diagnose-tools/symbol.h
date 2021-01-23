@@ -62,6 +62,13 @@ struct elf_file {
         }
         return buildid < rhs.buildid;
     }
+
+    bool operator> (const elf_file &rhs) const {
+	if (buildid == rhs.buildid) {
+            return mnt_ns_name > rhs.mnt_ns_name;
+        }
+        return buildid > rhs.buildid;
+    }
 };
 
 struct symbol {
@@ -76,6 +83,10 @@ struct symbol {
     void reset(size_t va) { start = end = 0; ip = va; }
     bool operator< (const symbol &sym) const {
         return sym.ip < start;
+    }
+
+    bool operator> (const symbol &sym) const {
+        return sym.ip > end;
     }
 };
 
@@ -121,6 +132,10 @@ struct vma {
         return *this;
     }
 };
+
+static inline bool operator==(const vma &lhs, const vma &rhs) {
+    return lhs.start == rhs.start && lhs.end == rhs.end && lhs.name == rhs.name;
+}
 
 class symbol_parser {
 private:
