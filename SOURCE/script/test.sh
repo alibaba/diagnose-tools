@@ -106,13 +106,13 @@ perf() {
 	eval "$DIAG_CMD perf --deactivate --activate='raw-stack=0 style=2 idle=1 bvt=1' --settings"
 
 	files=""
-	for i in `seq 2`; do
+	for i in `seq 10`; do
 		sleep 1
 		file="perf.${i}.raw"
 		files+="${file}\n"
     		eval "$DIAG_CMD perf --report=\"out=$file\""
 	done
-	eval "$DIAG_CMD perf --report=\"console=1\"" > perf.log << EOF
+	eval "systemd-run --scope -p MemoryLimit=1000M $DIAG_CMD perf --report=\"console=1\"" > perf.log << EOF
 `echo -e ${files}`
 EOF
 
