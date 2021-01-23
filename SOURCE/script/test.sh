@@ -131,7 +131,6 @@ kprobe() {
                 files+="${file}\n"
                 eval "$DIAG_CMD kprobe --report=\"out=$file\""
         done
-echo -e "${files}"
         eval "systemd-run --scope -p MemoryLimit=1000M $DIAG_CMD kprobe --report=\"console=1\"" > kprobe.log << EOF
 `echo -e "${files}"`
 EOF
