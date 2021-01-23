@@ -3,6 +3,13 @@ CWD = $(shell pwd)
 ARCH := $(shell uname -i)
 UNAME_A := $(shell uname -a)
 
+ifeq ($(JOBS),)
+	JOBS := $(shell grep -c ^processor /proc/cpuinfo 2>/dev/null)
+	ifeq ($(JOBS),)
+		JOBS := 1
+	endif
+endif
+
 all: module tools java_agent pkg
 ifneq ($(findstring Ubuntu,$(UNAME_A) $(shell test -e /etc/os-release && head -1 /etc/os-release)),)
 	dpkg -P diagnose-tools || echo "remove diagnose-tools error"
@@ -52,15 +59,15 @@ deps:
 .PHONY: deps
 
 module:
-	cd SOURCE/module; make
+	cd SOURCE/module; make --jobs=${JOBS}
 	mkdir -p build/lib/`uname -r`/
 	/bin/cp -f SOURCE/module/diagnose.ko build/lib/`uname -r`/
 
 tools:
-	cd SOURCE/diagnose-tools; make clean; VENDER_LDFLAGS="${VENDER_LDFLAGS}" make
+	cd SOURCE/diagnose-tools; make clean; VENDER_LDFLAGS="${VENDER_LDFLAGS}" make --jobs=${JOBS}
 
 java_agent:
-	cd SOURCE/diagnose-tools/java_agent; make
+	cd SOURCE/diagnose-tools/java_agent; make --jobs=${JOBS}
 
 pkg:
 	cd rpmbuild; sh rpmbuild.sh
