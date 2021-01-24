@@ -169,7 +169,7 @@ static struct file_info *find_alloc_file_info(struct file *file,
 		return NULL;
 
 	if (rw_top_settings.device_name[0] != 0
-	    && strncmp(rw_top_settings.device_name, file->f_inode->i_sb->s_id, DIAG_DEVICE_LEN) != 0)
+	    && strncmp(rw_top_settings.device_name, f_inode->i_sb->s_id, DIAG_DEVICE_LEN) != 0)
 		return NULL;
 
 	rw_key = task->pid | (unsigned long)f_inode;
@@ -192,7 +192,7 @@ static struct file_info *find_alloc_file_info(struct file *file,
 			info->f_inode = f_inode;
 			strncpy(info->path_name, ret_path, DIAG_PATH_LEN);
 			info->path_name[DIAG_PATH_LEN - 1] = 0;
-			strncpy(info->device_name, file->f_inode->i_sb->s_id, DIAG_DEVICE_LEN);
+			strncpy(info->device_name, f_inode->i_sb->s_id, DIAG_DEVICE_LEN);
 			info->device_name[DIAG_DEVICE_LEN - 1] = 0;
 
 			info->pid = task->pid;
