@@ -66,14 +66,6 @@ char *frame_annotation(bool inlined) {
     return annotate_java_frames ? (inlined ? "_[i]" : "_[j]") : "";
 }
 
-static int get_line_number(jvmtiLineNumberEntry *table, jint entry_count, jlocation loc) {
-  int i;
-  for (i = 0; i < entry_count; i++)
-    if (table[i].start_location > loc) return table[i - 1].line_number;
-
-  return -1;
-}
-
 void class_name_from_sig(char *dest, size_t dest_size, const char *sig) {
     if ((clean_class_names || dotted_class_names) && sig[0] == 'L') {
         const char *src = clean_class_names ? sig + 1 : sig;
