@@ -1,7 +1,7 @@
 #ifndef __DIAG_DEBUG_H
 #define __DIAG_DEBUG_H
 
-#define XBY_DEBUG
+//#define XBY_DEBUG
 
 extern size_t get_current_rss(void);
 extern size_t get_peak_rss(void);
