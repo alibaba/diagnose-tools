@@ -18,6 +18,8 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
+#include "debug.h"
+
 extern std::set<int> g_proc_map;
 
 int run_trace_main(int argc, char **argv);

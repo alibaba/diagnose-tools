@@ -185,7 +185,6 @@ void diag_printf_user_stack(int pid, int ns_pid, const char *comm,
 	int i;
 	symbol sym;
 	elf_file file;
-
 	printf("    用户态堆栈：\n");
 	if (reverse) {
 		for (i = BACKTRACE_DEPTH - 1; i >= 0; i--) {
@@ -215,15 +214,18 @@ void diag_printf_user_stack(int pid, int ns_pid, const char *comm,
 		}
 	} else {
 		for (i = 0; i < BACKTRACE_DEPTH; i++) {
+			diag_track_memory(1);
 			if (user_stack->stack[i] == (size_t)-1 || user_stack->stack[i] == 0) {
 				break;
 			}
 			sym.reset(user_stack->stack[i]);
+			diag_track_memory(2);
 			if (attach) {
 				init_java_env("/tmp/libperfmap.so", pid, ns_pid, comm, g_symbol_parser.get_java_procs());
 			}
-		
+			diag_track_memory(3);
 			if (g_symbol_parser.get_symbol_info(pid, sym, file)) {
+				diag_track_memory(4);
 				if (g_symbol_parser.find_elf_symbol(sym, file, pid, ns_pid)) {
 					printf("#~        0x%lx %s ([symbol])\n",
 						user_stack->stack[i],
@@ -233,7 +235,9 @@ void diag_printf_user_stack(int pid, int ns_pid, const char *comm,
 						user_stack->stack[i],
 						"UNKNOWN");
 				}
+				diag_track_memory(5);
 			} else {
+				diag_track_memory(4);
 				printf("#~        0x%lx %s ([symbol])\n",
 					user_stack->stack[i],
 					"UNKNOWN");
@@ -484,8 +488,8 @@ void diag_sls_user_stack(pid_t pid, pid_t ns_pid, const char *comm,
 	struct diag_user_stack_detail *user_stack, Json::Value &task, int attach)
 {
 	int i;
-    symbol sym;
-    elf_file file;
+	symbol sym;
+	elf_file file;
 	char buf[255];
 
 	for (i = 0; i < BACKTRACE_DEPTH; i++) {
@@ -496,7 +500,6 @@ void diag_sls_user_stack(pid_t pid, pid_t ns_pid, const char *comm,
 		if (attach) {
 			init_java_env("/tmp/libperfmap.so", pid, ns_pid, comm, g_symbol_parser.get_java_procs());
 		}
-
 		if (g_symbol_parser.get_symbol_info(pid, sym, file)) {
 			if (g_symbol_parser.find_elf_symbol(sym, file, pid, ns_pid)) {
 				snprintf(buf, 255, "%s", sym.name.c_str());

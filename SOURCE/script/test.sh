@@ -228,7 +228,7 @@ ping_delay() {
 
 rw_top() {
 	mkdir /apsarapangu
-	eval "$DIAG_CMD rw-top --deactivate -activate=\"raw-stack=1 perf=1 verbose=1\" --settings"
+	eval "$DIAG_CMD rw-top --deactivate -activate=\"raw-stack=0 perf=1 verbose=1\" --settings"
 	echo test: `date` >> /apsarapangu/diagnose-tools.1.log
 	echo test: `date` >> /apsarapangu/diagnose-tools.2.log
 	echo test: `date` >> /apsarapangu/diagnose-tools.2.log

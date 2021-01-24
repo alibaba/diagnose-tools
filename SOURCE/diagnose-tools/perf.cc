@@ -34,6 +34,8 @@
 #include "params_parse.h"
 #include <syslog.h>
 
+#include "debug.h"
+
 using namespace std;
 
 static char sls_file[256];
@@ -273,6 +275,7 @@ static int perf_extract(void *buf, unsigned int len, void *)
 static void do_extract(char *buf, int len)
 {
 	extract_variant_buffer(buf, len, perf_extract, NULL);
+	diag_report_memory();
 }
 
 static void do_dump(const char *arg)

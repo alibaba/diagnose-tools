@@ -448,6 +448,7 @@ int main(int argc, char* argv[])
 	diagnose_fp func = usage;
 	unsigned int version = -1;
 	int fd;
+	int ret;
 
 	limit_resource();
 	report_limit();
@@ -471,7 +472,7 @@ int main(int argc, char* argv[])
 		return -1;
 	}
 
-    linux_2_6_x = is_linux_2_6_x();
+	linux_2_6_x = is_linux_2_6_x();
 	tzset();
 
 	for (i = 0; i < sizeof(all_funcs) / sizeof(struct diagnose_func); i++) {
@@ -480,6 +481,9 @@ int main(int argc, char* argv[])
 			break;
 		}
 	}
+	ret = func(argc - 1, argv + 1);
 
-	return func(argc - 1, argv + 1);
+	//diag_report_memory();
+
+	return ret;
 }
