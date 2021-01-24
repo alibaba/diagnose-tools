@@ -10,12 +10,12 @@ extern size_t get_peak_rss(void);
 extern void diag_track_memory(unsigned int step);
 extern void diag_report_memory(void);
 #else
-static inline void diag_track_memory(unsigned int step)
+static __attribute__ ((noinline)) void diag_track_memory(unsigned int step)
 {
 	 __sync_synchronize();
 }
 
-static inline void diag_report_memory(void)
+static __attribute__ ((noinline)) void diag_report_memory(void)
 {
 	__sync_synchronize();
 }
