@@ -448,7 +448,7 @@ void symbol_parser::dump(void)
 			const elf_file& file = iter->first;
 
 			count1++;
-			printf("xby-debug, file_symbols: %s, %s\n",
+			printf("xby-debug, file_symbols: %s, %s, %lu\n",
 				file.mnt_ns_name.c_str(),
 				file.filename.c_str(),
 				map.size());
