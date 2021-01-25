@@ -226,7 +226,7 @@ void diag_printf_user_stack(int pid, int ns_pid, const char *comm,
 		}
 	} else {
 		for (i = 0; i < BACKTRACE_DEPTH; i++) {
-			diag_track_memory(1);
+			//diag_track_memory(1);
 			if (user_stack->stack[i] == (size_t)-1 || user_stack->stack[i] == 0) {
 				break;
 			}
@@ -235,7 +235,7 @@ void diag_printf_user_stack(int pid, int ns_pid, const char *comm,
 			if (attach) {
 				init_java_env("/tmp/libperfmap.so", pid, ns_pid, comm, g_symbol_parser.get_java_procs());
 			}
-			diag_track_memory(3);
+			//diag_track_memory(3);
 			if (g_symbol_parser.find_symbol_in_cache(pid, user_stack->stack[i], symbol)) {
 				printf("#~        0x%lx %s ([symbol])\n",
 						user_stack->stack[i],
@@ -244,7 +244,7 @@ void diag_printf_user_stack(int pid, int ns_pid, const char *comm,
 			}
 
 			if (g_symbol_parser.get_symbol_info(pid, sym, file)) {
-				diag_track_memory(4);
+				//diag_track_memory(4);
 				if (g_symbol_parser.find_elf_symbol(sym, file, pid, ns_pid)) {
 					printf("#~        0x%lx %s ([symbol])\n",
 						user_stack->stack[i],
@@ -256,9 +256,9 @@ void diag_printf_user_stack(int pid, int ns_pid, const char *comm,
 						"UNKNOWN");
 					g_symbol_parser.putin_symbol_cache(pid, user_stack->stack[i], unknow_symbol);
 				}
-				diag_track_memory(5);
+				//diag_track_memory(5);
 			} else {
-				diag_track_memory(4);
+				//diag_track_memory(4);
 				printf("#~        0x%lx %s ([symbol])\n",
 					user_stack->stack[i],
 					"UNKNOWN");

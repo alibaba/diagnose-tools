@@ -58,10 +58,15 @@ void diag_track_memory(unsigned int step)
 void diag_report_memory(void)
 {
 	int i;
+	size_t cur, peak;
 
 	for (i = 0; i < TRACE_COUNT; i++) {
 		printf("xby-debug in diag_report_memory, step %d, total: %lu\n", i, memory_track[i]);
 	}
+
+	cur = get_current_rss();
+	peak = get_peak_rss();
+	printf("xby-debug in diag_report_memory, PEAK: %lu, CURRENT: %lu\n", cur, peak);
 }
 
 #endif

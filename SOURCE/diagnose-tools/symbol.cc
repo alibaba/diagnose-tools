@@ -50,11 +50,6 @@ bool symbol_parser::load_pid_maps(int pid)
     }
 
     proc_vma proc;
-    machine_vma.insert(make_pair(pid, proc));
-    it = machine_vma.find(pid);
-    if (it == machine_vma.end()) {
-        return false;
-    }
     char fn[256];
     sprintf(fn, "/proc/%d/maps", pid);
     FILE *fp = fopen(fn, "r");
@@ -77,6 +72,13 @@ bool symbol_parser::load_pid_maps(int pid)
     }
 
     fclose(fp);
+
+    machine_vma[pid] = proc;
+    it = machine_vma.find(pid);
+    if (it == machine_vma.end()) {
+        return false;
+    }
+
     return true;
 }
 
