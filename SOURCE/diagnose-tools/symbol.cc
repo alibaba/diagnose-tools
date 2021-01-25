@@ -298,15 +298,17 @@ bool symbol_parser::putin_symbol_cache(int tgid, unsigned long addr, std::string
                     symbols_cache.find(tgid);
 
     if (it_pid == symbols_cache.end()) {
-        std::map<unsigned long, std::string> map = symbols_cache[tgid];
-        std::map<unsigned long, std::string>::const_iterator it_symbol =
+        std::map<unsigned long, std::string> map;
+	symbols_cache.insert(std::make_pair(tgid, map));
+    }
+
+    std::map<unsigned long, std::string> &map = symbols_cache[tgid];
+    std::map<unsigned long, std::string>::const_iterator it_symbol =
                     map.find(addr);
 
-        if (it_symbol != map.end()) {
-            map[addr] = symbol;
-
-            return true;
-        }
+    if (it_symbol == map.end()) {
+        map[addr] = symbol;
+        return true;
     }
 
     return false;
