@@ -9,7 +9,7 @@ else
 LDFLAGS = $(VENDER_LDFLAGS) -static-libgcc -static-libstdc++ -L`pwd` -L/usr/lib64 -lunwind-aarch64 -lunwind -lelf -llzma -lz
 endif
 
-CXXFLAGS = -std=gnu++11 -c -O2 -I.. -I`pwd`/include -Wall -g -fno-omit-frame-pointer
+CXXFLAGS = -std=gnu++11 -c -O2 -I.. -I`pwd`/include -Wall -g -fno-omit-frame-pointer -Wno-unused-result
 ifeq ($(arch),aarch64)
 	CXXFLAGS += -DDIAG_ARM64
 endif

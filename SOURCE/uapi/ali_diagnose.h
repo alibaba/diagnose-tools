@@ -523,10 +523,10 @@ static inline void extract_variant_buffer(char *buf, unsigned int len, int (*fun
 	struct diag_variant_buffer_head *head;
 	void *rec;
 	int rec_len;
-
+	char *ret;
     char dir[1024] = {0};
 
-    getcwd(dir, sizeof(dir));
+    ret = getcwd(dir, sizeof(dir));
 
 	while (pos < len) {
 		head = (struct diag_variant_buffer_head *)(buf + pos);
@@ -544,7 +544,9 @@ static inline void extract_variant_buffer(char *buf, unsigned int len, int (*fun
 		pos += head->len;
 	}
 
-	chdir(dir);
+	if (ret) {
+		(void)chdir(dir);
+	}
 }
 #endif
 
