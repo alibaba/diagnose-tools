@@ -146,6 +146,7 @@ private:
     std::set<symbol> kernel_symbols;
     std::map<int, proc_vma> machine_vma;
     std::set<int> java_procs;
+    std::map<int, std::map<unsigned long, std::string> > symbols_cache;
 public:
     bool load_kernel();
     std::set<int>& get_java_procs() { return java_procs; }
@@ -160,7 +161,8 @@ public:
     vma* find_vma(pid_t pid, size_t pc);
     void clear_symbol_info(int);
     bool add_pid_maps(int pid, size_t start, size_t end, size_t offset, const char *name);
-
+    bool find_symbol_in_cache(int tgid, unsigned long addr, std::string &symbol);
+    bool putin_symbol_cache(int tgid, unsigned long addr, std::string &symbol);
 private:
     bool load_pid_maps(int pid);
     bool load_elf(pid_t pid, const elf_file& file);

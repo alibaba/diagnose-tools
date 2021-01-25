@@ -270,6 +270,46 @@ bool symbol_parser::find_kernel_symbol(symbol &sym)
     return false;
 }
 
+bool symbol_parser::find_symbol_in_cache(int tgid, unsigned long addr, std::string &symbol)
+{
+    std::map<int, std::map<unsigned long, std::string> >::const_iterator it_pid =
+                    symbols_cache.find(tgid);
+
+    if (it_pid != symbols_cache.end()) {
+        std::map<unsigned long, std::string> map = symbols_cache[tgid];
+        std::map<unsigned long, std::string>::const_iterator it_symbol =
+                    map.find(addr);
+
+        if (it_symbol != map.end()) {
+            symbol = map[addr];
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool symbol_parser::putin_symbol_cache(int tgid, unsigned long addr, std::string &symbol)
+{
+    std::map<int, std::map<unsigned long, std::string> >::const_iterator it_pid =
+                    symbols_cache.find(tgid);
+
+    if (it_pid == symbols_cache.end()) {
+        std::map<unsigned long, std::string> map = symbols_cache[tgid];
+        std::map<unsigned long, std::string>::const_iterator it_symbol =
+                    map.find(addr);
+
+        if (it_symbol != map.end()) {
+            map[addr] = symbol;
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool symbol_parser::get_symbol_info(int pid, symbol &sym, elf_file &file)
 {
     std::map<int, proc_vma>::iterator proc_vma_info;
@@ -291,7 +331,6 @@ bool symbol_parser::get_symbol_info(int pid, symbol &sym, elf_file &file)
         }
         file.mnt_ns_name = mnt_ns_name;
     }
-
 
     vma area(sym.ip);
     if (!find_vma(pid, area)) {
