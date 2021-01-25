@@ -68,12 +68,12 @@ bool symbol_parser::load_pid_maps(int pid)
             strcpy(exename, "[anon]");
         }
         vma vm(start, end, offset, exename);
-        it->second.insert(std::make_pair(vm.start, vm));
+        proc.insert(std::make_pair(vm.start, vm));
     }
 
     fclose(fp);
 
-    machine_vma[pid] = proc;
+    machine_vma.insert(std::make_pair(pid, proc));
     it = machine_vma.find(pid);
     if (it == machine_vma.end()) {
         return false;

@@ -231,7 +231,7 @@ void diag_printf_user_stack(int pid, int ns_pid, const char *comm,
 				break;
 			}
 			sym.reset(user_stack->stack[i]);
-			diag_track_memory(2);
+			//diag_track_memory(2);
 			if (attach) {
 				init_java_env("/tmp/libperfmap.so", pid, ns_pid, comm, g_symbol_parser.get_java_procs());
 			}
