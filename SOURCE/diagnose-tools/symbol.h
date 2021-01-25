@@ -163,6 +163,7 @@ public:
     bool add_pid_maps(int pid, size_t start, size_t end, size_t offset, const char *name);
     bool find_symbol_in_cache(int tgid, unsigned long addr, std::string &symbol);
     bool putin_symbol_cache(int tgid, unsigned long addr, std::string &symbol);
+    void dump(void);
 private:
     bool load_pid_maps(int pid);
     bool load_elf(pid_t pid, const elf_file& file);

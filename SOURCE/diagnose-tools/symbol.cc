@@ -435,3 +435,66 @@ void symbol_parser::clear_symbol_info(int dist)
     }
 }
 
+void symbol_parser::dump(void)
+{
+	int count1, count2;
+
+	{
+		count1 = 0;
+		count2 = 0;
+		std::map<elf_file, std::set<symbol> >::iterator iter = file_symbols.begin();
+		for(; iter != file_symbols.end(); ++iter) {
+			std::set<symbol>& map = iter->second;
+			const elf_file& file = iter->first;
+
+			count1++;
+			printf("xby-debug, file_symbols: %s, %s\n",
+				file.mnt_ns_name.c_str(),
+				file.filename.c_str(),
+				map.size());
+	    
+			count2 += map.size();
+		}
+		printf("xby-debug, file_symbols: %d, %d\n", count1, count2);
+	}
+
+	{
+		count1 = 0;
+		count2 = 0;
+		std::map<int, std::set<symbol> >::iterator iter = java_symbols.begin();
+		for(; iter != java_symbols.end(); ++iter) {
+			count1++;
+		        std::set<symbol>& map = iter->second;
+		        count2 += map.size();
+		}
+		printf("xby-debug, java_symbols: %d, %d\n", count1, count2);
+	}
+
+	{
+		printf("xby-debug, kernel_symbols: %lu\n", kernel_symbols.size());
+	}
+
+	{
+		count1 = 0;
+		count2 = 0;
+		std::map<int, proc_vma *>::iterator iter = machine_vma.begin();
+		for(; iter != machine_vma.end(); ++iter) {
+			count1++;
+		        proc_vma * map = iter->second;
+		        count2 += map->size();
+		}
+		printf("xby-debug, machine_vma: %d, %d\n", count1, count2);
+	}
+
+	{
+		count1 = 0;
+		count2 = 0;
+		std::map<int, std::map<unsigned long, std::string> >::iterator iter = symbols_cache.begin();
+		for(; iter != symbols_cache.end(); ++iter) {
+			count1++;
+		        std::map<unsigned long, std::string>& map = iter->second;
+		        count2 += map.size();
+		}
+		printf("xby-debug, symbols_cache: %d, %d\n", count1, count2);
+	}
+}
