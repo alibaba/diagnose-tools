@@ -24,10 +24,10 @@ symbol_parser g_symbol_parser;
 
 bool symbol_parser::add_pid_maps(int pid, size_t start, size_t end, size_t offset, const char *name)
 {
-    std::map<int, proc_vma>::iterator it;
+    std::map<int, proc_vma *>::iterator it;
     it = machine_vma.find(pid);
     if (it == machine_vma.end()) {
-        proc_vma proc;
+        proc_vma *proc = new proc_vma();
         machine_vma.insert(make_pair(pid, proc));
         it = machine_vma.find(pid);
         if (it == machine_vma.end()) {
@@ -36,20 +36,20 @@ bool symbol_parser::add_pid_maps(int pid, size_t start, size_t end, size_t offse
     }
 
     vma vm(start, end, offset, name);
-    it->second.insert(std::make_pair(vm.start, vm));
+    it->second->insert(std::make_pair(vm.start, vm));
 
     return true;
 }
 
 bool symbol_parser::load_pid_maps(int pid)
 {
-    std::map<int, proc_vma>::iterator it;
+    std::map<int, proc_vma*>::iterator it;
     it = machine_vma.find(pid);
     if (it != machine_vma.end()) {
         return true;
     }
 
-    proc_vma proc;
+    proc_vma *proc = new proc_vma();
     char fn[256];
     sprintf(fn, "/proc/%d/maps", pid);
     FILE *fp = fopen(fn, "r");
@@ -68,7 +68,7 @@ bool symbol_parser::load_pid_maps(int pid)
             strcpy(exename, "[anon]");
         }
         vma vm(start, end, offset, exename);
-        proc.insert(std::make_pair(vm.start, vm));
+        proc->insert(std::make_pair(vm.start, vm));
     }
 
     fclose(fp);
@@ -314,7 +314,7 @@ bool symbol_parser::putin_symbol_cache(int tgid, unsigned long addr, std::string
 
 bool symbol_parser::get_symbol_info(int pid, symbol &sym, elf_file &file)
 {
-    std::map<int, proc_vma>::iterator proc_vma_info;
+    std::map<int, proc_vma *>::iterator proc_vma_info;
     proc_vma_info = machine_vma.find(pid);
     if (proc_vma_info == machine_vma.end()) {
         if (!load_pid_maps(pid)) {
@@ -375,16 +375,16 @@ bool symbol_parser::find_elf_symbol(symbol &sym, const elf_file &file, int pid, 
 
 vma* symbol_parser::find_vma(pid_t pid, size_t pc)
 {
-    std::map<int, proc_vma>::iterator it;
+    std::map<int, proc_vma *>::iterator it;
     it = machine_vma.find(pid);
     if (it == machine_vma.end()) {
         return NULL;
     }
-    proc_vma::iterator vmit = it->second.upper_bound(pc);
-    if (vmit == it->second.end() || vmit->second.end < pc) {
+    proc_vma::iterator vmit = it->second->upper_bound(pc);
+    if (vmit == it->second->end() || vmit->second.end < pc) {
         return NULL;
     }
-    if (vmit != it->second.begin()) {
+    if (vmit != it->second->begin()) {
         --vmit;
     }
     return &vmit->second;
@@ -392,14 +392,14 @@ vma* symbol_parser::find_vma(pid_t pid, size_t pc)
 
 bool symbol_parser::find_vma(pid_t pid, vma &vm)
 {
-    std::map<int, proc_vma>::iterator proc_vma_map;
+    std::map<int, proc_vma *>::iterator proc_vma_map;
     proc_vma_map = machine_vma.find(pid);
     if (proc_vma_map == machine_vma.end()) {
         return false;
     }
     
-    proc_vma::const_iterator vmit = proc_vma_map->second.upper_bound(vm.pc);
-    if (vmit == proc_vma_map->second.end()) {
+    proc_vma::const_iterator vmit = proc_vma_map->second->upper_bound(vm.pc);
+    if (vmit == proc_vma_map->second->end()) {
         printf("no address in memory maps\n");
         return false;
     }
@@ -407,7 +407,7 @@ bool symbol_parser::find_vma(pid_t pid, vma &vm)
         printf("no address in memory maps\n");
         return false;
     }
-    if (vmit != proc_vma_map->second.begin()) {
+    if (vmit != proc_vma_map->second->begin()) {
         --vmit;
     }
     

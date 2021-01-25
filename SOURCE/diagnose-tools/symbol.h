@@ -144,7 +144,7 @@ private:
     std::map<elf_file, std::set<symbol> > file_symbols;
     std::map<int, std::set<symbol> > java_symbols;
     std::set<symbol> kernel_symbols;
-    std::map<int, proc_vma> machine_vma;
+    std::map<int, proc_vma *> machine_vma;
     std::set<int> java_procs;
     std::map<int, std::map<unsigned long, std::string> > symbols_cache;
 public:
