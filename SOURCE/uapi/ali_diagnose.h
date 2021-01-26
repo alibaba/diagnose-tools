@@ -49,6 +49,7 @@ err:
 }
 
 extern unsigned long run_in_host;
+extern unsigned long debug_mode;
 #endif
 
 #define XBY_VERSION					"diagnose-tools 2.1-release"

@@ -441,6 +441,9 @@ void symbol_parser::dump(void)
 {
 	int count1, count2;
 
+	if (!debug_mode)
+		return;
+
 	{
 		count1 = 0;
 		count2 = 0;

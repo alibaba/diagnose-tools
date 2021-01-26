@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 #include "debug.h"
+#include "internal.h"
 
 size_t get_current_rss(void)
 {
@@ -32,8 +33,6 @@ size_t get_peak_rss(void)
     return (size_t)(rusage.ru_maxrss * 1024L);
 }
 
-#ifdef XBY_DEBUG
-
 static size_t last_rss = 0;
 #define TRACE_COUNT 100
 static size_t memory_track[TRACE_COUNT];
@@ -42,6 +41,9 @@ void diag_track_memory(unsigned int step)
 {
 	size_t cur = get_current_rss();
 	size_t diff;
+
+	if (!debug_mode)
+		return;
 
 	if (cur > last_rss)
 		diff = cur - last_rss;
@@ -60,6 +62,9 @@ void diag_report_memory(void)
 	int i;
 	size_t cur, peak;
 
+	if (!debug_mode)
+		return;
+
 	for (i = 0; i < TRACE_COUNT; i++) {
 		printf("xby-debug in diag_report_memory, step %d, total: %lu\n", i, memory_track[i]);
 	}
@@ -68,5 +73,3 @@ void diag_report_memory(void)
 	peak = get_peak_rss();
 	printf("xby-debug in diag_report_memory, PEAK: %lu, CURRENT: %lu\n", cur, peak);
 }
-
-#endif

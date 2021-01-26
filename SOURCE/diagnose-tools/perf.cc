@@ -276,6 +276,7 @@ static void do_extract(char *buf, int len)
 {
 	extract_variant_buffer(buf, len, perf_extract, NULL);
 	diag_report_memory();
+	g_symbol_parser.dump();
 }
 
 static void do_dump(const char *arg)
