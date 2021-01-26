@@ -466,7 +466,6 @@ int main(int argc, char* argv[])
 
 	limit_resource();
 
-	run_in_host = check_in_host();
 	fd = open("/dev/diagnose-tools", O_RDWR, 0);
 	if (fd > 0) {
 		version = ioctl(fd, DIAG_IOCTL_VERSION_ALL, 0);
@@ -506,6 +505,7 @@ int main(int argc, char* argv[])
 	}
 
 exec:
+	run_in_host = check_in_host();
 	if (debug_mode) {
 		report_limit();
 	}
