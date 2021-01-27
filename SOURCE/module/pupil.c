@@ -943,6 +943,7 @@ static int get_task_info(int nid)
 {
 	static struct pupil_task_detail detail;
 	struct task_struct *tsk;
+	struct task_struct *leader;
 	int ret;
 	unsigned long flags;
 	pid_t id = (pid_t)nid;
@@ -957,6 +958,13 @@ static int get_task_info(int nid)
 	if (orig_find_task_by_vpid)
 		tsk = orig_find_task_by_vpid(id);
 	if (!tsk) {
+		ret = -EINVAL;
+		rcu_read_unlock();
+		return ret;
+	}
+
+	leader = tsk->group_leader;
+	if (leader == NULL || leader->exit_state == EXIT_ZOMBIE){
 		ret = -EINVAL;
 		rcu_read_unlock();
 		return ret;
