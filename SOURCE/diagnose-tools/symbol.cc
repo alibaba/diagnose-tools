@@ -272,7 +272,6 @@ bool symbol_parser::find_kernel_symbol(symbol &sym)
     return false;
 }
 
-#if 0
 bool symbol_parser::find_symbol_in_cache(int tgid, unsigned long addr, std::string &symbol)
 {
     std::map<int, std::map<unsigned long, std::string> >::const_iterator it_pid =
@@ -314,7 +313,6 @@ bool symbol_parser::putin_symbol_cache(int tgid, unsigned long addr, std::string
 
     return false;
 }
-#endif
 
 bool symbol_parser::get_symbol_info(int pid, symbol &sym, elf_file &file)
 {
@@ -447,7 +445,6 @@ void symbol_parser::clear_symbol_info(int dist)
     }
 }
 
-#if 0
 void symbol_parser::dump(void)
 {
 	int count1, count2;
@@ -514,4 +511,3 @@ void symbol_parser::dump(void)
 		printf("xby-debug, symbols_cache: %d, %d\n", count1, count2);
 	}
 }
-#endif
