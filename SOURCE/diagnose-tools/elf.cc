@@ -200,12 +200,14 @@ out:
     return err;
 }
 
+extern int calc_sha1_1M(const char *filename, unsigned char *buf);
+
 int filename__read_build_id(int pid, const char *mnt_ns_name, const char *filename, char *bf, size_t size) {
     int mntfd = attach_mount_namespace(pid, mnt_ns_name);
 
     int err = __filename__read_build_id(filename, bf, size);
     if (err < 0) {
-        // TODO, first 1M bytes' md5sum as buildid
+        err = calc_sha1_1M(filename, (unsigned char *)bf);
     }
     detach_mount_namespace(mntfd);
     return err;
