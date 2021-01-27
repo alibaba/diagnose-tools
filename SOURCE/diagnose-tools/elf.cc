@@ -220,7 +220,9 @@ int filename__read_build_id(int pid, const char *mnt_ns_name, const char *filena
 
     int err = __filename__read_build_id(filename, bf, size);
     if (err < 0) {
-        err = calc_sha1_1M(filename, (unsigned char *)bf);
+        //err = calc_sha1_1M(filename, (unsigned char *)bf);
+        snprintf(bf, size, "[%d]%s", pid, filename);
+        err = 0;
     }
     detach_mount_namespace(mntfd);
     return err;
