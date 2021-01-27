@@ -18,6 +18,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
+#include <stdio.h>
 
 #include "elf.h"
 #include "attach.h"
@@ -187,11 +188,23 @@ static int __filename__read_build_id(const char *filename, char *bf, size_t size
     elf = elf_begin(fd, ELF_C_READ_MMAP, NULL);
 
     if (elf == NULL) {
-        fprintf(stderr, "%s: cannot read %s ELF file.\n", __func__, filename);
+        //fprintf(stderr, "%s: cannot read %s ELF file.\n", __func__, filename);
         goto out_close;
     }
 
     err = elf_read_build_id(elf, bf, size);
+    if (err < 0) {
+        struct stat sb;
+        if (fstat(fd, &sb) == -1) {
+            strncpy(bf, "error", size);
+            err = 0;
+            goto out_close;
+        } else {
+            snprintf(bf, size, "%s[%lu]", filename, sb.st_size);
+            err = 0;
+            goto out_close;
+        }
+    }
 
     elf_end(elf);
 out_close:
