@@ -24,6 +24,7 @@
 #include "internal.h"
 
 static int first_init = 0;
+#define NOTE_ALIGN(n) (((n) + 3) & -4U)
 
 struct sym_section_ctx {
     Elf_Data *syms;
@@ -53,6 +54,164 @@ struct plt_ctx {
     section_info plt_rel;
     section_info plt;
 };
+
+static Elf_Scn *elf_section_by_name(Elf *elf, GElf_Ehdr *ep,
+                                    GElf_Shdr *shp, const char *name,
+                                    size_t *idx) {
+    Elf_Scn *sec = NULL;
+    size_t cnt = 1;
+
+    /* Elf is corrupted/truncated, avoid calling elf_strptr. */
+    if (!elf_rawdata(elf_getscn(elf, ep->e_shstrndx), NULL))
+        return NULL;
+
+    while ((sec = elf_nextscn(elf, sec)) != NULL) {
+        char *str;
+
+        gelf_getshdr(sec, shp);
+        str = elf_strptr(elf, ep->e_shstrndx, shp->sh_name);
+
+        if (!strcmp(name, str)) {
+            if (idx)
+                *idx = cnt;
+
+            break;
+        }
+
+        ++cnt;
+    }
+
+    return sec;
+}
+
+static int elf_read_build_id(Elf *elf, char *bf, size_t size) {
+    int err = -1;
+    GElf_Ehdr ehdr;
+    GElf_Shdr shdr;
+    Elf_Data *data;
+    Elf_Scn *sec;
+    Elf_Kind ek;
+    char *ptr;
+
+    if (size < BUILD_ID_SIZE)
+        goto out;
+
+    ek = elf_kind(elf);
+
+    if (ek != ELF_K_ELF)
+        goto out;
+
+    if (gelf_getehdr(elf, &ehdr) == NULL) {
+        fprintf(stderr, "%s: cannot get elf header.\n", __func__);
+        goto out;
+    }
+
+    /*
+     * Check following sections for notes:
+     *   '.note.gnu.build-id'
+     *   '.notes'
+     *   '.note' (VDSO specific)
+     */
+    do {
+        sec = elf_section_by_name(elf, &ehdr, &shdr,
+                                  ".note.gnu.build-id", NULL);
+
+        if (sec)
+            break;
+
+        sec = elf_section_by_name(elf, &ehdr, &shdr,
+                                  ".notes", NULL);
+
+        if (sec)
+            break;
+
+        sec = elf_section_by_name(elf, &ehdr, &shdr,
+                                  ".note", NULL);
+
+        if (sec)
+            break;
+
+        return err;
+
+    } while (0);
+
+    data = elf_getdata(sec, NULL);
+
+    if (data == NULL)
+        goto out;
+
+    ptr = (char *)data->d_buf;
+
+    while ((intptr_t)ptr < (intptr_t)((char *)data->d_buf + data->d_size)) {
+        GElf_Nhdr *nhdr = (GElf_Nhdr *)ptr;
+        size_t namesz = NOTE_ALIGN(nhdr->n_namesz),
+               descsz = NOTE_ALIGN(nhdr->n_descsz);
+        const char *name;
+
+        ptr += sizeof(*nhdr);
+        name = (const char *)ptr;
+        ptr += namesz;
+
+        if (nhdr->n_type == NT_GNU_BUILD_ID &&
+                nhdr->n_namesz == sizeof("GNU")) {
+            if (memcmp(name, "GNU", sizeof("GNU")) == 0) {
+                size_t sz = size < descsz ? size : descsz;
+                memcpy(bf, ptr, sz);
+                memset(bf + sz, 0, size - sz);
+                err = descsz;
+                break;
+            }
+        }
+
+        ptr += descsz;
+    }
+
+out:
+    return err;
+}
+
+static int __filename__read_build_id(const char *filename, char *bf, size_t size) {
+    int fd, err = -1;
+    Elf *elf;
+
+    elf_version(EV_CURRENT);
+
+    if (size < BUILD_ID_SIZE)
+        goto out;
+
+    fd = open(filename, O_RDONLY);
+
+    if (fd < 0)
+        goto out;
+
+    elf = elf_begin(fd, ELF_C_READ_MMAP, NULL);
+
+    if (elf == NULL) {
+        fprintf(stderr, "%s: cannot read %s ELF file.\n", __func__, filename);
+        goto out_close;
+    }
+
+    err = elf_read_build_id(elf, bf, size);
+
+    elf_end(elf);
+out_close:
+    close(fd);
+out:
+    return err;
+}
+
+extern int calc_sha1_1M(const char *filename, unsigned char *buf);
+
+int filename__read_build_id(int pid, const char *mnt_ns_name, const char *filename, char *bf, size_t size) {
+    int mntfd = attach_mount_namespace(pid, mnt_ns_name);
+
+    int err = __filename__read_build_id(filename, bf, size);
+    if (err < 0) {
+        err = calc_sha1_1M(filename, (unsigned char *)bf);
+    }
+    detach_mount_namespace(mntfd);
+    return err;
+}
 
 static int is_function(const GElf_Sym *sym)
 {
@@ -219,6 +378,93 @@ bool search_symbol(const std::set<symbol> &ss, symbol &sym)
     }
     return false;
 }
+
+#if 0
+struct symbuf {
+    int start;
+    int size;
+    char name[0];
+};
+
+bool get_symbol_in_cache(std::set<symbol> &ss, const char *path)
+{
+    char buf[2048];
+    int len = 0;
+    bool status = true;
+
+    int fd = open(path, O_RDONLY);
+    if (fd < 0) {
+        status = false;
+        return status;
+    }
+    int ret;
+    ret = read(fd, &len, 4);
+    if (ret <= 0) {
+        close(fd);
+        status = false;
+        return status;
+    }
+    ret = read(fd, buf, len);
+    if (ret <= 0) {
+        close(fd);
+        status = false;
+        return status;
+    }
+
+    while (1) {
+        struct symbuf *sym;
+        symbol s;
+        ret = read(fd, &len, 4);
+        if (ret <= 0) {
+            status = false;
+            break;
+        }
+        ret = read(fd, buf, len);
+        if (ret < len) {
+            status = false;
+            break;
+        }
+        sym = (struct symbuf *)buf;
+        s.start = sym->start;
+        s.end = sym->start + sym->size;
+        s.ip = sym->start;
+        s.name = sym->name;
+        ss.insert(s);
+    }
+    close(fd);
+    return status;
+}
+
+bool dump_symbol_to_cache(std::set<symbol> &ss, const char *path, const char *filename)
+{
+    int fd = open(path, O_RDWR | O_EXCL);
+    if (fd < 0) {
+        return false;
+    }
+    int len = strlen(filename);
+    int ret = write(fd, &len, 4);
+    if (ret < 0) {
+        close(fd);
+        return false;
+    }
+    ret = write(fd, filename, len);
+    if (ret < 0) {
+        close(fd);
+        return false;
+    }
+    size_t size = ss.size(); 
+    std::set<symbol>::iterator it;
+    int v;
+    for (it = ss.begin(); it != ss.end(); ++it) {
+        v = it->start;
+        ret = write(fd, &v, 4);
+        v = it->end - it->start;
+        ret = write(fd, &v, 4);
+        ret = write(fd, it->name.c_str(), it->name.length());
+    }
+    return true;
+}
+#endif
 
 bool get_symbol_in_elf(std::set<symbol> &ss, const char *path, int pid, const char *mnt_ns_name)
 {

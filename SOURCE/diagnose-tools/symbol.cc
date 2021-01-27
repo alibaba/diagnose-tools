@@ -24,10 +24,10 @@ symbol_parser g_symbol_parser;
 
 bool symbol_parser::add_pid_maps(int pid, size_t start, size_t end, size_t offset, const char *name)
 {
-    std::map<int, proc_vma *>::iterator it;
+    std::map<int, proc_vma>::iterator it;
     it = machine_vma.find(pid);
     if (it == machine_vma.end()) {
-        proc_vma *proc = new proc_vma();
+        proc_vma proc;
         machine_vma.insert(make_pair(pid, proc));
         it = machine_vma.find(pid);
         if (it == machine_vma.end()) {
@@ -36,20 +36,20 @@ bool symbol_parser::add_pid_maps(int pid, size_t start, size_t end, size_t offse
     }
 
     vma vm(start, end, offset, name);
-    it->second->insert(std::make_pair(vm.start, vm));
+    it->second.insert(std::make_pair(vm.start, std::move(vm)));
 
     return true;
 }
 
 bool symbol_parser::load_pid_maps(int pid)
 {
-    std::map<int, proc_vma*>::iterator it;
+    std::map<int, proc_vma>::iterator it;
     it = machine_vma.find(pid);
     if (it != machine_vma.end()) {
         return true;
     }
 
-    proc_vma *proc = new proc_vma();
+    proc_vma proc;
     char fn[256];
     sprintf(fn, "/proc/%d/maps", pid);
     FILE *fp = fopen(fn, "r");
@@ -68,12 +68,12 @@ bool symbol_parser::load_pid_maps(int pid)
             strcpy(exename, "[anon]");
         }
         vma vm(start, end, offset, exename);
-        proc->insert(std::make_pair(vm.start, vm));
+        proc.insert(std::make_pair(vm.start, std::move(vm)));
     }
 
     fclose(fp);
 
-    machine_vma.insert(std::make_pair(pid, proc));
+    machine_vma.insert(std::make_pair(pid, std::move(proc)));
     it = machine_vma.find(pid);
     if (it == machine_vma.end()) {
         return false;
@@ -113,7 +113,7 @@ bool symbol_parser::load_perf_map(int pid, int pid_ns)
         sym.name = name;
         syms.insert(sym);
     }
-    java_symbols.insert(make_pair(pid, syms));
+    java_symbols.insert(make_pair(pid, std::move(syms)));
 #if 0
 	if (pid != pid_ns) {
 		restore_global_env();
@@ -272,6 +272,7 @@ bool symbol_parser::find_kernel_symbol(symbol &sym)
     return false;
 }
 
+#if 0
 bool symbol_parser::find_symbol_in_cache(int tgid, unsigned long addr, std::string &symbol)
 {
     std::map<int, std::map<unsigned long, std::string> >::const_iterator it_pid =
@@ -299,7 +300,7 @@ bool symbol_parser::putin_symbol_cache(int tgid, unsigned long addr, std::string
 
     if (it_pid == symbols_cache.end()) {
         std::map<unsigned long, std::string> map;
-	symbols_cache.insert(std::make_pair(tgid, map));
+        symbols_cache.insert(std::make_pair(tgid, map));
     }
 
     std::map<unsigned long, std::string> &map = symbols_cache[tgid];
@@ -313,10 +314,11 @@ bool symbol_parser::putin_symbol_cache(int tgid, unsigned long addr, std::string
 
     return false;
 }
+#endif
 
 bool symbol_parser::get_symbol_info(int pid, symbol &sym, elf_file &file)
 {
-    std::map<int, proc_vma *>::iterator proc_vma_info;
+    std::map<int, proc_vma>::iterator proc_vma_info;
     proc_vma_info = machine_vma.find(pid);
     if (proc_vma_info == machine_vma.end()) {
         if (!load_pid_maps(pid)) {
@@ -327,6 +329,8 @@ bool symbol_parser::get_symbol_info(int pid, symbol &sym, elf_file &file)
 
     char mnt_ns_path[128];
     char mnt_ns_name[128];
+    char buildid[BUILD_ID_SIZE + 1];
+    buildid[BUILD_ID_SIZE] = '\0';
 
     if (!linux_2_6_x) {
         sprintf(mnt_ns_path, "/proc/%d/ns/mnt", pid);
@@ -347,6 +351,12 @@ bool symbol_parser::get_symbol_info(int pid, symbol &sym, elf_file &file)
     file.reset(area.name);
     if (file.type != JIT_TYPE) {
         sym.reset(area.map(sym.ip));
+
+        int err = filename__read_build_id(pid, mnt_ns_name, area.name.c_str(), buildid, BUILD_ID_SIZE);
+        if (err < 0) {
+            return false;
+        }
+        file.buildid = buildid;
     }
     return true;
 }
@@ -377,16 +387,16 @@ bool symbol_parser::find_elf_symbol(symbol &sym, const elf_file &file, int pid, 
 
 vma* symbol_parser::find_vma(pid_t pid, size_t pc)
 {
-    std::map<int, proc_vma *>::iterator it;
+    std::map<int, proc_vma>::iterator it;
     it = machine_vma.find(pid);
     if (it == machine_vma.end()) {
         return NULL;
     }
-    proc_vma::iterator vmit = it->second->upper_bound(pc);
-    if (vmit == it->second->end() || vmit->second.end < pc) {
+    proc_vma::iterator vmit = it->second.upper_bound(pc);
+    if (vmit == it->second.end() || vmit->second.end < pc) {
         return NULL;
     }
-    if (vmit != it->second->begin()) {
+    if (vmit != it->second.begin()) {
         --vmit;
     }
     return &vmit->second;
@@ -394,14 +404,14 @@ vma* symbol_parser::find_vma(pid_t pid, size_t pc)
 
 bool symbol_parser::find_vma(pid_t pid, vma &vm)
 {
-    std::map<int, proc_vma *>::iterator proc_vma_map;
+    std::map<int, proc_vma>::iterator proc_vma_map;
     proc_vma_map = machine_vma.find(pid);
     if (proc_vma_map == machine_vma.end()) {
         return false;
     }
     
-    proc_vma::const_iterator vmit = proc_vma_map->second->upper_bound(vm.pc);
-    if (vmit == proc_vma_map->second->end()) {
+    proc_vma::const_iterator vmit = proc_vma_map->second.upper_bound(vm.pc);
+    if (vmit == proc_vma_map->second.end()) {
         printf("no address in memory maps\n");
         return false;
     }
@@ -409,7 +419,7 @@ bool symbol_parser::find_vma(pid_t pid, vma &vm)
         printf("no address in memory maps\n");
         return false;
     }
-    if (vmit != proc_vma_map->second->begin()) {
+    if (vmit != proc_vma_map->second.begin()) {
         --vmit;
     }
     
@@ -437,6 +447,7 @@ void symbol_parser::clear_symbol_info(int dist)
     }
 }
 
+#if 0
 void symbol_parser::dump(void)
 {
 	int count1, count2;
@@ -482,11 +493,11 @@ void symbol_parser::dump(void)
 	{
 		count1 = 0;
 		count2 = 0;
-		std::map<int, proc_vma *>::iterator iter = machine_vma.begin();
+		std::map<int, proc_vma>::iterator iter = machine_vma.begin();
 		for(; iter != machine_vma.end(); ++iter) {
 			count1++;
-		        proc_vma * map = iter->second;
-		        count2 += map->size();
+		        proc_vma map = iter->second;
+		        count2 += map.size();
 		}
 		printf("xby-debug, machine_vma: %d, %d\n", count1, count2);
 	}
@@ -503,3 +514,4 @@ void symbol_parser::dump(void)
 		printf("xby-debug, symbols_cache: %d, %d\n", count1, count2);
 	}
 }
+#endif
