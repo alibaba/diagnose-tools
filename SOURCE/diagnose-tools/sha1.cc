@@ -311,7 +311,6 @@ static int calc_sha1(const char *filename, size_t calc_size, unsigned char *buf)
     char buffer[BUFFER_SIZE];
     size_t n;
     SHA1_CONTEXT ctx;
-    int i;
     int read_count = 0;
     int max_read_count = calc_size / BUFFER_SIZE;
 
