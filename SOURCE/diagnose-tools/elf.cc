@@ -56,7 +56,7 @@ struct plt_ctx {
     section_info plt;
 };
 
-static Elf_Scn *elf_section_by_name(Elf *elf, GElf_Ehdr *ep,
+__attribute__((unused)) static Elf_Scn *elf_section_by_name(Elf *elf, GElf_Ehdr *ep,
                                     GElf_Shdr *shp, const char *name,
                                     size_t *idx) {
     Elf_Scn *sec = NULL;
@@ -85,7 +85,7 @@ static Elf_Scn *elf_section_by_name(Elf *elf, GElf_Ehdr *ep,
     return sec;
 }
 
-static int elf_read_build_id(Elf *elf, char *bf, size_t size) {
+__attribute__((unused)) static int elf_read_build_id(Elf *elf, char *bf, size_t size) {
     int err = -1;
     GElf_Ehdr ehdr;
     GElf_Shdr shdr;
@@ -173,9 +173,7 @@ out:
 
 static int __filename__read_build_id(const char *filename, char *bf, size_t size) {
     int fd, err = -1;
-    Elf *elf;
-
-    elf_version(EV_CURRENT);
+    struct stat sb;
 
     if (size < BUILD_ID_SIZE)
         goto out;
@@ -185,29 +183,11 @@ static int __filename__read_build_id(const char *filename, char *bf, size_t size
     if (fd < 0)
         goto out;
 
-    elf = elf_begin(fd, ELF_C_READ_MMAP, NULL);
-
-    if (elf == NULL) {
-        //fprintf(stderr, "%s: cannot read %s ELF file.\n", __func__, filename);
-        goto out_close;
+    if (fstat(fd, &sb) == 0) {
+        snprintf(bf, size, "%s[%lu]", filename, sb.st_size);
+        err = 0;
     }
 
-    err = elf_read_build_id(elf, bf, size);
-    if (err < 0) {
-        struct stat sb;
-        if (fstat(fd, &sb) == -1) {
-            strncpy(bf, "error", size);
-            err = 0;
-            goto out_close;
-        } else {
-            snprintf(bf, size, "%s[%lu]", filename, sb.st_size);
-            err = 0;
-            goto out_close;
-        }
-    }
-
-    elf_end(elf);
-out_close:
     close(fd);
 out:
     return err;
@@ -221,8 +201,8 @@ int filename__read_build_id(int pid, const char *mnt_ns_name, const char *filena
     int err = __filename__read_build_id(filename, bf, size);
     if (err < 0) {
         //err = calc_sha1_1M(filename, (unsigned char *)bf);
-        snprintf(bf, size, "[%d]%s", pid, filename);
-        err = 0;
+        //snprintf(bf, size, "[%d]%s", pid, filename);
+        //err = 0;
     }
     detach_mount_namespace(mntfd);
     return err;
