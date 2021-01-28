@@ -320,14 +320,18 @@ bool symbol_parser::get_symbol_info(int pid, symbol &sym, elf_file &file)
     proc_vma_info = machine_vma.find(pid);
     if (proc_vma_info == machine_vma.end()) {
         if (!load_pid_maps(pid)) {
-            printf("load pid maps failed\n");
+            if (debug_mode) {
+                printf("load pid maps failed\n");
+            }
             return false;
         }
     }
 
     vma area(sym.ip);
     if (!find_vma(pid, area)) {
-        printf("find vma failed\n");
+        if (debug_mode) {
+            printf("find vma failed\n");
+        }
         return false;
     }
     if (area.name == "[anon]") {
