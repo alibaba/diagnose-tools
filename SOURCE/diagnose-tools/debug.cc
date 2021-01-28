@@ -93,4 +93,21 @@ void debug_get_symbol_from_elf(void)
     			sym.name.c_str());
 		}
     }
+
+	symbol sym;
+	sym.reset(0x55917fe7b1cd);
+	std::set<symbol>::const_iterator it = syms.find(sym);
+
+    if (it != syms.end()) {
+        sym.end = it->end;
+        sym.start = it->start;
+        sym.name = it->name;
+
+        printf("xby-debug in debug_get_symbol_from_elf, step 2: 0x55917fe7b1cd, %lu, %lu, %lu, %s\n",
+				sym.start,
+				sym.end,
+    			sym.ip,
+    			sym.name.c_str());
+    }
+
 }

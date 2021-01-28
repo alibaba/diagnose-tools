@@ -417,6 +417,7 @@ bool symbol_parser::find_elf_symbol(symbol &sym, const elf_file &file, int pid, 
     if (file.type == JIT_TYPE) {
         return find_java_symbol(sym, pid, pid_ns);
     }
+
     std::map<elf_file, std::set<symbol> >::iterator it;
     it = file_symbols.find(file);
     std::set<symbol> ss;
@@ -433,51 +434,55 @@ bool symbol_parser::find_elf_symbol(symbol &sym, const elf_file &file, int pid, 
         return search_symbol(it->second, sym);
     }
     return true;
-    //return search_symbol(syms, sym);
 }
 
 vma* symbol_parser::find_vma(pid_t pid, size_t pc)
 {
     std::map<int, proc_vma>::iterator it;
+
     it = machine_vma.find(pid);
     if (it == machine_vma.end()) {
         return NULL;
     }
-    proc_vma::iterator vmit = it->second.upper_bound(pc);
-    if (vmit == it->second.end() || vmit->second.end < pc) {
+
+    proc_vma::iterator vma_iter = it->second.upper_bound(pc);
+    if (vma_iter == it->second.end() || vma_iter->second.end < pc) {
         return NULL;
     }
-    if (vmit != it->second.begin()) {
-        --vmit;
+
+    if (vma_iter != it->second.begin()) {
+        --vma_iter;
     }
-    return &vmit->second;
+
+    return &vma_iter->second;
 }
 
 bool symbol_parser::find_vma(pid_t pid, vma &vm)
 {
     std::map<int, proc_vma>::iterator proc_vma_map;
+
     proc_vma_map = machine_vma.find(pid);
     if (proc_vma_map == machine_vma.end()) {
         return false;
     }
-    
-    proc_vma::const_iterator vmit = proc_vma_map->second.upper_bound(vm.pc);
-    if (vmit == proc_vma_map->second.end()) {
-        printf("no address in memory maps\n");
+
+    proc_vma::const_iterator vma_iter = proc_vma_map->second.upper_bound(vm.pc);
+    if (vma_iter == proc_vma_map->second.end()) {
         return false;
     }
-    if (vmit->second.end < vm.pc) {
-        printf("no address in memory maps\n");
+    if (vma_iter->second.end < vm.pc) {
         return false;
     }
-    if (vmit != proc_vma_map->second.begin()) {
-        --vmit;
+
+    if (vma_iter != proc_vma_map->second.begin()) {
+        --vma_iter;
     }
     
-    vm.start = vmit->second.start;
-    vm.end = vmit->second.end;
-    vm.name = vmit->second.name;
-    vm.offset = vmit->second.offset;
+    vm.start = vma_iter->second.start;
+    vm.end = vma_iter->second.end;
+    vm.name = vma_iter->second.name;
+    vm.offset = vma_iter->second.offset;
+
     return true;
 }
 
