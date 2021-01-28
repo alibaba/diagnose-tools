@@ -314,48 +314,6 @@ bool symbol_parser::putin_symbol_cache(int tgid, unsigned long addr, std::string
     return false;
 }
 
-bool symbol_parser::find_elf_file_in_cache(int tgid, std::string & erea, elf_file &file)
-{
-    std::map<int, std::map<std::string, elf_file> >::const_iterator it_pid =
-                    elf_file_cache.find(tgid);
-
-    if (it_pid != elf_file_cache.end()) {
-        std::map<std::string, elf_file> map = elf_file_cache[tgid];
-        std::map<std::string, elf_file>::const_iterator it_elf_file =
-                    map.find(erea);
-
-        if (it_elf_file != map.end()) {
-            file = map[erea];
-
-            return true;
-        }
-    }
-
-    return false;
-}
-
-bool symbol_parser::putin_elf_file_cache(int tgid, std::string & erea, elf_file &file)
-{
-    std::map<int, std::map<std::string, elf_file> >::const_iterator it_pid =
-                    elf_file_cache.find(tgid);
-
-    if (it_pid == elf_file_cache.end()) {
-        std::map<std::string, elf_file> map;
-        elf_file_cache.insert(std::make_pair(tgid, map));
-    }
-
-    std::map<std::string, elf_file> &map = elf_file_cache[tgid];
-    std::map<std::string, elf_file>::const_iterator it_elf_file =
-                    map.find(erea);
-
-    if (it_elf_file == map.end()) {
-        map[erea] = file;
-        return true;
-    }
-
-    return false;
-}
-
 bool symbol_parser::get_symbol_info(int pid, symbol &sym, elf_file &file)
 {
     std::map<int, proc_vma>::iterator proc_vma_info;
@@ -377,36 +335,9 @@ bool symbol_parser::get_symbol_info(int pid, symbol &sym, elf_file &file)
         file.type = JIT_TYPE;
     }
 
-    ret = true;
-    if (!find_elf_file_in_cache(pid, area.name, file)) {
-        char mnt_ns_path[128];
-        char mnt_ns_name[128];
-        char buildid[BUILD_ID_SIZE + 1];
-        buildid[BUILD_ID_SIZE] = '\0';
-
-        if (!linux_2_6_x) {
-            sprintf(mnt_ns_path, "/proc/%d/ns/mnt", pid);
-            if (readlink(mnt_ns_path, mnt_ns_name, sizeof(mnt_ns_name)) < 0) {
-                ret = false;
-            } else {
-                file.mnt_ns_name = mnt_ns_name;
-            }
-        }
-
-        if (ret) {
-            file.reset(area.name);
-            if (file.type != JIT_TYPE) {
-                int err = filename__read_build_id(pid, mnt_ns_name, area.name.c_str(), buildid, BUILD_ID_SIZE);
-                if (err < 0) {
-                    file.buildid = "";
-                    ret = false;
-                } else {
-                    file.buildid = buildid;
-                }
-            }
-        }
-
-        putin_elf_file_cache(pid, area.name, file);
+    file.reset(area.name);
+    if (file.type != JIT_TYPE) {
+        sym.reset(area.map(sym.ip));
     }
 
     return ret;
@@ -422,9 +353,6 @@ bool symbol_parser::find_elf_symbol(symbol &sym, const elf_file &file, int pid, 
     it = file_symbols.find(file);
     std::set<symbol> ss;
     if (it == file_symbols.end()) {
-        if (pid == pid_ns) {
-            pid = -1;
-        }
         if (!load_elf(pid, file)) {
             return false;
         }
@@ -519,8 +447,7 @@ void symbol_parser::dump(void)
 			const elf_file& file = iter->first;
 
 			count1++;
-			printf("xby-debug, file_symbols: %s, %s, %lu\n",
-				file.mnt_ns_name.c_str(),
+			printf("xby-debug, file_symbols: %s, %lu\n",
 				file.filename.c_str(),
 				map.size());
 	    

@@ -30,13 +30,10 @@ struct elf_file {
     size_t		  fde_count;
     size_t		  table_data;
     std::string filename;
-    std::string buildid;
-    std::string mnt_ns_name;
     int type;
 
     // TODO get builid from elf header or build hash for elf
     elf_file(const std::string &name) : filename(name), type(NATIVE_TYPE) {
-        buildid = name;
         elf_read_error = 0;
         eh_frame_hdr_offset = 0;
         fde_count = 0;
@@ -48,7 +45,6 @@ struct elf_file {
     // TODO get builid from elf header or build hash for elf
     void reset(const std::string &name) {
         filename = name;
-        buildid = name;
         elf_read_error = 0;
         eh_frame_hdr_offset = 0;
         fde_count = 0;
@@ -56,7 +52,7 @@ struct elf_file {
     }
 
     bool operator<  (const elf_file &rhs) const {
-        return buildid < rhs.buildid;
+        return filename < rhs.filename;
     }
 };
 
@@ -136,7 +132,6 @@ private:
     std::map<int, proc_vma> machine_vma;
     std::set<int> java_procs;
     std::map<int, std::map<unsigned long, std::string> > symbols_cache;
-    std::map<int, std::map<std::string, elf_file> > elf_file_cache;
 public:
     bool load_kernel();
     std::set<int>& get_java_procs() { return java_procs; }
@@ -154,9 +149,6 @@ public:
 
     bool find_symbol_in_cache(int tgid, unsigned long addr, std::string &symbol);
     bool putin_symbol_cache(int tgid, unsigned long addr, std::string &symbol);
-
-    bool find_elf_file_in_cache(int tgid, std::string & erea, elf_file &file);
-    bool putin_elf_file_cache(int tgid, std::string & erea, elf_file &file);
 
     void dump(void);
 private:
