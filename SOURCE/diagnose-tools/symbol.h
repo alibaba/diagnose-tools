@@ -136,6 +136,7 @@ private:
     std::map<int, proc_vma> machine_vma;
     std::set<int> java_procs;
     std::map<int, std::map<unsigned long, std::string> > symbols_cache;
+    std::map<int, std::map<std::string, elf_file> > elf_file_cache;
 public:
     bool load_kernel();
     std::set<int>& get_java_procs() { return java_procs; }
@@ -153,6 +154,10 @@ public:
 
     bool find_symbol_in_cache(int tgid, unsigned long addr, std::string &symbol);
     bool putin_symbol_cache(int tgid, unsigned long addr, std::string &symbol);
+
+    bool find_elf_file_in_cache(int tgid, std::string & erea, elf_file &file);
+    bool putin_elf_file_cache(int tgid, std::string & erea, elf_file &file);
+
     void dump(void);
 private:
     bool load_pid_maps(int pid);
