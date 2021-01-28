@@ -24,7 +24,6 @@
 #include "attach.h"
 #include "internal.h"
 
-static int first_init = 0;
 #define NOTE_ALIGN(n) (((n) + 3) & -4U)
 
 struct sym_section_ctx {
@@ -171,7 +170,9 @@ out:
     return err;
 }
 
-static int __filename__read_build_id(const char *filename, char *bf, size_t size) {
+extern int calc_sha1_1M(const char *filename, unsigned char *buf);
+
+int filename__read_build_id(int pid, const char *mnt_ns_name, const char *filename, char *bf, size_t size) {
     int fd, err = -1;
     struct stat sb;
 
@@ -193,21 +194,6 @@ out:
     return err;
 }
 
-extern int calc_sha1_1M(const char *filename, unsigned char *buf);
-
-int filename__read_build_id(int pid, const char *mnt_ns_name, const char *filename, char *bf, size_t size) {
-    int mntfd = attach_mount_namespace(pid, mnt_ns_name);
-
-    int err = __filename__read_build_id(filename, bf, size);
-    if (err < 0) {
-        //err = calc_sha1_1M(filename, (unsigned char *)bf);
-        //snprintf(bf, size, "[%d]%s", pid, filename);
-        //err = 0;
-    }
-    detach_mount_namespace(mntfd);
-    return err;
-}
-
 static int is_function(const GElf_Sym *sym)
 {
     return GELF_ST_TYPE(sym->st_info) == STT_FUNC &&
@@ -215,24 +201,27 @@ static int is_function(const GElf_Sym *sym)
         sym->st_shndx != SHN_UNDEF;
 }
 
-
 static int get_symbols_in_section(sym_section_ctx *sym, Elf *elf, Elf_Scn *sec, GElf_Shdr *shdr, int is_reloc)
 {
     sym->syms = elf_getdata(sec, NULL);
     if (!sym->syms) {
         return -1;
     }
+
     Elf_Scn *symstrs_sec = elf_getscn(elf, shdr->sh_link);
     if (!sec) {
         return -1;
     }
+
     sym->symstrs = elf_getdata(symstrs_sec, NULL);
     if (!sym->symstrs) {
         return -1;
     }
+
     sym->sym_count = shdr->sh_size / shdr->sh_entsize;
     sym->is_plt = 0;
     sym->is_reloc = is_reloc;
+
     return 0;
 }
 
@@ -242,23 +231,28 @@ static int get_plt_symbols_in_section(sym_section_ctx *sym, Elf *elf, plt_ctx *p
     if (!sym->syms) {
         return -1;
     }
+   
     sym->rel_data = elf_getdata(plt->plt_rel.sec, NULL);       
     if (!sym->rel_data) {
         return -1;
     }
+   
     Elf_Scn *symstrs_sec = elf_getscn(elf, plt->dynsym.hdr->sh_link);
     if (!symstrs_sec) {
         return -1;
     }
+    
     sym->symstrs = elf_getdata(symstrs_sec, NULL);
     if (!sym->symstrs) {
         return -1;
     }
+
     sym->is_plt = 1;
     sym->plt_entsize = plt->plt.hdr->sh_type;
     sym->plt_offset = plt->plt.hdr->sh_offset;
     sym->sym_count = plt->plt_rel.hdr->sh_size / plt->plt_rel.hdr->sh_entsize;
     sym->plt_rel_type = plt->plt_rel.hdr->sh_type;
+
     return 0;
 }
 
@@ -365,122 +359,31 @@ static void get_all_symbols(std::set<symbol> &ss, symbol_sections_ctx *si, Elf *
 bool search_symbol(const std::set<symbol> &ss, symbol &sym)
 {
     std::set<symbol>::const_iterator it = ss.find(sym);
+
     if (it != ss.end()) {
         sym.end = it->end;
         sym.start = it->start;
         sym.name = it->name;
+
         return true;
     }
+
     return false;
 }
 
-#if 0
-struct symbuf {
-    int start;
-    int size;
-    char name[0];
-};
-
-bool get_symbol_in_cache(std::set<symbol> &ss, const char *path)
+bool get_symbol_from_elf(std::set<symbol> &ss, const char *path)
 {
-    char buf[2048];
-    int len = 0;
-    bool status = true;
+    static int first_init = 0;
 
-    int fd = open(path, O_RDONLY);
-    if (fd < 0) {
-        status = false;
-        return status;
-    }
-    int ret;
-    ret = read(fd, &len, 4);
-    if (ret <= 0) {
-        close(fd);
-        status = false;
-        return status;
-    }
-    ret = read(fd, buf, len);
-    if (ret <= 0) {
-        close(fd);
-        status = false;
-        return status;
-    }
-
-    while (1) {
-        struct symbuf *sym;
-        symbol s;
-        ret = read(fd, &len, 4);
-        if (ret <= 0) {
-            status = false;
-            break;
-        }
-        ret = read(fd, buf, len);
-        if (ret < len) {
-            status = false;
-            break;
-        }
-        sym = (struct symbuf *)buf;
-        s.start = sym->start;
-        s.end = sym->start + sym->size;
-        s.ip = sym->start;
-        s.name = sym->name;
-        ss.insert(s);
-    }
-    close(fd);
-    return status;
-}
-
-bool dump_symbol_to_cache(std::set<symbol> &ss, const char *path, const char *filename)
-{
-    int fd = open(path, O_RDWR | O_EXCL);
-    if (fd < 0) {
-        return false;
-    }
-    int len = strlen(filename);
-    int ret = write(fd, &len, 4);
-    if (ret < 0) {
-        close(fd);
-        return false;
-    }
-    ret = write(fd, filename, len);
-    if (ret < 0) {
-        close(fd);
-        return false;
-    }
-    size_t size = ss.size(); 
-    std::set<symbol>::iterator it;
-    int v;
-    for (it = ss.begin(); it != ss.end(); ++it) {
-        v = it->start;
-        ret = write(fd, &v, 4);
-        v = it->end - it->start;
-        ret = write(fd, &v, 4);
-        ret = write(fd, it->name.c_str(), it->name.length());
-    }
-    return true;
-}
-#endif
-
-bool get_symbol_in_elf(std::set<symbol> &ss, const char *path, int pid, const char *mnt_ns_name)
-{
     if (!first_init) {
         first_init = true;
         init_global_env();
     }
 
-    int mnt_fd = -1;
-    if (pid > 0) {
-        mnt_fd = attach_mount_namespace(pid, mnt_ns_name);
-    }
-
     int is_reloc = 0;
     elf_version(EV_CURRENT);
     int fd = open(path, O_RDONLY);
-    if (fd < 0) {
-        detach_mount_namespace(mnt_fd);
-        return false;
-    }
-    detach_mount_namespace(mnt_fd);
+
     Elf *elf = elf_begin(fd, ELF_C_READ, NULL);
     if (elf == NULL) {
         close(fd);
@@ -576,5 +479,90 @@ bool get_symbol_in_elf(std::set<symbol> &ss, const char *path, int pid, const ch
     get_all_symbols(ss, &si, elf);
     elf_end(elf);
     close(fd);
+    return true;
+}
+
+struct symbol_cache_item {
+    int start;
+    int size;
+    char name[0];
+};
+
+bool save_symbol_cache(std::set<symbol> &ss, const char *path)
+{
+    char buf[2048];
+    int len = 0;
+    bool status = true;
+
+    int fd = open(path, O_RDONLY);
+    if (fd < 0) {
+        status = false;
+        return status;
+    }
+    int ret;
+    ret = read(fd, &len, 4);
+    if (ret <= 0) {
+        close(fd);
+        status = false;
+        return status;
+    }
+    ret = read(fd, buf, len);
+    if (ret <= 0) {
+        close(fd);
+        status = false;
+        return status;
+    }
+
+    while (1) {
+        struct symbol_cache_item *sym;
+        symbol s;
+        ret = read(fd, &len, 4);
+        if (ret <= 0) {
+            status = false;
+            break;
+        }
+        ret = read(fd, buf, len);
+        if (ret < len) {
+            status = false;
+            break;
+        }
+        sym = (struct symbol_cache_item *)buf;
+        s.start = sym->start;
+        s.end = sym->start + sym->size;
+        s.ip = sym->start;
+        s.name = sym->name;
+        ss.insert(s);
+    }
+    close(fd);
+    return status;
+}
+
+bool load_symbol_cache(std::set<symbol> &ss, const char *path, const char *filename)
+{
+    int fd = open(path, O_RDWR | O_EXCL);
+    if (fd < 0) {
+        return false;
+    }
+    int len = strlen(filename);
+    int ret = write(fd, &len, 4);
+    if (ret < 0) {
+        close(fd);
+        return false;
+    }
+    ret = write(fd, filename, len);
+    if (ret < 0) {
+        close(fd);
+        return false;
+    }
+
+    std::set<symbol>::iterator it;
+    int v;
+    for (it = ss.begin(); it != ss.end(); ++it) {
+        v = it->start;
+        ret = write(fd, &v, 4);
+        v = it->end - it->start;
+        ret = write(fd, &v, 4);
+        ret = write(fd, it->name.c_str(), it->name.length());
+    }
     return true;
 }

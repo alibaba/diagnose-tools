@@ -251,7 +251,7 @@ bool symbol_parser::load_elf(pid_t pid, const elf_file &file)
     if (it != file_symbols.end()) {
         return true;
     }
-    if (get_symbol_in_elf(syms, file.filename.c_str(), pid, file.mnt_ns_name.c_str())) {
+    if (get_symbol_from_elf(syms, file.filename.c_str())) {
         file_symbols.insert(make_pair(file, std::move(syms)));
         return true;
     }

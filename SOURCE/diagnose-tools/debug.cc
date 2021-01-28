@@ -3,9 +3,12 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <unistd.h>
+#include <set>
 
 #include "debug.h"
 #include "internal.h"
+#include "symbol.h"
+#include "elf.h"
 
 size_t get_current_rss(void)
 {
@@ -72,4 +75,22 @@ void diag_report_memory(void)
 	cur = get_current_rss();
 	peak = get_peak_rss();
 	printf("xby-debug in diag_report_memory, PEAK: %lu, CURRENT: %lu\n", cur, peak);
+}
+
+void debug_get_symbol_from_elf(void)
+{
+	std::set<symbol> syms;
+
+    if (get_symbol_from_elf(syms, "/home/xiebaoyou/git/diagnose-tools/SOURCE/test/loop/a.out")) {
+		std::set<symbol>::iterator iter = syms.begin();
+
+		for(; iter != syms.end(); ++iter) {
+			symbol sym = *iter;
+			printf("xby-debug in debug_get_symbol_from_elf, %lu, %lu, %lu, %s\n",
+				sym.start,
+				sym.end,
+    			sym.ip,
+    			sym.name.c_str());
+		}
+    }
 }
