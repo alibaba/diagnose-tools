@@ -317,7 +317,6 @@ bool symbol_parser::putin_symbol_cache(int tgid, unsigned long addr, std::string
 bool symbol_parser::get_symbol_info(int pid, symbol &sym, elf_file &file)
 {
     std::map<int, proc_vma>::iterator proc_vma_info;
-    bool ret = false;
     proc_vma_info = machine_vma.find(pid);
     if (proc_vma_info == machine_vma.end()) {
         if (!load_pid_maps(pid)) {
@@ -340,7 +339,7 @@ bool symbol_parser::get_symbol_info(int pid, symbol &sym, elf_file &file)
         sym.reset(area.map(sym.ip));
     }
 
-    return ret;
+    return true;
 }
 
 bool symbol_parser::find_elf_symbol(symbol &sym, const elf_file &file, int pid, int pid_ns)
