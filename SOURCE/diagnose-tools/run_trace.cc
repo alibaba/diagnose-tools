@@ -32,6 +32,8 @@
 
 #include "uapi/run_trace.h"
 #include "params_parse.h"
+#include <iostream>
+#include <fstream>
 
 using namespace std;
 
@@ -51,6 +53,11 @@ void usage_run_trace(void)
 	printf("        --deactivate\n");
 	printf("        --settings print settings.\n");
 	printf("        --report dump log with text.\n");
+	printf("          out output raw stack into special file.\n");
+	printf("          in input one raw-stack file to extract.\n");
+	printf("          inlist input filename including raw-stack file list to extract.\n");
+	printf("          input filename including raw-stack file list to extract.\n");
+	printf("          console get raw-stack file list from console to extract.\n");
 	printf("        --test testcase for run-trace.\n");
 	printf("        --set-syscall PID SYSCALL THRESHOLD monitor special syscall\n");
 	printf("        --clear-syscall PID do not monitor syscall\n");
@@ -637,26 +644,85 @@ static void do_extract(char *buf, int len)
 	extract_variant_buffer(buf, len, run_trace_extract, NULL);
 }
 
-static void do_dump(void)
+static void do_dump(const char* arg)
 {
 	static char variant_buf[1024 * 1024];
 	int len;
 	int ret = 0;
+	int console = 0;
+	struct params_parser parse(arg);
+
 	struct diag_ioctl_dump_param dump_param = {
 		.user_ptr_len = &len,
 		.user_buf_len = 1024 * 1024,
 		.user_buf = variant_buf,
 	};
 
-	if (run_in_host) {
-		ret = diag_call_ioctl(DIAG_IOCTL_RUN_TRACE_DUMP, (long)&dump_param);
-	} else {
-		ret = -ENOSYS;
-		syscall(DIAG_RUN_TRACE_DUMP, &ret, &len, variant_buf, 1024 * 1024);
-	}
+       string in_file;
+       string out_file;
+       string inlist_file;
+       string line = "";
 
-	if (ret == 0 && len > 0) {
-		do_extract(variant_buf, len);
+       console = parse.int_value("console");
+       in_file = parse.string_value("in");
+       out_file = parse.string_value("out");
+       inlist_file = parse.string_value("inlist");
+
+       memset(variant_buf, 0, 1024 * 1024);
+       if (console) {
+                while (cin) {
+                        if (!cin.eof()){
+                                cin.read(variant_buf, 1024 * 1024);
+                                len = cin.gcount();
+                                if (len > 0) {
+                                        do_extract(variant_buf, len);
+                                        memset(variant_buf, 0, 1024 * 1024);
+                                }
+                         }
+                }
+        } else if (in_file.length() > 0) {
+                ifstream fin(in_file, ios::binary);
+                fin.read(variant_buf, 1024 * 1024);
+                len = fin.gcount();
+                if (len > 0) {
+                        do_extract(variant_buf, len);
+                        fin.close();
+                }
+	} else if (inlist_file.length() > 0) {
+               ifstream in(inlist_file);
+               if(in) {
+                       while (getline(in, line)){
+                               ifstream fin(line.c_str());
+                               fin.read(variant_buf, 1024 * 1024);
+                               len = fin.gcount();
+                               if (len > 0) {
+                                       do_extract(variant_buf, len);
+                                       memset(variant_buf, 0, 1024 * 1024);
+                               }
+                               fin.close();
+                       }
+               in.close();
+               }
+	} else {
+		if (run_in_host) {
+			ret = diag_call_ioctl(DIAG_IOCTL_RUN_TRACE_DUMP, (long)&dump_param);
+		} else {
+			ret = -ENOSYS;
+			syscall(DIAG_RUN_TRACE_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+		}
+
+		if (out_file.length() > 0) {
+			if (ret == 0 && len > 0) {
+				ofstream fout(out_file);
+				fout.write(variant_buf, len);
+				fout.close();
+			}
+		} else {
+			if (ret == 0 && len > 0) {
+				do_extract(variant_buf, len);
+			}
+
+		}
 	}
 }
 
@@ -1111,7 +1177,7 @@ int run_trace_main(int argc, char **argv)
 			{"activate",     optional_argument, 0,  0 },
 			{"deactivate", no_argument,       0,  0 },
 			{"settings",     optional_argument, 0,  0 },
-			{"report",     no_argument, 0,  0 },
+			{"report",     optional_argument, 0,  0 },
 			{"test",     no_argument, 0,  0 },
 			{"log",     required_argument, 0,  0 },
 			{"set-syscall",     required_argument, 0,  0 },
@@ -1146,7 +1212,7 @@ int run_trace_main(int argc, char **argv)
 			do_settings(optarg ? optarg : "");
 			break;
 		case 4:
-			do_dump();
+			do_dump(optarg ? optarg : "");
 			break;
 		case 5:
 			do_test();
