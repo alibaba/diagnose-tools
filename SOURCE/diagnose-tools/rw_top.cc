@@ -308,7 +308,6 @@ static void do_dump(const char *arg)
 	string out_file;
 	string inlist_file;
 	string line = "";
-	string input_line;
 
 	console = parse.int_value("console");
 	in_file = parse.string_value("in");
@@ -318,16 +317,13 @@ static void do_dump(const char *arg)
 	memset(variant_buf, 0, 50 * 1024 * 1024);
 	if (console) {
                 while (cin) {
-                        getline(cin, input_line);
                         if (!cin.eof()){
-                                ifstream fin(input_line, ios::binary);
-                                fin.read(variant_buf, 50 * 1024 * 1024);
-                                len = fin.gcount();
+                                cin.read(variant_buf, 50 * 1024 * 1024);
+                                len = cin.gcount();
                                 if (len > 0) {
                                         do_extract(variant_buf, len);
                                         memset(variant_buf, 0, 50 * 1024 * 1024);
                                 }
-                                fin.close();
                          }
                 }
         } else if (in_file.length() > 0) {
