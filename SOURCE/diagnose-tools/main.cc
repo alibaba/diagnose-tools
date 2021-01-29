@@ -42,6 +42,7 @@ struct diagnose_func {
 
 unsigned long run_in_host = 0;
 unsigned long debug_mode = 0;
+unsigned long vmsize_limit = 1;
 
 static int report_version(int argc, char **argv)
 {
@@ -54,6 +55,13 @@ static int report_version(int argc, char **argv)
 static int set_debug_mode(int argc, char **argv)
 {
 	debug_mode = 1;
+
+	return 0;
+}
+
+static int no_vmsize(int argc, char **argv)
+{
+	vmsize_limit = 0;
 
 	return 0;
 }
@@ -211,6 +219,7 @@ static struct diagnose_func all_funcs[] {
 	{"mm-leak",mm_leak_main, 0},
 	{"ping-delay", ping_delay_main, 0},
 	{"uprobe", uprobe_main, 0},
+	{"--vmsize", no_vmsize, 1},
 	{"-V", report_version, 0},
 	{"-v", report_version, 0},
 	{"--version", report_version, 0},
@@ -448,6 +457,19 @@ static void limit_resource(void)
 	}
 }
 
+static void set_limit_as(void)
+{
+	struct rlimit rlim_new;
+
+	if (vmsize_limit == 0) {
+		rlim_new.rlim_cur = rlim_new.rlim_max = 16 * 1024 * 1024 * 1024UL;
+			if (setrlimit(RLIMIT_AS, &rlim_new) != 0) {
+				printf("set RLIMIT_AS error\n");
+				exit(errno);
+		}
+	}
+}
+
 static void report_limit(void)
 {
 	pr_limits((char *)"RLIMIT_CORE", RLIMIT_CORE);
@@ -505,6 +527,7 @@ int main(int argc, char* argv[])
 	}
 
 exec:
+	set_limit_as();
 	run_in_host = check_in_host();
 	if (debug_mode) {
 		report_limit();
