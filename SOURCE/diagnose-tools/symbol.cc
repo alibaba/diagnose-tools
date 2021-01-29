@@ -436,7 +436,7 @@ void symbol_parser::clear_symbol_info(int dist)
 
 void symbol_parser::dump(void)
 {
-	int count1, count2;
+	int count1, count2, count3;
 
 	if (!debug_mode)
 		return;
@@ -444,6 +444,7 @@ void symbol_parser::dump(void)
 	{
 		count1 = 0;
 		count2 = 0;
+        count3 = 0;
 		std::map<elf_file, std::set<symbol> >::iterator iter = file_symbols.begin();
 		for(; iter != file_symbols.end(); ++iter) {
 			std::set<symbol>& map = iter->second;
@@ -455,8 +456,13 @@ void symbol_parser::dump(void)
 				map.size());
 	    
 			count2 += map.size();
+            std::set<symbol>::iterator it = map.begin();
+            for(; it != map.end(); ++it) {
+                count3 += it->name.length();
+            }
 		}
-		printf("xby-debug, file_symbols: %d, %d\n", count1, count2);
+		printf("xby-debug, file_symbols: %d, %d, %d\n", count1, count2, count3);
+        printf("xby-debug, sizeof(symbol): %ld\n", sizeof(symbol));
 	}
 
 	{

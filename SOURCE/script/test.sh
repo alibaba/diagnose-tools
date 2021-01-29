@@ -112,7 +112,7 @@ perf() {
 		files+="${file}\n"
     		eval "$DIAG_CMD perf --report=\"out=$file\""
 	done
-	time eval "systemd-run --scope -p MemoryLimit=500M $DIAG_CMD perf --report=\"console=1\"" > perf.log << EOF
+	time eval "systemd-run --scope -p MemoryLimit=500M $DIAG_CMD --debug perf --report=\"console=1\"" > perf.log << EOF
 `echo -e "${files}"`
 EOF
 
