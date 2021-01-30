@@ -487,28 +487,50 @@ static void trace_sys_enter_hit(void *__data, struct pt_regs *regs, long id)
 		up_read(&run_trace_sem);
 	}
 
+	u64 now = sched_clock();
+	u64 delta_ns = now - task_info->last_event;
 	task_info = find_task_info(current);
 	if (task_info && task_info->traced) {
-		struct event_sys_enter event;
-		u64 now = sched_clock();
-		u64 delta_ns = now - task_info->last_event;
+		if (run_trace_settings.raw_stack) {
+			struct event_sys_enter_raw *event;
+			event = &diag_percpu_context[smp_processor_id()]->event_sys_enter_raw;
 
-		task_info->last_event = now;
-		event.header.et_type = et_sys_enter;
-		event.header.id = task_info->id;
-		event.header.seq = task_info->seq;
-		event.header.start_tv = task_info->start_tv;
-		do_gettimeofday(&event.header.tv);
-		task_info->seq++;
-		diag_task_brief(current, &event.header.task);
-		event.syscall_id = id;
-		event.header.delta_ns = delta_ns;
-		diag_task_user_stack(current, &event.user_stack);
-		diag_variant_buffer_spin_lock(&task_info->buffer, flags);
-		diag_variant_buffer_reserve(&task_info->buffer, sizeof(event));
-		diag_variant_buffer_write_nolock(&task_info->buffer, &event, sizeof(event));
-		diag_variant_buffer_seal(&task_info->buffer);
-		diag_variant_buffer_spin_unlock(&task_info->buffer, flags);
+			task_info->last_event = now;
+			event->header.et_type = et_sys_enter_raw;
+			event->header.id = task_info->id;
+			event->header.seq = task_info->seq;
+			event->header.start_tv = task_info->start_tv;
+			do_gettimeofday(&event->header.tv);
+			task_info->seq++;
+			diag_task_brief(current, &event->header.task);
+			event->syscall_id = id;
+			event->header.delta_ns = delta_ns;
+			diag_task_raw_stack(current, &event->raw_stack);
+			diag_variant_buffer_spin_lock(&task_info->buffer, flags);
+			diag_variant_buffer_reserve(&task_info->buffer, sizeof(struct event_sys_enter_raw));
+			diag_variant_buffer_write_nolock(&task_info->buffer, event, sizeof(struct event_sys_enter_raw));
+			diag_variant_buffer_seal(&task_info->buffer);
+			diag_variant_buffer_spin_unlock(&task_info->buffer, flags);
+		} else {
+			struct event_sys_enter event;
+
+			task_info->last_event = now;
+			event.header.et_type = et_sys_enter;
+			event.header.id = task_info->id;
+			event.header.seq = task_info->seq;
+			event.header.start_tv = task_info->start_tv;
+			do_gettimeofday(&event.header.tv);
+			task_info->seq++;
+			diag_task_brief(current, &event.header.task);
+			event.syscall_id = id;
+			event.header.delta_ns = delta_ns;
+			diag_task_user_stack(current, &event.user_stack);
+			diag_variant_buffer_spin_lock(&task_info->buffer, flags);
+			diag_variant_buffer_reserve(&task_info->buffer, sizeof(event));
+			diag_variant_buffer_write_nolock(&task_info->buffer, &event, sizeof(event));
+			diag_variant_buffer_seal(&task_info->buffer);
+			diag_variant_buffer_spin_unlock(&task_info->buffer, flags);
+		}
 	}
 }
 
@@ -843,8 +865,6 @@ static enum hrtimer_restart hrtimer_handler(struct hrtimer *hrtimer)
 	struct diag_percpu_context *context = get_percpu_context();
 	struct task_info *task_info;
 	unsigned long flags;
-	struct event_run_trace_perf event;
-	u64 delta_ns;
 
 	task_info = find_task_info(current);
 	if (!task_info || !task_info->traced) {
@@ -856,23 +876,44 @@ static enum hrtimer_restart hrtimer_handler(struct hrtimer *hrtimer)
 		return ret;
 	}
 
+	u64 delta_ns;
 	now = sched_clock();
 	delta_ns = now - task_info->last_event;
-
-	task_info->last_event = now;
-	event.et_type = et_run_trace_perf;
-	event.id = task_info->id;
-	event.seq = task_info->seq;
-	task_info->seq++;
-	diag_task_brief(current, &event.task);
-	event.delta_ns = delta_ns;
-	diag_task_kern_stack(current, &event.kern_stack);
-	diag_task_user_stack(current, &event.user_stack);
-	diag_variant_buffer_spin_lock(&task_info->buffer, flags);
-	diag_variant_buffer_reserve(&task_info->buffer, sizeof(event));
-	diag_variant_buffer_write_nolock(&task_info->buffer, &event, sizeof(event));
-	diag_variant_buffer_seal(&task_info->buffer);
-	diag_variant_buffer_spin_unlock(&task_info->buffer, flags);
+	if(run_trace_settings.raw_stack){
+		struct event_run_trace_raw *event;
+		event = &diag_percpu_context[smp_processor_id()]->event_sys_enter_raw;	
+		
+		task_info->last_event = now;
+		event->et_type = et_run_trace_raw;
+		event->id = task_info->id;
+		event->seq = task_info->seq;
+		task_info->seq++;
+		diag_task_brief(current, &event->task);
+		event->delta_ns = delta_ns;
+		diag_task_kern_stack(current, &event->kern_stack);
+		diag_task_raw_stack(current, &event->raw_stack);
+		diag_variant_buffer_spin_lock(&task_info->buffer, flags);
+		diag_variant_buffer_reserve(&task_info->buffer, sizeof(struct event_sys_enter_raw));
+		diag_variant_buffer_write_nolock(&task_info->buffer, event, sizeof(struct event_sys_enter_raw));
+		diag_variant_buffer_seal(&task_info->buffer);
+		diag_variant_buffer_spin_unlock(&task_info->buffer, flags);
+	} else {
+		struct event_run_trace_perf event;
+		task_info->last_event = now;
+		event.et_type = et_run_trace_perf;
+		event.id = task_info->id;
+		event.seq = task_info->seq;
+		task_info->seq++;
+		diag_task_brief(current, &event.task);
+		event.delta_ns = delta_ns;
+		diag_task_kern_stack(current, &event.kern_stack);
+		diag_task_user_stack(current, &event.user_stack);
+		diag_variant_buffer_spin_lock(&task_info->buffer, flags);
+		diag_variant_buffer_reserve(&task_info->buffer, sizeof(event));
+		diag_variant_buffer_write_nolock(&task_info->buffer, &event, sizeof(event));
+		diag_variant_buffer_seal(&task_info->buffer);
+		diag_variant_buffer_spin_unlock(&task_info->buffer, flags);
+	}
 
 	expected = now + run_trace_settings.timer_us * 1000;
 	context->run_trace.timer_expected_time = expected;

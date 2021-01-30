@@ -60,6 +60,12 @@ struct event_sys_enter {
 	struct diag_user_stack_detail user_stack;
 };
 
+struct event_sys_enter_raw {
+	struct event_common_header header;
+	long syscall_id;
+	struct diag_raw_stack_detail raw_stack;
+};
+
 struct event_sys_exit {
 	struct event_common_header header;
 };
@@ -104,6 +110,16 @@ struct event_run_trace_perf {
 	struct diag_user_stack_detail user_stack;
 };
 
+struct event_run_trace_raw {
+	int et_type;
+	int seq;
+	unsigned long id;
+	unsigned long delta_ns;
+	struct diag_task_detail task;
+	struct diag_kern_stack_detail kern_stack;
+	struct diag_raw_stack_detail raw_stack;
+};
+
 int run_trace_syscall(struct pt_regs *regs, long id);
 
 //#define DIAG_RUN_TRACE_ACTIVATE (DIAG_BASE_SYSCALL_RUN_TRACE)
@@ -125,6 +141,7 @@ struct diag_run_trace_settings {
 	unsigned int buf_size_k;
 	int syscall_count;
 	int threads_count;
+	unsigned long raw_stack;
 };
 
 struct diag_run_trace_monitor_syscall {

@@ -41,6 +41,7 @@ static inline void __percpu_counter_add(struct percpu_counter *fbc,
 #include "uapi/exit_monitor.h"
 #include "uapi/exec_monitor.h"
 #include "uapi/irq_delay.h"
+#include "uapi/run_trace.h"
 #include "uapi/perf.h"
 #include "uapi/sys_delay.h"
 #include "uapi/sched_delay.h"
@@ -421,6 +422,7 @@ struct diag_percpu_context {
 	struct irq_delay_detail irq_delay_detail;
 	struct perf_detail perf_detail;
 	struct perf_raw_detail perf_raw_detail;
+	struct event_sys_enter_raw event_sys_enter_raw;
 	struct sys_delay_detail sys_delay_detail;
 	struct sched_delay_dither sched_delay_dither;
 
