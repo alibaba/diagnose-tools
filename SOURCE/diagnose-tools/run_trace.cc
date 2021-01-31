@@ -48,6 +48,7 @@ void usage_run_trace(void)
 	printf("            threshold-us default THRESHOLD(US)\n");
 	printf("            buf-size-k set buf size(k) for per-thread\n");
 	printf("            timer-us perf timer(us)\n");
+	printf("            raw-stack output raw stack\n");
 	printf("        --deactivate\n");
 	printf("        --settings print settings.\n");
 	printf("        --report dump log with text.\n");
@@ -78,6 +79,7 @@ static void do_activate(const char *arg)
 	settings.verbose = parse.int_value("verbose");
 	settings.buf_size_k = parse.int_value("buf-size-k");
 	settings.timer_us = parse.int_value("timer-us");
+	settings.raw_stack = parse.int_value("raw-stack");
 
 	if (run_in_host) {
 		ret = diag_call_ioctl(DIAG_IOCTL_RUN_TRACE_SET, (long)&settings);
@@ -91,6 +93,7 @@ static void do_activate(const char *arg)
 	printf("    输出级别：%d\n", settings.verbose);
 	printf("    TIMER_US：%d\n", settings.timer_us);
 	printf("    BUF-SIZE-K：%d\n", settings.buf_size_k);
+	printf("    RAW-STACK：%lu\n", settings.raw_stack);
 	if (ret)
 		return;
 
@@ -140,6 +143,7 @@ static void do_settings(const char *arg)
 			printf("    TIMER_US：%d\n", settings.timer_us);
 			printf("    线程监控项：%d\n", settings.threads_count);
 			printf("    系统调用监控项：%d\n", settings.syscall_count);
+			printf("    RAW-STACK：%lu\n", settings.raw_stack);
 		}
 		else
 		{
@@ -361,6 +365,61 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 
 		break;
 	}
+	case et_sys_enter_raw:
+	{
+		struct event_sys_enter_raw *event = (struct event_sys_enter_raw *)buf;
+		
+		static unsigned long raw_stack[BACKTRACE_DEPTH];
+		memset(raw_stack, 0, sizeof(raw_stack));
+
+		if (len < sizeof(struct event_sys_enter_raw))
+			break;
+
+		printf("    事件类型：进入系统调用，PID：%d，系统调用号：%ld, 距离上次事件(ns)：%lu\n",
+			event->header.task.pid,
+			event->syscall_id,
+			event->header.delta_ns);
+		
+		diag_printf_raw_stack(event->header.task.tgid,
+				event->header.task.container_tgid,
+				event->header.task.comm,
+				&event->raw_stack);
+
+		ss << "**" << "step " << setw(4) << setfill('0') << event->header.seq << "：用户态运行，进入系统调用" << ";";
+		
+		diag_unwind_raw_stack(run_in_host ?  event->header.task.tgid : event->header.task.container_tgid,
+                                event->header.task.container_tgid,
+				&event->raw_stack,
+				raw_stack );
+		
+		for (i = 0; i < BACKTRACE_DEPTH; i++) {
+			if (raw_stack[i] == (size_t)-1 || raw_stack[i] == 0) {
+				break;
+			}
+			sym.reset(raw_stack[i]);
+			init_java_env("/tmp/libperfmap.so",
+				event->header.task.tgid,
+				event->header.task.container_tgid,
+				event->header.task.comm,
+				g_symbol_parser.get_java_procs());
+					
+			if (g_symbol_parser.get_symbol_info(event->header.task.tgid, sym, file)) {
+				if (g_symbol_parser.find_elf_symbol(sym, file, event->header.task.tgid, event->header.task.container_tgid)) {
+					ss << sym.name.c_str() << ";";
+				} else {
+					ss << "UNKNOWN" << ";";
+				}
+			} else {
+				ss << "UNKNOWN" << ";";
+			}
+		}
+		for (i = 0; i < 15; i++) {
+			ss << " " << ";";
+		}
+		ss << " " << event->header.delta_ns + 500000 << endl;
+
+		break;
+	}	
 	case et_sys_enter:
 	{
 		struct event_sys_enter *event = (struct event_sys_enter *)buf;
@@ -526,6 +585,25 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 		ss << " " << event->header.delta_ns << endl;
 
 		break;
+	}
+	case et_run_trace_raw:
+	{
+		struct event_run_trace_raw *event = (struct event_run_trace_raw *)buf;
+
+                if (len < sizeof(struct event_run_trace_raw))
+                        break;
+
+                printf("    事件类型：采样，PID：%d, 距离上次事件(ns)：%lu\n",
+                        event->task.pid,
+                        event->delta_ns);
+
+                diag_printf_kern_stack(&event->kern_stack);
+		diag_printf_raw_stack(run_in_host ? event->task.tgid : event->task.container_tgid,
+                        event->task.container_tgid,
+                        event->task.comm,
+                        &event->raw_stack);
+
+                break;
 	}
 	case et_run_trace_perf:
 	{

@@ -388,6 +388,7 @@ enum diag_record_id {
 	et_sched_out,
 	et_sched_wakeup,
 	et_sys_enter,
+	et_sys_enter_raw,
 	et_sys_exit,
 	et_irq_handler_entry,
 	et_irq_handler_exit,
@@ -396,6 +397,7 @@ enum diag_record_id {
 	et_timer_expire_entry,
 	et_timer_expire_exit,
 	et_run_trace_perf,
+	et_run_trace_raw,
 	et_stop,
 	et_stop_raw_stack,
 
