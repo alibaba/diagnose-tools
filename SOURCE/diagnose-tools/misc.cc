@@ -376,7 +376,7 @@ void diag_unwind_raw_stack(int pid, int ns_pid,
 	stack_sample.user_regs.regs[PERF_REG_IP] = raw_stack->ip;
 	stack_sample.user_regs.regs[PERF_REG_SP] = raw_stack->sp;
 	stack_sample.user_regs.regs[PERF_REG_BP] = raw_stack->bp;
-	unwind__get_entries(unwind_frame_callback_2, (void *)&cb_arg, NULL,
+	unwind__get_entries(unwind_frame_callback_2, (void *)&cb_arg, &g_symbol_parser,
 			pid, ns_pid,
 			&stack_sample);
 }
