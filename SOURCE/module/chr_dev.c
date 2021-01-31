@@ -190,7 +190,11 @@ static const struct file_operations diag_fops = {
     .unlocked_ioctl = diag_ioctl,
 };
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
+static char *diag_devnode(struct device *dev, mode_t *mode)
+#else
 static char *diag_devnode(struct device *dev, umode_t *mode)
+#endif
 {
     if (mode)
 	    *mode = S_IRUGO | S_IRWXUGO | S_IALLUGO;
