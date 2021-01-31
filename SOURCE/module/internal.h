@@ -423,6 +423,7 @@ struct diag_percpu_context {
 	struct perf_detail perf_detail;
 	struct perf_raw_detail perf_raw_detail;
 	struct event_sys_enter_raw event_sys_enter_raw;
+	struct event_run_trace_raw event_run_trace_raw;
 	struct sys_delay_detail sys_delay_detail;
 	struct sched_delay_dither sched_delay_dither;
 
