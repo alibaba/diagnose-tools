@@ -113,6 +113,8 @@ void diag_printf_raw_stack(int pid, int ns_pid, const char *comm,
 void diag_printf_raw_stack(int pid, int ns_pid, const char *comm,
 	struct diag_raw_stack_detail *raw_stack, int attach);
 void init_java_env(const char *agent, int pid, int ns_pid, const char *comm, std::set<int> &);
+void diag_unwind_raw_stack(int pid, int ns_pid,
+	struct diag_raw_stack_detail *raw_stack, unsigned long stack[BACKTRACE_DEPTH]);
 
 void diag_sls_time(struct timeval *tv, Json::Value &owner);
 void diag_sls_task(struct diag_task_detail *tsk_info, Json::Value &task);

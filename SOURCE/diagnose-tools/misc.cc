@@ -339,6 +339,48 @@ void diag_printf_raw_stack(int pid, int ns_pid, const char *comm,
 	diag_printf_raw_stack(pid, ns_pid, comm, raw_stack, 1);
 }
 
+struct unwind_cb_arg {
+	unsigned long *stack;
+	int stack_deeps;
+	int index;
+};
+
+static int unwind_frame_callback_2(struct unwind_entry *entry, void *arg)
+{
+	struct unwind_cb_arg *cb_arg = (struct unwind_cb_arg *)arg;
+
+	if (cb_arg->index >= cb_arg->stack_deeps)
+		return 0;
+
+	cb_arg->stack[cb_arg->index] = entry->ip;
+	cb_arg->index++;
+
+	return 0;
+}
+
+void diag_unwind_raw_stack(int pid, int ns_pid,
+	struct diag_raw_stack_detail *raw_stack, unsigned long stack[BACKTRACE_DEPTH])
+{
+    struct perf_sample stack_sample;
+    static u64 regs_buf[3];
+	struct unwind_cb_arg cb_arg;
+
+	memset(&cb_arg, 0, sizeof(cb_arg));
+	cb_arg.stack_deeps = BACKTRACE_DEPTH;
+	cb_arg.stack = stack;
+
+	stack_sample.user_stack.offset = 0;
+	stack_sample.user_stack.size = raw_stack->stack_size;
+	stack_sample.user_stack.data = (char *)&raw_stack->stack[0];
+	stack_sample.user_regs.regs = regs_buf;
+	stack_sample.user_regs.regs[PERF_REG_IP] = raw_stack->ip;
+	stack_sample.user_regs.regs[PERF_REG_SP] = raw_stack->sp;
+	stack_sample.user_regs.regs[PERF_REG_BP] = raw_stack->bp;
+	unwind__get_entries(unwind_frame_callback_2, (void *)&cb_arg, NULL,
+			pid, ns_pid,
+			&stack_sample);
+}
+
 void diag_sls_time(struct timeval *tv, Json::Value &owner)
 {
 	owner["tv_sec"] = Json::Value(tv->tv_sec);
