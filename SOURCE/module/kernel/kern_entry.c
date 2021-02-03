@@ -57,6 +57,7 @@ static enum hrtimer_restart hrtimer_handler(struct hrtimer *hrtimer)
 		sys_loop_timer(context);
 		perf_timer(context);
 		utilization_timer(context);
+		task_monitor_timer(context);
 	}
 
 	if (diag_timer_period > 0 && diag_timer_period < 100)
@@ -246,6 +247,10 @@ int diag_kernel_init(void)
 	if (ret)
 		goto out_sig_info;
 
+	ret = diag_task_monitor_init();
+	if (ret)
+		goto out_task_monitor;
+
 	on_each_cpu(start_timer, NULL, 1);
 
 #if !defined(XBY_UBUNTU_1604) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
@@ -254,6 +259,8 @@ int diag_kernel_init(void)
 
 	return 0;
 
+out_task_monitor:
+	diag_sig_info_exit();
 out_sig_info:
 	diag_uprobe_exit();
 out_uprobe:
@@ -329,6 +336,7 @@ void diag_kernel_exit(void)
 		}
 	}
 
+	diag_task_monitor_exit();
 	diag_sig_info_exit();
 	diag_uprobe_exit();
 	diag_reboot_exit();

@@ -1095,3 +1095,12 @@ int __weak activate_net_bandwidth(void)
 	return -EINVAL;
 }
 
+long __weak diag_ioctl_pmu(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+int __weak pmu_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
+}

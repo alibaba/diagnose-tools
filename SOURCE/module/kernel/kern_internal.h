@@ -61,3 +61,5 @@ extern int diag_reboot_init(void);
 extern void diag_reboot_exit(void);
 extern int diag_sig_info_init(void);
 extern void diag_sig_info_exit(void);
+extern int diag_task_monitor_init(void);
+extern void diag_task_monitor_exit(void);
