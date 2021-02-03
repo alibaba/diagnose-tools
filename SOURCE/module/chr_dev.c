@@ -163,6 +163,9 @@ static long diag_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     case DIAG_IOCTL_TYPE_SIG_INFO:
         ret = diag_ioctl_sig_info(nr, arg);
         break;
+    case DIAG_IOCTL_TYPE_TASK_MONITOR:
+        ret = diag_ioctl_task_monitor(nr, arg);
+        break;
     default:
         break;
     }
