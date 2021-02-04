@@ -123,6 +123,7 @@ void task_monitor_timer(struct diag_percpu_context *context)
 				detail.tv = summary.tv;
 				diag_task_brief(p, &detail.task);
 				diag_task_kern_stack(p, &detail.kern_stack);
+				diag_task_user_stack(p, &detail.user_stack);
 				diag_variant_buffer_spin_lock(&task_monitor_variant_buffer,
 						flags);
 				diag_variant_buffer_reserve(&task_monitor_variant_buffer,
