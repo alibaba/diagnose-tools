@@ -55,6 +55,7 @@
 #include "uapi/sched_delay.h"
 #include "uapi/reboot.h"
 #include "uapi/net_bandwidth.h"
+#include "uapi/task_monitor.h"
 
 unsigned long diag_timer_period = 10;
 
@@ -164,7 +165,10 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 			activate_net_bandwidth();
 		} else if (strcmp(func, "sig-info") == 0) {
 			activate_sig_info();
+		} else if (strcmp(func, "task-monitor") == 0) {
+			activate_task_monitor();
 		}
+
 		up(&controller_sem);
 		printk("diagnose-tools %s %s\n", cmd, func);
 	} else if (strcmp(cmd, "deactivate") == 0) {
@@ -230,6 +234,8 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 			deactivate_net_bandwidth();
 		} else if (strcmp(func, "sig-info") == 0) {
 			deactivate_sig_info();
+		} else if (strcmp(func, "task-monitor") == 0) {
+			deactivate_task_monitor();
 		}
 
 		up(&controller_sem);
@@ -394,7 +400,10 @@ static void diag_cb_sys_enter(void *data, struct pt_regs *regs, long id)
 		} else if (id >= DIAG_BASE_SYSCALL_SIG_INFO
 		   && id < DIAG_BASE_SYSCALL_SIG_INFO + DIAG_SYSCALL_INTERVAL) {
 			ret = sig_info_syscall(regs, id);
-		}
+		} else if (id >= DIAG_BASE_SYSCALL_TASK_MONITOR
+		   && id < DIAG_BASE_SYSCALL_TASK_MONITOR + DIAG_SYSCALL_INTERVAL) {
+			ret = task_monitor_syscall(regs, id);
+		} 
 
 		up(&controller_sem);
 		if (ret != -ENOSYS) {

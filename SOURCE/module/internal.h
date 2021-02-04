@@ -52,6 +52,7 @@ static inline void __percpu_counter_add(struct percpu_counter *fbc,
 #include "uapi/rw_top.h"
 #include "uapi/utilization.h"
 #include "uapi/sig_info.h"
+#include "uapi/task_monitor.h"
 #include "pub/variant_buffer.h"
 #include "pub/stack.h"
 
@@ -592,6 +593,7 @@ void sys_loop_timer(struct diag_percpu_context *context);
 void irq_delay_timer(struct diag_percpu_context *context);
 void perf_timer(struct diag_percpu_context *context);
 void utilization_timer(struct diag_percpu_context *context);
+void task_monitor_timer(struct diag_percpu_context *context);
 
 void diag_hook_sys_enter(void);
 void diag_unhook_sys_enter(void);
@@ -828,6 +830,9 @@ int activate_sig_info(void);
 int deactivate_sig_info(void);
 int diag_sig_info_init(void);
 void diag_sig_info_exit(void);
+
+int activate_task_monitor(void);
+int deactivate_task_monitor(void);
 
 int diag_dev_init(void);
 void diag_dev_cleanup(void);
