@@ -48,39 +48,70 @@ static void __maybe_unused clean_data(void)
 {
 }
 
+static void record_current(void *info)
+{
+	unsigned long flags;
+	struct task_monitor_detail *detail;
+	unsigned long event_id;
+
+	atomic64_inc_return(&diag_nr_running);
+	if (task_active_pid_ns(current) != pid_ns)
+		goto out;
+
+	detail = &diag_percpu_context[smp_processor_id()]->task_monitor_info.detail;
+	event_id = get_cycles();
+	detail->id = event_id;
+	do_gettimeofday(&detail->tv);
+	detail->et_type = et_task_monitor_detail;
+	diag_task_brief(current, &detail->task);
+	diag_task_kern_stack(current, &detail->kern_stack);
+	diag_task_user_stack(current, &detail->user_stack);
+
+	diag_variant_buffer_spin_lock(&task_monitor_variant_buffer,
+			flags);
+	diag_variant_buffer_reserve(&task_monitor_variant_buffer,
+			sizeof(struct task_monitor_detail));
+	diag_variant_buffer_write_nolock(&task_monitor_variant_buffer,
+			detail, sizeof(struct task_monitor_detail));
+	diag_variant_buffer_seal(&task_monitor_variant_buffer);
+	diag_variant_buffer_spin_unlock(&task_monitor_variant_buffer, flags);
+
+out:
+	atomic64_dec_return(&diag_nr_running);
+}
+
 #if defined(UPSTREAM_4_19_32)
 void task_monitor_timer(struct diag_percpu_context *context)
 {
 	return;
 }
 #else
+
 void task_monitor_timer(struct diag_percpu_context *context)
 {
 	struct task_struct *g, *p;
 	unsigned long nr_d = 0;
-	unsigned long nr_r;
+	unsigned long nr_r = 0;
 	static ktime_t last;
 	u64 ms;
 
+	atomic64_inc_return(&diag_nr_running);
 	if (!task_monitor_settings.activated)
-		return;
+		goto out;
 
 	if (!task_monitor_settings.threshold_task_a 
 			&& !task_monitor_settings.threshold_task_r
 			&& !task_monitor_settings.threshold_task_d)
-		return;
+		goto out;
 
 	if (smp_processor_id() != 0)
-		return;
+		goto out;
 
 	ms = ktime_to_ms(ktime_sub(ktime_get(), last));
 	if (ms < task_monitor_settings.interval)
-		return;
+		goto out;
 
 	last = ktime_get();
-	nr_r = 0;
-	nr_d = 0;
-	atomic64_inc_return(&diag_nr_running);
 	rcu_read_lock();
 	for_each_process(g) {
 		if (task_active_pid_ns(g) != pid_ns)
@@ -101,44 +132,11 @@ void task_monitor_timer(struct diag_percpu_context *context)
 
 		unsigned long flags;
 		static struct task_monitor_summary summary;
-		static struct task_monitor_detail detail;
-		unsigned long event_id;
 
-		event_id = get_cycles();
-		summary.id = event_id;
+		on_each_cpu(record_current, NULL, 0);
+		summary.id = get_cycles();
 		summary.et_type = et_task_monitor_summary;
 		do_gettimeofday(&summary.tv);
-		nr_r = nr_d = 0;
-
-		rcu_read_lock();
-		for_each_process(g) {
-			if (task_active_pid_ns(g) != pid_ns)
-				continue;
-
-			for_each_thread(g, p) {
-				if ((p->state == TASK_RUNNING)
-						|| (p->state & TASK_UNINTERRUPTIBLE)) {
-
-					p->state == TASK_RUNNING ? nr_r++ : nr_d++;
-					detail.et_type = et_task_monitor_detail;
-					detail.id = event_id;
-					detail.tv = summary.tv;
-					diag_task_brief(p, &detail.task);
-					diag_task_kern_stack(p, &detail.kern_stack);
-					diag_task_user_stack(p, &detail.user_stack);
-
-					diag_variant_buffer_spin_lock(&task_monitor_variant_buffer,
-							flags);
-					diag_variant_buffer_reserve(&task_monitor_variant_buffer,
-							sizeof(struct task_monitor_detail));
-					diag_variant_buffer_write_nolock(&task_monitor_variant_buffer,
-							&detail, sizeof(struct task_monitor_detail));
-					diag_variant_buffer_seal(&task_monitor_variant_buffer);
-					diag_variant_buffer_spin_unlock(&task_monitor_variant_buffer, flags);
-				}
-			}
-		}
-		rcu_read_unlock();
 
 		summary.task_a = nr_r + nr_d;
 		summary.task_r = nr_r;
@@ -151,8 +149,11 @@ void task_monitor_timer(struct diag_percpu_context *context)
 		diag_variant_buffer_seal(&task_monitor_variant_buffer);
 		diag_variant_buffer_spin_unlock(&task_monitor_variant_buffer, flags);
 	}
+
+out:
 	atomic64_dec_return(&diag_nr_running);
 }
+
 #endif
 
 static int __activate_task_monitor(void)
