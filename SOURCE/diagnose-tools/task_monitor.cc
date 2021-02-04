@@ -30,6 +30,8 @@
 #include "json/json.h"
 #include "uapi/task_monitor.h"
 #include "params_parse.h"
+#include <iostream>
+#include <fstream>
 
 using namespace std;
 
@@ -54,6 +56,11 @@ void usage_task_monitor(void)
 	printf("        --settings print settings.\n");
 	printf("        --deactivate\n");
 	printf("        --report dump log with text.\n");
+	printf("          out output raw stack into special file.\n");
+	printf("          in input one raw-stack file to extract.\n");
+	printf("          inlist input filename including raw-stack file list to extract.\n");
+	printf("          input filename including raw-stack file list to extract.\n");
+	printf("          console get raw-stack file list from console to extract.\n");
 	printf("        --sls save detail into sls files.\n");
 }
 
@@ -253,23 +260,84 @@ static void do_dump(const char *arg)
 	struct params_parser parse(arg);
 	int len;
 	int ret = 0;
+	int console=0;
+
 	struct diag_ioctl_dump_param dump_param = {
 		.user_ptr_len = &len,
 		.user_buf_len = 1024 * 1024,
 		.user_buf = variant_buf,
 	};
 
+	string in_file;
+	string out_file;
+	string inlist_file;
+	string line = "";
+	string input_line;
+	
 	process_chains = parse.int_value("process-chains");
-
-	if (run_in_host) {
-		ret = diag_call_ioctl(DIAG_IOCTL_TASK_MONITOR_DUMP, (long)&dump_param);
+	console = parse.int_value("console");
+	in_file = parse.string_value("in");
+	out_file = parse.string_value("out");
+	inlist_file = parse.string_value("inlist");
+	
+	memset(variant_buf, 0, 1024 * 1024);
+	if (console) {
+	         while (cin) {
+	                 getline(cin, input_line);
+	                 if (!cin.eof()){
+	                         ifstream fin(input_line, ios::binary);
+	                         fin.read(variant_buf, 1024 * 1024);
+	                         len = fin.gcount();
+	                         if (len > 0) {
+	                                 do_extract(variant_buf, len);
+	                                 memset(variant_buf, 0,  1024 * 1024);
+	                         }
+	                         fin.close();
+	                  }
+	         }
+	 } else if (in_file.length() > 0) {
+	         ifstream fin(in_file, ios::binary);
+	         fin.read(variant_buf, 1024 * 1024);
+	         len = fin.gcount();
+	         if (len > 0) {
+	                 do_extract(variant_buf, len);
+	         }
+	         fin.close();
+	} else if (inlist_file.length() > 0) {
+	        ifstream in(inlist_file);
+	        if(in) {
+	                while (getline(in, line)){
+	                        ifstream fin(line.c_str());
+	                        fin.read(variant_buf, 1024 * 1024);
+	                        len = fin.gcount();
+	                        if (len > 0) {
+	                                do_extract(variant_buf, len);
+	                                memset(variant_buf, 0, 1024 * 1024);
+	                        }
+	                        fin.close();
+	                }
+	        in.close();
+		}
 	} else {
-		ret = -ENOSYS;
-		syscall(DIAG_TASK_MONITOR_DUMP, &ret, &len, variant_buf, 1024 * 1024);
-	}
-
-	if (ret == 0) {
-		do_extract(variant_buf, len);
+		
+		if (run_in_host) {
+			ret = diag_call_ioctl(DIAG_IOCTL_TASK_MONITOR_DUMP, (long)&dump_param);
+		} else {
+			ret = -ENOSYS;
+			syscall(DIAG_TASK_MONITOR_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+		}
+	
+		if (out_file.length() > 0) {
+			if (ret == 0 && len > 0) {
+	                	ofstream fout(out_file);
+	                        fout.write(variant_buf, len);
+	                        fout.close();
+	                }
+		} else {
+			if (ret == 0) {
+				do_extract(variant_buf, len);
+			}
+		}
 	}
 }
 
