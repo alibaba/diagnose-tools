@@ -68,6 +68,7 @@ static void record_current(void *info)
 	diag_task_brief(current, &detail->task);
 	diag_task_kern_stack(current, &detail->kern_stack);
 	diag_task_user_stack(current, &detail->user_stack);
+	detail->proc_chains.chains[0][0] = 0;
 	dump_proc_chains_simple(current, &detail->proc_chains);
 
 	diag_variant_buffer_spin_lock(&task_monitor_variant_buffer,
