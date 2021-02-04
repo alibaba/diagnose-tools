@@ -37,13 +37,12 @@
 
 #include "uapi/task_monitor.h"
 
-#if LINUX_VERSION_CODE > KERNEL_VERSION(3, 10, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
 static atomic64_t diag_nr_running = ATOMIC64_INIT(0);
 struct diag_task_monitor_settings task_monitor_settings;
 static unsigned int task_monitor_alloced;
 static struct diag_variant_buffer task_monitor_variant_buffer;
 static struct pid_namespace *pid_ns;
-
 
 static void __maybe_unused clean_data(void)
 {
