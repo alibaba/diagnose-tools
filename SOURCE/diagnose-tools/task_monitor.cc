@@ -48,8 +48,8 @@ void usage_task_monitor(void)
 	printf("            verbose VERBOSE\n");
 	printf("            style dump style: 0 - common, 1 - process chains\n");
 	printf("            task.a threshold for running or uninterruptible tasks, default is 500\n");
-	printf("            task.r threshold for running tasks\n");
-	printf("            task.d threshold for uninterruptible tasks\n");
+	printf("            task.r threshold for running tasks, default is 400\n");
+	printf("            task.d threshold for uninterruptible tasks, default is 100\n");
 	printf("            interval milliseconds for reporting, default is 10000ms and minimum is 100ms\n");
 	printf("        --settings print settings.\n");
 	printf("        --deactivate\n");
@@ -70,7 +70,12 @@ static void do_activate(const char *arg)
 		settings.threshold_task_a = 500;
 
 	settings.threshold_task_r = parse.int_value("task.r");
+	if (!settings.threshold_task_r)
+		settings.threshold_task_r = 400;
+
 	settings.threshold_task_d = parse.int_value("task.d");
+	if (!settings.threshold_task_d)
+		settings.threshold_task_d = 100;
 
 	settings.interval = parse.int_value("interval");
 	if (!settings.interval) 
@@ -217,6 +222,10 @@ static int task_monitor_extract(void *buf, unsigned int len, void *)
 				seq,
 				detail->task.state == 0 ? "R" : "D");
 		diag_printf_kern_stack(&detail->kern_stack);
+		diag_printf_user_stack(run_in_host ? detail->task.tgid : detail->task.container_tgid,
+				detail->task.container_tgid,
+				detail->task.comm,
+				&detail->user_stack);
 
 		printf("#*        0xffffffffffffff %s (UNKNOWN)\n",
 				detail->task.comm);
