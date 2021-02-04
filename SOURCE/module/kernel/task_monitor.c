@@ -82,20 +82,22 @@ void task_monitor_timer(struct diag_percpu_context *context)
 	nr_d = 0;
 	atomic64_inc_return(&diag_nr_running);
 	rcu_read_lock();
-	do_each_thread(g, p) {
-		if (task_active_pid_ns(p) != pid_ns)
+	for_each_process(g) {
+		if (task_active_pid_ns(g) != pid_ns)
 			continue;
 
-		if (p->state & TASK_UNINTERRUPTIBLE)
-			nr_d++;
-		if (p->state == TASK_RUNNING)
-			nr_r++;
-	} while_each_thread(g, p);
+		for_each_thread(g, p) {
+			if (p->state & TASK_UNINTERRUPTIBLE)
+				nr_d++;
+			if (p->state == TASK_RUNNING)
+				nr_r++;
+		}
+	}
 	rcu_read_unlock();
 
 	if (nr_d >= task_monitor_settings.threshold_task_d || 
 			nr_r >= task_monitor_settings.threshold_task_r || 
-			(nr_r + nr_d) >=  task_monitor_settings.threshold_task_a)  {
+			(nr_r + nr_d) >= task_monitor_settings.threshold_task_a)  {
 
 		unsigned long flags;
 		static struct task_monitor_summary summary;
@@ -109,30 +111,33 @@ void task_monitor_timer(struct diag_percpu_context *context)
 		nr_r = nr_d = 0;
 
 		rcu_read_lock();
-
-		do_each_thread(g, p) {
-			if (task_active_pid_ns(p) != pid_ns)
+		for_each_process(g) {
+			if (task_active_pid_ns(g) != pid_ns)
 				continue;
 
-			if ((p->state == TASK_RUNNING)
-					|| (p->state & TASK_UNINTERRUPTIBLE)) {
-				p->state == TASK_RUNNING ? nr_r++ : nr_d++;
-				detail.et_type = et_task_monitor_detail;
-				detail.id = event_id;
-				detail.tv = summary.tv;
-				diag_task_brief(p, &detail.task);
-				diag_task_kern_stack(p, &detail.kern_stack);
-				diag_task_user_stack(p, &detail.user_stack);
-				diag_variant_buffer_spin_lock(&task_monitor_variant_buffer,
-						flags);
-				diag_variant_buffer_reserve(&task_monitor_variant_buffer,
-						sizeof(struct task_monitor_detail));
-				diag_variant_buffer_write_nolock(&task_monitor_variant_buffer,
-						&detail, sizeof(struct task_monitor_detail));
-				diag_variant_buffer_seal(&task_monitor_variant_buffer);
-				diag_variant_buffer_spin_unlock(&task_monitor_variant_buffer, flags);
+			for_each_thread(g, p) {
+				if ((p->state == TASK_RUNNING)
+						|| (p->state & TASK_UNINTERRUPTIBLE)) {
+
+					p->state == TASK_RUNNING ? nr_r++ : nr_d++;
+					detail.et_type = et_task_monitor_detail;
+					detail.id = event_id;
+					detail.tv = summary.tv;
+					diag_task_brief(p, &detail.task);
+					diag_task_kern_stack(p, &detail.kern_stack);
+					diag_task_user_stack(p, &detail.user_stack);
+
+					diag_variant_buffer_spin_lock(&task_monitor_variant_buffer,
+							flags);
+					diag_variant_buffer_reserve(&task_monitor_variant_buffer,
+							sizeof(struct task_monitor_detail));
+					diag_variant_buffer_write_nolock(&task_monitor_variant_buffer,
+							&detail, sizeof(struct task_monitor_detail));
+					diag_variant_buffer_seal(&task_monitor_variant_buffer);
+					diag_variant_buffer_spin_unlock(&task_monitor_variant_buffer, flags);
+				}
 			}
-		} while_each_thread(g, p);
+		}
 		rcu_read_unlock();
 
 		summary.task_a = nr_r + nr_d;
