@@ -300,17 +300,9 @@ sig_info() {
 }
 
 task_monitor() {
-	eval "$DIAG_CMD task-monitor --deactivate --activate='task.r=2 interval=2' --settings"
+	eval "$DIAG_CMD task-monitor --deactivate --activate='task.a=1 task.r=1 task.d=1 interval=100' --settings"
 	sleep 1
 	eval "$DIAG_CMD task-monitor --report" > task_monitor.log
-
-	eval "$DIAG_CMD task-monitor --deactivate --activate='task.d=2 interval=2' --settings"
-	sleep 1
-	eval "$DIAG_CMD task-monitor --report" >> task_monitor.log
-
-	eval "$DIAG_CMD task-monitor --deactivate --activate='task.a=2 task.r=1 task.d=1 interval=2' --settings"
-	sleep 1
-	eval "$DIAG_CMD task-monitor --report" >> task_monitor.log
 }
 
 call_sub_cmd() {
