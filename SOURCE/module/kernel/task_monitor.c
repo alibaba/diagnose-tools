@@ -89,7 +89,7 @@ void task_monitor_timer(struct diag_percpu_context *context)
 
 		if (p->state & TASK_UNINTERRUPTIBLE)
 			nr_d++;
-		if (p->state & TASK_RUNNING)
+		if (p->state == TASK_RUNNING)
 			nr_r++;
 	} while_each_thread(g, p);
 	rcu_read_unlock();
@@ -117,7 +117,7 @@ void task_monitor_timer(struct diag_percpu_context *context)
 
 			if ((p->state == TASK_RUNNING)
 					|| (p->state & TASK_UNINTERRUPTIBLE)) {
-				p->state = TASK_RUNNING ? nr_r++ : nr_d++;
+				p->state == TASK_RUNNING ? nr_r++ : nr_d++;
 				detail.et_type = et_task_monitor_detail;
 				detail.id = event_id;
 				detail.tv = summary.tv;
