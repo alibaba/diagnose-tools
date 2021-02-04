@@ -31,6 +31,8 @@
 #include <asm/irq_regs.h>
 
 #include "internal.h"
+#include "mm_tree.h"
+
 #include "pub/trace_file.h"
 #include "pub/variant_buffer.h"
 #include "pub/trace_point.h"
@@ -66,6 +68,7 @@ static void record_current(void *info)
 	diag_task_brief(current, &detail->task);
 	diag_task_kern_stack(current, &detail->kern_stack);
 	diag_task_user_stack(current, &detail->user_stack);
+	dump_proc_chains_simple(current, &detail->proc_chains);
 
 	diag_variant_buffer_spin_lock(&task_monitor_variant_buffer,
 			flags);
