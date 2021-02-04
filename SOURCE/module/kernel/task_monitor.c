@@ -37,6 +37,7 @@
 
 #include "uapi/task_monitor.h"
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3, 10, 0)
 static atomic64_t diag_nr_running = ATOMIC64_INIT(0);
 struct diag_task_monitor_settings task_monitor_settings;
 static unsigned int task_monitor_alloced;
@@ -320,3 +321,15 @@ void diag_task_monitor_exit(void)
 	task_monitor_settings.activated = 0;
 	destroy_diag_variant_buffer(&task_monitor_variant_buffer);
 }
+
+#else
+int diag_task_monitor_init(void)
+{
+	return 0;
+}
+
+void diag_task_monitor_exit(void)
+{
+	//
+}
+#endif
