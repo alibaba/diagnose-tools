@@ -176,6 +176,12 @@ static int exit_monitor_extract(void *buf, unsigned int len, void *)
 		printf("线程退出，PID： %d[%s]，退出时间：[%lu:%lu]\n",
 			detail->task.pid, detail->task.comm,
 			detail->tv.tv_sec, detail->tv.tv_usec);
+		
+		if (detail->task.pid != detail->task.container_pid ||
+				detail->task.tgid != detail->task.container_tgid) {
+			printf("PID_IN_CONTAINER: %d, TGID_IN_CONTAINER: %d\n",
+					detail->task.container_pid, detail->task.container_tgid);
+		}
 
 		for (i = 0; i < BACKTRACE_DEPTH; i++) {
             if (detail->kern_stack.stack[i] == (size_t)-1 || detail->kern_stack.stack[i] == 0) {

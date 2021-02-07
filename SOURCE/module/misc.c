@@ -541,7 +541,7 @@ void diag_task_brief(struct task_struct *tsk, struct diag_task_detail *detail)
 	detail->state = tsk->state;
 	detail->task_type = diag_get_task_type(tsk);
 	ns = task_active_pid_ns(tsk);
-	if (ns) {
+	if (ns != &init_pid_ns) {
 		detail->container_pid = task_pid_nr_ns(tsk, ns);
 		detail->container_tgid = task_tgid_nr_ns(tsk, ns);
 	} else {

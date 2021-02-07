@@ -63,6 +63,7 @@ static int hook_sched_process_exit(struct task_struct *p)
 	struct mm_struct *mm;
 	struct vm_area_struct *vma;
 	struct file *file;
+	pid_t tgid;
 
 	if (!exit_monitor_settings.activated)
 		return 0;
@@ -75,7 +76,9 @@ static int hook_sched_process_exit(struct task_struct *p)
 			&& (strcmp(exit_monitor_settings.comm, leader->comm) != 0))
 		return 0;
 
-	if ((exit_monitor_settings.tgid != 0) && (leader->pid != exit_monitor_settings.tgid))
+	tgid = task_pid_nr_ns(leader, task_active_pid_ns(leader));
+	if (exit_monitor_settings.tgid != 0  &&
+			tgid != exit_monitor_settings.tgid)
 		return 0;
 
 	exit_monitor_event_seq++;
