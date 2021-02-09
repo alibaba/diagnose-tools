@@ -39,12 +39,15 @@
 
 #include "uapi/task_monitor.h"
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0) && LINUX_VERSION_CODE <= KERNEL_VERSION(4, 20, 0)
 static atomic64_t diag_nr_running = ATOMIC64_INIT(0);
 struct diag_task_monitor_settings task_monitor_settings;
 static unsigned int task_monitor_alloced;
 static struct diag_variant_buffer task_monitor_variant_buffer;
 static struct pid_namespace *pid_ns;
+
+static void task_monitor_tasklet_cb(unsigned long);
+DECLARE_TASKLET(task_monitor_tasklet, task_monitor_tasklet_cb, 0);
 
 static void __maybe_unused clean_data(void)
 {
@@ -84,6 +87,10 @@ out:
 	atomic64_dec_return(&diag_nr_running);
 }
 
+static void task_monitor_tasklet_cb(unsigned long unused)
+{
+	on_each_cpu(record_current, NULL, 0);
+}
 #if defined(UPSTREAM_4_19_32)
 void task_monitor_timer(struct diag_percpu_context *context)
 {
@@ -133,11 +140,11 @@ void task_monitor_timer(struct diag_percpu_context *context)
 	if (nr_d >= task_monitor_settings.threshold_task_d || 
 			nr_r >= task_monitor_settings.threshold_task_r || 
 			(nr_r + nr_d) >= task_monitor_settings.threshold_task_a)  {
-
 		unsigned long flags;
 		static struct task_monitor_summary summary;
 
-		on_each_cpu(record_current, NULL, 0);
+		tasklet_hi_schedule(&task_monitor_tasklet);
+			
 		summary.id = get_cycles();
 		summary.et_type = et_task_monitor_summary;
 		do_gettimeofday(&summary.tv);
