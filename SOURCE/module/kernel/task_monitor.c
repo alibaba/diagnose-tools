@@ -46,14 +46,14 @@ static unsigned int task_monitor_alloced;
 static struct diag_variant_buffer task_monitor_variant_buffer;
 static struct pid_namespace *pid_ns;
 
-static void task_monitor_tasklet_cb(struct work_struct *work);
-static DECLARE_WORK(task_monitor_work, task_monitor_tasklet_cb);
+static void task_monitor_work_cb(struct work_struct *work);
+static DECLARE_WORK(task_monitor_work, task_monitor_work_cb);
 
 static void __maybe_unused clean_data(void)
 {
 }
 
-static void task_monitor_tasklet_cb(struct work_struct *work)
+static void task_monitor_work_cb(struct work_struct *work)
 {
 	unsigned long flags;
 	struct task_monitor_detail *detail;
@@ -84,6 +84,8 @@ static void task_monitor_tasklet_cb(struct work_struct *work)
 				get_task_struct(p);
 				tasks[count] = p;
 				count++;
+				if (count >= 100)
+					break;
 			}
 		}
 	}
