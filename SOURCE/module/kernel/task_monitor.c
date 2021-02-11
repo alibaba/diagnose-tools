@@ -85,10 +85,11 @@ static void task_monitor_work_cb(struct work_struct *work)
 				tasks[count] = p;
 				count++;
 				if (count >= 100)
-					break;
+					goto unlock;
 			}
 		}
 	}
+unlock:
 	rcu_read_unlock();
 
 	for (i = 0; i < count; i++) {
