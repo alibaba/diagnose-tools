@@ -160,7 +160,7 @@ static int lookup_syms(void)
 #endif
 	LOOKUP_SYMS(task_statm);
 	LOOKUP_SYMS(kptr_restrict);
-
+	LOOKUP_SYMS(idle_sched_class);
 	LOOKUP_SYMS_NORET(d_find_any_alias);
 	LOOKUP_SYMS_NORET(find_task_by_vpid);
 	LOOKUP_SYMS_NORET(find_task_by_pid_ns);

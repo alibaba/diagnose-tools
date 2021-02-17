@@ -403,6 +403,7 @@ void diag_sls_task(struct diag_task_detail *tsk_info, Json::Value &task)
 		task["state"] = Json::Value("S");
 	}
 	task["syscallno"] = Json::Value(tsk_info->syscallno);
+	task["sys_task"] = Json::Value(tsk_info->sys_task);
 	task["comm"] = Json::Value(tsk_info->comm);
 }
 

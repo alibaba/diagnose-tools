@@ -541,6 +541,13 @@ void diag_task_brief(struct task_struct *tsk, struct diag_task_detail *detail)
 	if (regs)
 		detail->syscallno = syscall_get_nr(tsk, regs);
 
+	if (tsk->sched_class == orig_idle_sched_class)
+		detail->sys_task = 2;
+	else if (!tsk->mm)
+		detail->sys_task = 1;
+	else
+		detail->sys_task = 0;
+
 	detail->pid = tsk->pid;
 	detail->tgid = tsk->tgid;
 	detail->state = tsk->state;

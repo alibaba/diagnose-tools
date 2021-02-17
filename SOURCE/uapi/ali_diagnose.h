@@ -53,7 +53,7 @@ extern unsigned long debug_mode;
 #endif
 
 #define XBY_VERSION					"diagnose-tools 2.1-release"
-#define DIAG_VERSION		((2 << 24) | (1 << 16) | 0xffff)
+#define DIAG_VERSION		((2 << 24) | (1 << 16) | 0xfffe)
 
 #define DIAG_DEV_NAME "diagnose-tools"
 
@@ -487,6 +487,10 @@ struct diag_task_detail {
 	long state;
 	int task_type;
 	unsigned long syscallno;
+	/**
+	 * 0->user 1->sys 2->idle
+	 */
+	unsigned long sys_task;
 	char comm[TASK_COMM_LEN];
 };
 

@@ -117,6 +117,8 @@ extern unsigned int (*orig_stack_trace_save_tsk)(struct task_struct *task,
 extern unsigned int (*orig_stack_trace_save_user)(unsigned long *store, unsigned int size);
 
 extern int *orig_kptr_restrict;
+struct sched_class;
+extern struct sched_class *orig_idle_sched_class;
 int alidiagnose_symbols_init(void);
 void alidiagnose_symbols_exit(void);
 
