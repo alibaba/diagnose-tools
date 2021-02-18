@@ -39,6 +39,8 @@ static int process_chains = 0;
 static int out_json = 0;
 static int out_flame = 1;
 
+Json::Value json_root;
+
 void usage_load_monitor(void)
 {
 	printf("    load-monitor usage:\n");
@@ -316,10 +318,97 @@ static int sls_extract(void *buf, unsigned int len, void *)
 	return 0;
 }
 
+static int json_extract(void *buf, unsigned int len, void *)
+{
+	int *et_type;
+	struct load_monitor_detail *detail;
+	struct load_monitor_task *tsk_info;
+	Json::Value root;
+	Json::Value tsk;
+	stringstream ss;
+
+	if (len == 0)
+		return 0;
+
+	et_type = (int *)buf;
+	switch (*et_type) {
+	case et_load_monitor_detail:
+		if (len < sizeof(struct load_monitor_detail))
+			break;
+		detail = (struct load_monitor_detail *)buf;
+
+		root["tv_sec"] = Json::Value(detail->tv.tv_sec);
+		root["tv_usec"] = Json::Value(detail->tv.tv_usec);
+
+		ss.str("");
+		ss << detail->load_1_1 << "." << detail->load_1_2;
+		root["load_1"] = Json::Value(ss.str());
+
+		ss.str("");
+		ss << detail->load_5_1 << "." << detail->load_5_2;
+		root["load_5"] = Json::Value(ss.str());
+
+		ss.str("");
+		ss << detail->load_15_1 << "." << detail->load_15_2;
+		root["load_15"] = Json::Value(ss.str());
+
+		ss.str("");
+		ss << detail->load_r_1_1 << "." << detail->load_r_1_2;
+		root["load_r_1"] = Json::Value(ss.str());
+
+		ss.str("");
+		ss << detail->load_r_5_1 << "." << detail->load_r_5_2;
+		root["load_r_5"] = Json::Value(ss.str());
+	
+		ss.str("");
+		ss << detail->load_r_15_1 << "." << detail->load_r_15_2;
+		root["load_r_15"] = Json::Value(ss.str());
+
+		ss.str("");
+		ss << detail->load_d_1_1 << "." << detail->load_d_1_2;
+		root["load_d_1"] = Json::Value(ss.str());
+
+		ss.str("");
+		ss << detail->load_d_5_1 << "." << detail->load_d_5_2;
+		root["load_d_5"] = Json::Value(ss.str());
+
+		ss.str("");
+		ss << detail->load_d_15_1 << "." << detail->load_d_15_2;
+		root["load_d_15"] = Json::Value(ss.str());
+
+		root["id"] = Json::Value(detail->id);
+		root["tv_sec"] = Json::Value(detail->tv.tv_sec);
+		root["tv_usec"] = Json::Value(detail->tv.tv_usec);
+
+		json_root[std::to_string(detail->id)]["summary"] = root;
+		break;
+	case et_load_monitor_task:
+		if (len < sizeof(struct load_monitor_task))
+			break;
+		tsk_info = (struct load_monitor_task *)buf;
+
+		tsk["id"] = Json::Value(tsk_info->id);
+		tsk["tv_sec"] = Json::Value(tsk_info->tv.tv_sec);
+		tsk["tv_usec"] = Json::Value(tsk_info->tv.tv_usec);
+		diag_sls_task(&tsk_info->task, tsk);
+		diag_sls_kern_stack(&tsk_info->kern_stack, tsk);
+		diag_sls_proc_chains(&tsk_info->proc_chains, tsk);
+
+		json_root[std::to_string(tsk_info->id)]["tasks"].append(tsk);
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
 static void do_extract(char *buf, int len)
 {
 	if (out_json) {
-		extract_variant_buffer(buf, len, sls_extract, NULL);
+		json_root.clear();
+		extract_variant_buffer(buf, len, json_extract, NULL);
+		printf("%s\n", json_root.toStyledString().c_str());
 	}
 
 	if (out_flame) {
