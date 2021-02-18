@@ -42,6 +42,11 @@ static char sls_file[256];
 static int report_reverse = 0;
 static int syslog_enabled;
 
+static int out_json = 0;
+static int out_flame = 1;
+
+static Json::Value json_root;
+
 void usage_perf(void)
 {
 	printf("    perf usage:\n");
@@ -272,9 +277,64 @@ static int perf_extract(void *buf, unsigned int len, void *)
 	return 0;
 }
 
+static int json_extract(void *buf, unsigned int len, void *)
+{
+	int *et_type;
+	struct perf_detail *detail;
+    	symbol sym;
+
+	Json::Value root;
+	Json::Value task;
+	Json::Value kern_stack;
+	Json::Value user_stack;
+	Json::Value proc_chains;
+
+	if (len == 0)
+		return 0;
+
+	et_type = (int *)buf;
+	switch (*et_type) {
+	case et_perf_detail:
+		if (len < sizeof(struct perf_detail))
+			break;
+		detail = (struct perf_detail *)buf;
+		root["id"] = detail->id;
+		root["seq"] = detail->seq;
+		diag_sls_time(&detail->tv, root);
+		diag_sls_task(&detail->task, task);
+		diag_sls_kern_stack(&detail->kern_stack, task);
+		diag_sls_user_stack(detail->task.tgid,
+			detail->task.container_tgid,
+			detail->task.comm,
+			&detail->user_stack, task, 0);
+		diag_sls_proc_chains(&detail->proc_chains, task);
+		root["task"] = task;
+		
+		root["tv_sec"] = Json::Value(detail->tv.tv_sec);
+		root["tv_usec"] = Json::Value(detail->tv.tv_usec);
+
+		json_root[std::to_string(detail->id)]["samples"] = root;
+
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
 static void do_extract(char *buf, int len)
 {
-	extract_variant_buffer(buf, len, perf_extract, NULL);
+	if (out_json) {
+		json_root.clear();
+		extract_variant_buffer(buf, len, json_extract, NULL);
+		printf("%s\n", json_root.toStyledString().c_str());
+	}
+
+	if (out_flame) {
+		extract_variant_buffer(buf, len, perf_extract, NULL);
+	}
+
 	diag_report_memory();
 	g_symbol_parser.dump();
 }
@@ -293,8 +353,8 @@ static void do_dump(const char *arg)
 	};
 	string in_file;
 	string out_file;
-        string inlist_file;
-        string line = "";
+	string inlist_file;
+	string line = "";
 	string input_line;
 
 	report_reverse = parse.int_value("reverse");
@@ -302,6 +362,8 @@ static void do_dump(const char *arg)
 	in_file = parse.string_value("in");
 	out_file = parse.string_value("out");
 	inlist_file = parse.string_value("inlist");
+	out_json = parse.int_value("json", 0);
+	out_flame = parse.int_value("flame", 1);
 
 	memset(variant_buf, 0, 50 * 1024 * 1024);
 	if (console) {

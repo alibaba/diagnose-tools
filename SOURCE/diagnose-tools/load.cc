@@ -39,7 +39,7 @@ static int process_chains = 0;
 static int out_json = 0;
 static int out_flame = 1;
 
-Json::Value json_root;
+static Json::Value json_root;
 
 void usage_load_monitor(void)
 {

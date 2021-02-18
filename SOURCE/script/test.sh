@@ -120,6 +120,10 @@ perf() {
 `echo -e "${files}"`
 EOF
 
+	eval "$DIAG_CMD perf --deactivate --activate='raw-stack=0 style=2 idle=1 bvt=1' --settings"
+	sleep 1
+	time eval "systemd-run --scope -p MemoryLimit=500M $DIAG_CMD perf --report=\"json=1 flame=0\"" > perf.json
+
 	eval "$DIAG_CMD perf --deactivate"
 
 	eval "$DIAG_CMD flame --input=perf.log --output=perf.svg"

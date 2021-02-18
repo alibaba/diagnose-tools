@@ -579,9 +579,7 @@ void diag_sls_user_stack(pid_t pid, pid_t ns_pid, const char *comm,
 		}
 
 		if (g_symbol_parser.find_symbol_in_cache(pid, user_stack->stack[i], symbol)) {
-			printf("#~        0x%lx %s ([symbol])\n",
-					user_stack->stack[i],
-					symbol.c_str());
+			snprintf(buf, 255, "%s", symbol.c_str());
 			continue;
 		}
 
