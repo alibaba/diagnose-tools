@@ -33,6 +33,7 @@
 #if KERNEL_VERSION(4, 15, 0) <= LINUX_VERSION_CODE
 #include <linux/sched/mm.h>
 #endif
+#include <linux/pid_namespace.h>
 
 #include <asm/irq_regs.h>
 
