@@ -685,7 +685,16 @@ void diag_task_user_stack(struct task_struct *tsk, struct diag_user_stack_detail
 {
 	struct pt_regs *regs;
 	unsigned long sp, ip, bp;
-	
+	struct task_struct *leader;
+
+	if (!tsk || !tsk->mm)
+		return;
+
+	leader = tsk->group_leader;
+	if (!leader || !leader->mm || leader->exit_state == EXIT_ZOMBIE){
+		return;
+	}
+
 	sp = 0;
 	ip = 0;
 	bp = 0;
