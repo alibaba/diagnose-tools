@@ -95,7 +95,9 @@ bool symbol_parser::load_perf_map(int pid, int pid_ns)
     snprintf(perfmapfile, sizeof(perfmapfile), "/tmp/perf-%d.map", pid);
     FILE *fp = fopen(perfmapfile, "r");
     if (fp == NULL) {
+	if (debug_mode) {
 		printf("cannot read perf map %d\n", pid);
+	}
         return false;
     }
     char line[256];
