@@ -21,10 +21,12 @@
 struct params_parser {
 	std::map<std::string, std::string> map;
 
-    params_parser(std::string arg);
+	params_parser(std::string arg);
 	std::string & string_value(std::string key);
 	unsigned long int_value(std::string key);
+	unsigned long int_value(std::string key, unsigned long def);
 	bool bool_value(std::string key);
+	bool bool_value(std::string key, bool def);
 };
 
 #endif /* __PUB_PARAMS_PARSE_H__ */
