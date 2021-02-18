@@ -76,6 +76,10 @@ load_monitor() {
 	eval "$DIAG_CMD flame --input=load-monitor.log --output=load-monitor.svg"
 	echo "火焰图位于load-monitor.svg"
 
+	eval "$DIAG_CMD load-monitor --deactivate --activate='style=1 load=1' --settings"
+	sleep 2
+	eval "$DIAG_CMD load-monitor --report='json=1 flame=0'" > load-monitor.json
+	eval "$DIAG_CMD load-monitor --deactivate"
 #	eval "$DIAG_CMD load-monitor --style=0"
 #	eval "$DIAG_CMD load-monitor --activate"
 #	eval "$DIAG_CMD load-monitor --load=1"
