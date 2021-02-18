@@ -530,11 +530,16 @@ char *mac2str(const unsigned char *mac, char *mac_str, const unsigned int mac_st
 void diag_task_brief(struct task_struct *tsk, struct diag_task_detail *detail)
 {
 	struct pid_namespace *ns;
+	struct pt_regs *regs;
 	
 	if (detail)
 		memset(detail, 0, sizeof(struct diag_task_detail));
 	if (!detail || !tsk)
 		return;
+
+	regs = task_pt_regs(tsk);
+	if (regs)
+		detail->syscallno = syscall_get_nr(tsk, regs);
 
 	detail->pid = tsk->pid;
 	detail->tgid = tsk->tgid;

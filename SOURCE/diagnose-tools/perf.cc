@@ -313,7 +313,7 @@ static int json_extract(void *buf, unsigned int len, void *)
 		root["tv_sec"] = Json::Value(detail->tv.tv_sec);
 		root["tv_usec"] = Json::Value(detail->tv.tv_usec);
 
-		json_root[std::to_string(detail->id)]["samples"] = root;
+		json_root[std::to_string(detail->id)]["samples"].append(root);
 
 		break;
 	default:

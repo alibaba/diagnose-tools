@@ -486,6 +486,7 @@ struct diag_task_detail {
 	int container_tgid;
 	long state;
 	int task_type;
+	unsigned long syscallno;
 	char comm[TASK_COMM_LEN];
 };
 
