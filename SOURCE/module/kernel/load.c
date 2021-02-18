@@ -51,6 +51,8 @@ unsigned long *orig_avenrun;
 
 static struct diag_variant_buffer load_monitor_variant_buffer;
 
+static ktime_t last_dump;
+
 static void __maybe_unused clean_data(void)
 {
 	cleanup_mm_tree(&mm_tree);
@@ -77,7 +79,6 @@ void diag_load_timer(struct diag_percpu_context *context)
 #else
 void diag_load_timer(struct diag_percpu_context *context)
 {
-	static ktime_t last;
 	u64 ms;
 	bool scare = false;
 	unsigned long load_d;
@@ -126,11 +127,11 @@ void diag_load_timer(struct diag_percpu_context *context)
 		static struct load_monitor_task tsk_info;
 		unsigned long event_id;
 
-		ms = ktime_to_ms(ktime_sub(ktime_get(), last));
+		ms = ktime_to_ms(ktime_sub(ktime_get(), last_dump));
 		if (ms < 10 * 1000)
 			return;
 
-		last = ktime_get();
+		last_dump = ktime_get();
 		
 		if (orig_avenrun) {
 			detail.load_1_1 = LOAD_INT(orig_avenrun[0]);
@@ -277,6 +278,7 @@ static void __deactivate_load_monitor(void)
 	load_monitor_settings.threshold_load_r = 0;
 	load_monitor_settings.threshold_load_d = 0;
 	load_monitor_settings.threshold_task_d = 0;
+	last_dump = ktime_set(0, 0);
 }
 
 int deactivate_load_monitor(void)
