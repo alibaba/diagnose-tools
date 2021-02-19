@@ -99,6 +99,7 @@ struct dentry * (*orig_d_find_any_alias)(struct inode *inode);
 int (*orig_task_statm)(struct mm_struct *mm,
 			 unsigned long *shared, unsigned long *text,
 			 unsigned long *data, unsigned long *resident);
+struct sched_class *orig_idle_sched_class;
 
 atomic64_t xby_debug_counter1;
 atomic64_t xby_debug_counter2;
