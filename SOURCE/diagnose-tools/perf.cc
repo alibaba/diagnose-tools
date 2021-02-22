@@ -45,7 +45,7 @@ static int syslog_enabled;
 static int out_json = 0;
 static int out_flame = 1;
 
-static Json::Value json_root;
+Json::FastWriter fast_writer;
 
 void usage_perf(void)
 {
@@ -313,7 +313,8 @@ static int json_extract(void *buf, unsigned int len, void *)
 		root["tv_sec"] = Json::Value(detail->tv.tv_sec);
 		root["tv_usec"] = Json::Value(detail->tv.tv_usec);
 
-		json_root[std::to_string(detail->id)]["samples"].append(root);
+		std::cout << fast_writer.write(root);
+		//json_root[std::to_string(detail->id)]["samples"].append(root);
 
 		break;
 	default:
@@ -326,9 +327,7 @@ static int json_extract(void *buf, unsigned int len, void *)
 static void do_extract(char *buf, int len)
 {
 	if (out_json) {
-		json_root.clear();
 		extract_variant_buffer(buf, len, json_extract, NULL);
-		printf("%s\n", json_root.toStyledString().c_str());
 	}
 
 	if (out_flame) {
@@ -368,6 +367,7 @@ static void do_dump(const char *arg)
 	memset(variant_buf, 0, 50 * 1024 * 1024);
 	if (console) {
 		java_attach_once();
+				
 		while (cin) {
 			getline(cin, input_line);
 			if (!cin.eof()){
@@ -379,8 +379,8 @@ static void do_dump(const char *arg)
 					memset(variant_buf, 0, 50 * 1024 * 1024);
 				}
 				fin.close();
-			 }	
-		}	
+			}
+		}
 	} else if (in_file.length() > 0) {
 		ifstream fin(in_file, ios::binary);
 		fin.read(variant_buf, 50 * 1024 * 1024);
@@ -390,7 +390,7 @@ static void do_dump(const char *arg)
 			do_extract(variant_buf, len);
                         fin.close();
 		}
-       } else if(inlist_file.length() > 0) {
+       } else if (inlist_file.length() > 0) {
                ifstream in(inlist_file);
                if(in) {
                        while (getline(in, line)){
@@ -405,8 +405,8 @@ static void do_dump(const char *arg)
                                fin.close();
                        }
                in.close(); 
-	       }	
-       }else{
+	       }
+       } else {
 		if (run_in_host) {
 			ret = diag_call_ioctl(DIAG_IOCTL_PERF_DUMP, (long)&dump_param);
 		} else {
