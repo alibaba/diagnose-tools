@@ -39,8 +39,6 @@ static int process_chains = 0;
 static int out_json = 0;
 static int out_flame = 1;
 
-static Json::Value json_root;
-
 static Json::FastWriter fast_writer;
 
 void usage_load_monitor(void)
@@ -410,9 +408,7 @@ static int json_extract(void *buf, unsigned int len, void *)
 static void do_extract(char *buf, int len)
 {
 	if (out_json) {
-		json_root.clear();
 		extract_variant_buffer(buf, len, json_extract, NULL);
-		printf("%s\n", json_root.toStyledString().c_str());
 	}
 
 	if (out_flame) {
