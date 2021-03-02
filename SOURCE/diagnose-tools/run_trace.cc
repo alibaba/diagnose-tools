@@ -380,7 +380,7 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 			event->syscall_id,
 			event->header.delta_ns);
 		
-		diag_printf_raw_stack(event->header.task.tgid,
+		diag_printf_raw_stack(run_in_host ? event->header.task.tgid : event->header.task.container_tgid,
 				event->header.task.container_tgid,
 				event->header.task.comm,
 				&event->raw_stack);
