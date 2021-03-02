@@ -431,7 +431,7 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 			event->header.task.pid,
 			event->syscall_id,
 			event->header.delta_ns);
-		diag_printf_user_stack(event->header.task.tgid,
+		diag_printf_user_stack(run_in_host ? event->header.task.tgid : event->header.task.container_tgid,
 				event->header.task.container_tgid,
 				event->header.task.comm,
 				&event->user_stack);
@@ -617,7 +617,7 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 			event->delta_ns);
 
 		diag_printf_kern_stack(&event->kern_stack);
-		diag_printf_user_stack(event->task.tgid,
+		diag_printf_user_stack(run_in_host ? event->task.tgid : event->task.container_tgid,
 				event->task.container_tgid,
 				event->task.comm,
 				&event->user_stack);
