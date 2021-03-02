@@ -45,7 +45,7 @@ static int syslog_enabled;
 static int out_json = 0;
 static int out_flame = 1;
 
-Json::FastWriter fast_writer;
+static Json::FastWriter fast_writer;
 
 void usage_perf(void)
 {
@@ -313,7 +313,7 @@ static int json_extract(void *buf, unsigned int len, void *)
 		root["tv_sec"] = Json::Value(detail->tv.tv_sec);
 		root["tv_usec"] = Json::Value(detail->tv.tv_usec);
 
-		std::cout << fast_writer.write(root);
+		std::cout << "#$" << fast_writer.write(root);
 		//json_root[std::to_string(detail->id)]["samples"].append(root);
 
 		break;

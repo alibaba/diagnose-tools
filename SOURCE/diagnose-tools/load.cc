@@ -41,6 +41,8 @@ static int out_flame = 1;
 
 static Json::Value json_root;
 
+static Json::FastWriter fast_writer;
+
 void usage_load_monitor(void)
 {
 	printf("    load-monitor usage:\n");
@@ -377,10 +379,11 @@ static int json_extract(void *buf, unsigned int len, void *)
 		root["load_d_15"] = Json::Value(ss.str());
 
 		root["id"] = Json::Value(detail->id);
+		root["type"] = "summary";
 		root["tv_sec"] = Json::Value(detail->tv.tv_sec);
 		root["tv_usec"] = Json::Value(detail->tv.tv_usec);
 
-		json_root[std::to_string(detail->id)]["summary"] = root;
+		std::cout << "#$" << fast_writer.write(root);
 		break;
 	case et_load_monitor_task:
 		if (len < sizeof(struct load_monitor_task))
@@ -388,13 +391,14 @@ static int json_extract(void *buf, unsigned int len, void *)
 		tsk_info = (struct load_monitor_task *)buf;
 
 		tsk["id"] = Json::Value(tsk_info->id);
+		tsk["type"] = "task";
 		tsk["tv_sec"] = Json::Value(tsk_info->tv.tv_sec);
 		tsk["tv_usec"] = Json::Value(tsk_info->tv.tv_usec);
 		diag_sls_task(&tsk_info->task, tsk);
 		diag_sls_kern_stack(&tsk_info->kern_stack, tsk);
 		diag_sls_proc_chains(&tsk_info->proc_chains, tsk);
 
-		json_root[std::to_string(tsk_info->id)]["tasks"].append(tsk);
+		std::cout << "#$" << fast_writer.write(tsk);
 		break;
 	default:
 		break;
