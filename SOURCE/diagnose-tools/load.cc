@@ -48,6 +48,7 @@ void usage_load_monitor(void)
 	printf("        --activate\n");
 	printf("            verbose VERBOSE\n");
 	printf("            style dump style: 0 - common, 1 - process chains\n");
+	printf("            mass dump all data if mass=1\n");
 	printf("            load threshold for load(ms)\n");
 	printf("            load.r threshold for load.r(ms)\n");
 	printf("            load.d threshold for load.d(ms)\n");
@@ -72,6 +73,7 @@ static void do_activate(const char *arg)
 	settings.threshold_task_d = parse.int_value("task-d");
 	settings.verbose = parse.int_value("verbose");
 	settings.style = parse.int_value("style");
+	settings.mass = parse.int_value("mass");
 
 	if (run_in_host) {
 		ret = diag_call_ioctl(DIAG_IOCTL_LOAD_MONITOR_SET, (long)&settings);
@@ -87,6 +89,7 @@ static void do_activate(const char *arg)
 	printf("    Task.D：\t%d\n", settings.threshold_task_d);
 	printf("    输出级别：\t%d\n", settings.verbose);
 	printf("    STYLE：\t%d\n", settings.style);
+	printf("    MASS:\t%d\n", settings.mass);
 	if (ret)
 		return;
 
@@ -137,6 +140,7 @@ static void do_settings(const char *arg)
 			printf("    Task.D：\t%d\n", settings.threshold_task_d);
 			printf("    输出级别：\t%d\n", settings.verbose);
 			printf("    STYLE：\t%d\n", settings.style);
+			printf("    MASS:\t%d\n", settings.mass);
 		}
 		else
 		{
@@ -418,13 +422,13 @@ static void do_extract(char *buf, int len)
 
 static void do_dump(const char *arg)
 {
-	static char variant_buf[1024 * 1024];
+	static char variant_buf[50 * 1024 * 1024];
 	struct params_parser parse(arg);
 	int len;
 	int ret = 0;
 	struct diag_ioctl_dump_param dump_param = {
 		.user_ptr_len = &len,
-		.user_buf_len = 1024 * 1024,
+		.user_buf_len = 50 * 1024 * 1024,
 		.user_buf = variant_buf,
 	};
 
@@ -436,7 +440,7 @@ static void do_dump(const char *arg)
 		ret = diag_call_ioctl(DIAG_IOCTL_LOAD_MONITOR_DUMP, (long)&dump_param);
 	} else {
 		ret = -ENOSYS;
-		syscall(DIAG_LOAD_MONITOR_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+		syscall(DIAG_LOAD_MONITOR_DUMP, &ret, &len, variant_buf, 50 * 1024 * 1024);
 	}
 
 	if (ret == 0) {
@@ -447,11 +451,11 @@ static void do_dump(const char *arg)
 static void do_sls(char *arg)
 {
 	int ret;
-	static char variant_buf[1024 * 1024];
+	static char variant_buf[50 * 1024 * 1024];
 	int len;
 	struct diag_ioctl_dump_param dump_param = {
 		.user_ptr_len = &len,
-		.user_buf_len = 1024 * 1024,
+		.user_buf_len = 50 * 1024 * 1024,
 		.user_buf = variant_buf,
 	};
 
@@ -464,7 +468,7 @@ static void do_sls(char *arg)
 			ret = diag_call_ioctl(DIAG_IOCTL_LOAD_MONITOR_DUMP, (long)&dump_param);
 		} else {
 			ret = -ENOSYS;
-			syscall(DIAG_LOAD_MONITOR_DUMP, &ret, &len, variant_buf, 1024 * 1024);
+			syscall(DIAG_LOAD_MONITOR_DUMP, &ret, &len, variant_buf, 50 * 1024 * 1024);
 		}
 
 		if (ret == 0) {

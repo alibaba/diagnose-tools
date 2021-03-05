@@ -25,8 +25,7 @@ declare -a __all_case=(["1"]="sys-delay" ["2"]="sys-cost" ["3"]="sched-delay" \
 			["18"]="drop-packet" ["19"]="tcp-retrans" ["20"]="ping-delay" \
 			["21"]="rw-top" ["22"]="fs-shm" ["23"]="fs-orphan" \
 			["24"]="fs-cache" ["25"]="task-info" ["26"]="reboot" \
-			["27"]="net-bandwidth" ["28"]="sig-info" ["29"]="task-monitor" \
-			["100"]="cpu-loop" ["999"]="kern-demo" )
+			["27"]="net-bandwidth" ["28"]="sig-info" ["999"]="kern-demo" )
 
 sys_delay() {
 	eval "$DIAG_CMD sys-delay --deactivate --activate='style=0' --test --report --deactivate --settings" > sys-delay.log
@@ -71,8 +70,12 @@ irq_trace() {
 
 load_monitor() {
 	eval "$DIAG_CMD load-monitor --deactivate --activate='style=1 load=1' --settings"
-	sleep 2
+	sleep 1
 	eval "$DIAG_CMD load-monitor --report --deactivate" > load-monitor.log
+	eval "$DIAG_CMD load-monitor --deactivate --activate='style=1 load=1 mass=1' --settings"
+	sleep 5
+	eval "$DIAG_CMD load-monitor --report --deactivate" > load-monitor.log
+
 	eval "$DIAG_CMD flame --input=load-monitor.log --output=load-monitor.svg"
 	echo "火焰图位于load-monitor.svg"
 

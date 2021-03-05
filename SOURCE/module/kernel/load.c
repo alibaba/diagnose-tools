@@ -128,7 +128,7 @@ void diag_load_timer(struct diag_percpu_context *context)
 		unsigned long event_id;
 
 		ms = ktime_to_ms(ktime_sub(ktime_get(), last_dump));
-		if (ms < 10 * 1000)
+		if (!load_monitor_settings.mass && ms < 10 * 1000)
 			return;
 
 		last_dump = ktime_get();
@@ -391,7 +391,7 @@ int diag_load_init(void)
 	LOOKUP_SYMS_NORET(avenrun);
 
 	init_mm_tree(&mm_tree);
-	init_diag_variant_buffer(&load_monitor_variant_buffer, 1 * 1024 * 1024);
+	init_diag_variant_buffer(&load_monitor_variant_buffer, 50 * 1024 * 1024);
 	if (load_monitor_settings.activated)
 		load_monitor_settings.activated = __activate_load_monitor();
 

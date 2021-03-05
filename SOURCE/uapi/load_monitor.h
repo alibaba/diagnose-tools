@@ -26,6 +26,7 @@ struct diag_load_monitor_settings {
 	unsigned int activated;
 	unsigned int verbose;
 	unsigned int style;
+	unsigned int mass;
 	unsigned int threshold_load;
 	unsigned int threshold_load_r;
 	unsigned int threshold_load_d;
