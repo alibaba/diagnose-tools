@@ -566,6 +566,7 @@ void diag_task_brief(struct task_struct *tsk, struct diag_task_detail *detail)
 	diag_cgroup_name(tsk, detail->cgroup_cpuset, CGROUP_NAME_LEN, 1);
 
 	detail->cgroup_buf[CGROUP_NAME_LEN - 1] = 0;
+	detail->cgroup_cpuset[CGROUP_NAME_LEN - 1] = 0;
 }
 
 void printk_task_brief(struct diag_task_detail *detail)
