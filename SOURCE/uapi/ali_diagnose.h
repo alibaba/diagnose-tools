@@ -53,7 +53,7 @@ extern unsigned long debug_mode;
 #endif
 
 #define XBY_VERSION					"diagnose-tools 2.1-release"
-#define DIAG_VERSION		((2 << 24) | (1 << 16) | 0xfffd)
+#define DIAG_VERSION		((2 << 24) | (1 << 16) | 0xfffc)
 
 #define DIAG_DEV_NAME "diagnose-tools"
 
