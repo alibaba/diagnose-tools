@@ -335,6 +335,9 @@ static void inspect_packet(const struct sk_buff *skb, const struct iphdr *iphdr,
 
 	if (step >= PD_TRACK_COUNT)
 		return;
+	if (skb->len < sizeof(struct iphdr) || !iphdr
+        || iphdr->ihl * 4 < sizeof(struct iphdr))
+		return;
 
 	if (iphdr->protocol == IPPROTO_ICMP) {
 
