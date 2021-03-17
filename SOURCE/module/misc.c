@@ -261,7 +261,7 @@ void trace_file_nolock_cgroups(int pre, struct diag_trace_file *file)
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(3,12,0)
 static inline int orig_diag_cgroup_name(struct cgroup *cgrp, char *buf, size_t buflen)
 {
-	if (orig_kernfs_name) {
+	if (orig_kernfs_name && cgrp && cgrp->kn) {
 		return orig_kernfs_name(cgrp->kn, buf, buflen);
 	} else {
 		return 0;
@@ -531,15 +531,26 @@ void diag_task_brief(struct task_struct *tsk, struct diag_task_detail *detail)
 {
 	struct pid_namespace *ns;
 	struct pt_regs *regs;
+	struct task_struct *leader;
 	
-	if (detail)
-		memset(detail, 0, sizeof(struct diag_task_detail));
-	if (!detail || !tsk)
+	if (!detail)
 		return;
 
-	regs = task_pt_regs(tsk);
-	if (regs)
+	memset(detail, 0, sizeof(struct diag_task_detail));
+
+	if (!tsk || tsk->exit_state == EXIT_ZOMBIE)
+		return;
+	leader = tsk->group_leader;
+	if (!leader || leader->exit_state == EXIT_ZOMBIE) {
+		return;
+	}
+
+	if (tsk != current || !tsk->mm) {
+		detail->syscallno = -1;
+	} else {
+		regs = task_pt_regs(tsk);
 		detail->syscallno = syscall_get_nr(tsk, regs);
+	}
 
 	if (tsk->sched_class == orig_idle_sched_class)
 		detail->sys_task = 2;
