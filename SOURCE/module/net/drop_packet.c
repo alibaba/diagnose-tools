@@ -244,13 +244,15 @@ __maybe_unused static struct conn_info *find_alloc_desc(int direct,
 	return info;
 }
 
-static void inspect_packet(const struct sk_buff *skb, const struct iphdr *iphdr, enum packet_step step)
+static noinline void inspect_packet(const struct sk_buff *skb, const struct iphdr *iphdr, enum packet_step step)
 {
 	int source = 0;
 	int dest = 0;
 	struct conn_info *conn_info;
 
 	if (step >= TRACK_COUNT)
+		return;
+	if (!virt_addr_valid(iphdr))
 		return;
 	if (skb->len < sizeof(struct iphdr) || !iphdr
         || iphdr->ihl * 4 < sizeof(struct iphdr))

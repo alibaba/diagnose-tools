@@ -326,7 +326,7 @@ __maybe_unused static struct skb_info *find_alloc_desc(const struct sk_buff *skb
 	return info;
 }
 
-static void inspect_packet(const struct sk_buff *skb, const struct iphdr *iphdr, enum ping_delay_packet_step step)
+static noinline void inspect_packet(const struct sk_buff *skb, const struct iphdr *iphdr, enum ping_delay_packet_step step)
 {
 	int source = 0;
 	int dest = 0;
@@ -334,6 +334,8 @@ static void inspect_packet(const struct sk_buff *skb, const struct iphdr *iphdr,
 	struct icmphdr *icmph = NULL;
 
 	if (step >= PD_TRACK_COUNT)
+		return;
+	if (!virt_addr_valid(iphdr))
 		return;
 	if (skb->len < sizeof(struct iphdr) || !iphdr
         || iphdr->ihl * 4 < sizeof(struct iphdr))
