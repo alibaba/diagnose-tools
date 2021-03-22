@@ -1137,10 +1137,10 @@ int new_ip_send_skb(struct sk_buff *skb)
 }
 
 #if KERNEL_VERSION(3, 10, 0) <= LINUX_VERSION_CODE
-static void trace_net_dev_xmit_hit(void *ignore, struct sk_buff *skb,
+__maybe_unused static void trace_net_dev_xmit_hit(void *ignore, struct sk_buff *skb,
 								   int rc, struct net_device *dev, unsigned int skb_len)
 #else
-static void trace_net_dev_xmit_hit(struct sk_buff *skb,
+__maybe_unused static void trace_net_dev_xmit_hit(struct sk_buff *skb,
 								   int rc, struct net_device *dev, unsigned int skb_len)
 #endif
 {
@@ -1157,6 +1157,19 @@ static void trace_net_dev_xmit_hit(struct sk_buff *skb,
 		inspect_packet(skb, iphdr, SEND_SKB);
 	}
 }
+
+#if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
+__maybe_unused static void trace_net_dev_start_xmit_hit(void *ignore, struct sk_buff *skb, struct net_device *dev)
+{
+	struct iphdr *iphdr;
+
+	if (!drop_packet_settings.activated)
+		return;
+
+	iphdr = ip_hdr(skb);
+	inspect_packet(skb, iphdr, SEND_SKB);
+}
+#endif
 
 static int kprobe_eth_type_trans_pre(struct kprobe *p, struct pt_regs *regs)
 {
@@ -1703,7 +1716,11 @@ int __activate_drop_packet(void)
 
 	clean_data();
 
+#if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
+	hook_tracepoint("net_dev_start_xmit", trace_net_dev_start_xmit_hit, NULL);
+#else
 	hook_tracepoint("net_dev_xmit", trace_net_dev_xmit_hit, NULL);
+#endif
 
 	hook_kprobe(&kprobe_dev_queue_xmit, "dev_queue_xmit",
 				kprobe_dev_queue_xmit_pre, NULL);
@@ -1745,7 +1762,11 @@ out_variant_buffer:
 
 void __deactivate_drop_packet(void)
 {
+#if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
+	unhook_tracepoint("net_dev_start_xmit", trace_net_dev_start_xmit_hit, NULL);
+#else
 	unhook_tracepoint("net_dev_xmit", trace_net_dev_xmit_hit, NULL);
+#endif
 
 	unhook_kprobe(&kprobe_dev_queue_xmit);
 	unhook_kprobe(&kprobe_eth_type_trans);

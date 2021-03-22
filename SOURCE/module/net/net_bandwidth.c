@@ -226,10 +226,10 @@ static noinline void inspect_packet(const struct sk_buff *skb, const struct iphd
 }
 
 #if KERNEL_VERSION(3, 10, 0) <= LINUX_VERSION_CODE
-static void trace_net_dev_xmit_hit(void *ignore, struct sk_buff *skb,
+__maybe_unused static void trace_net_dev_xmit_hit(void *ignore, struct sk_buff *skb,
 								   int rc, struct net_device *dev, unsigned int skb_len)
 #else
-static void trace_net_dev_xmit_hit(struct sk_buff *skb,
+__maybe_unused static void trace_net_dev_xmit_hit(struct sk_buff *skb,
 								   int rc, struct net_device *dev, unsigned int skb_len)
 #endif
 {
@@ -246,6 +246,19 @@ static void trace_net_dev_xmit_hit(struct sk_buff *skb,
 		inspect_packet(skb, iphdr, NET_SEND_SKB);
 	}
 }
+
+#if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
+__maybe_unused static void trace_net_dev_start_xmit_hit(void *ignore, struct sk_buff *skb, struct net_device *dev)
+{
+	struct iphdr *iphdr;
+
+	if (!net_bandwidth_settings.activated)
+		return;
+
+	iphdr = ip_hdr(skb);
+	inspect_packet(skb, iphdr, NET_SEND_SKB);
+}
+#endif
 
 static int kprobe___netif_receive_skb_core_pre(struct kprobe *p, struct pt_regs *regs)
 {
@@ -275,7 +288,11 @@ int __activate_net_bandwidth(void)
 
 	clean_data();
 
+#if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
+	hook_tracepoint("net_dev_start_xmit", trace_net_dev_start_xmit_hit, NULL);
+#else
 	hook_tracepoint("net_dev_xmit", trace_net_dev_xmit_hit, NULL);
+#endif
 
 	hook_kprobe(&kprobe___netif_receive_skb_core, "__netif_receive_skb_core",
 				kprobe___netif_receive_skb_core_pre, NULL);
@@ -292,7 +309,11 @@ out_variant_buffer:
 
 void __deactivate_net_bandwidth(void)
 {
+#if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
+	unhook_tracepoint("net_dev_start_xmit", trace_net_dev_start_xmit_hit, NULL);
+#else
 	unhook_tracepoint("net_dev_xmit", trace_net_dev_xmit_hit, NULL);
+#endif
 
 	unhook_kprobe(&kprobe___netif_receive_skb_core);
 
