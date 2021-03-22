@@ -216,14 +216,17 @@ ifneq ($(KERNELRELEASE),)
 		$(TARGET)-objs += fs/cache.o
 	endif
 else
+    DIAG_STRIP := 1
     include ${shell pwd}/../../vender/module.mk
     ifeq ($(KERNEL_BUILD_PATH),)
         KERNEL_BUILD_PATH=/lib/modules/$(shell uname -r)/build
     endif
     MOD_PATH := $(shell pwd)
     default:
-	    $(MAKE) CFLAGS_MODULE="$(DIAG_EXTRA_CFLAGS)" -C $(KERNEL_BUILD_PATH) M=$(MOD_PATH) modules
+	$(MAKE) CFLAGS_MODULE="$(DIAG_EXTRA_CFLAGS)" -C $(KERNEL_BUILD_PATH) M=$(MOD_PATH) modules
+        ifeq ($(DIAG_STRIP),1)
 	    strip --strip-debug diagnose.ko
+        endif
 
     clean:
 	    rm -rf *.o *.mod.c *.mod.o *.ko* Module.symvers modules.order .*.cmd
