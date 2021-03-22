@@ -225,8 +225,13 @@ static noinline void inspect_packet(const struct sk_buff *skb, const struct iphd
 	atomic64_add(skb->truesize, &conn_info->sum_truesize[step]);
 }
 
+#if KERNEL_VERSION(3, 10, 0) <= LINUX_VERSION_CODE
 static void trace_net_dev_xmit_hit(void *ignore, struct sk_buff *skb,
 								   int rc, struct net_device *dev, unsigned int skb_len)
+#else
+static void trace_net_dev_xmit_hit(struct sk_buff *skb,
+								   int rc, struct net_device *dev, unsigned int skb_len)
+#endif
 {
 	struct iphdr *iphdr;
 

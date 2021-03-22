@@ -1135,8 +1135,14 @@ int new_ip_send_skb(struct sk_buff *skb)
 
 	return ret;
 }
+
+#if KERNEL_VERSION(3, 10, 0) <= LINUX_VERSION_CODE
 static void trace_net_dev_xmit_hit(void *ignore, struct sk_buff *skb,
 								   int rc, struct net_device *dev, unsigned int skb_len)
+#else
+static void trace_net_dev_xmit_hit(struct sk_buff *skb,
+								   int rc, struct net_device *dev, unsigned int skb_len)
+#endif
 {
 	struct iphdr *iphdr;
 
