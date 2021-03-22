@@ -252,8 +252,6 @@ static noinline void inspect_packet(const struct sk_buff *skb, const struct iphd
 
 	if (step >= TRACK_COUNT)
 		return;
-	if (!virt_addr_valid(iphdr))
-		return;
 	if (skb->len < sizeof(struct iphdr) || !iphdr
         || iphdr->ihl * 4 < sizeof(struct iphdr))
 		return;
@@ -1149,7 +1147,9 @@ static void trace_net_dev_xmit_hit(void *ignore, struct sk_buff *skb,
 		return;
 
 	iphdr = ip_hdr(skb);
-	inspect_packet(skb, iphdr, SEND_SKB);
+	if (virt_addr_valid(iphdr)) {
+		inspect_packet(skb, iphdr, SEND_SKB);
+	}
 }
 
 static int kprobe_eth_type_trans_pre(struct kprobe *p, struct pt_regs *regs)
