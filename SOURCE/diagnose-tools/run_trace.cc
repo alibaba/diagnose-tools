@@ -55,6 +55,10 @@ void usage_run_trace(void)
 	printf("        --test testcase for run-trace.\n");
 	printf("        --set-syscall PID SYSCALL THRESHOLD monitor special syscall\n");
 	printf("        --clear-syscall PID do not monitor syscall\n");
+	printf("        --flame Create Flame Graph by specified log file or filelist\n");
+	printf("	       	in set the log file to create Flame Graph \n");
+	printf("	       	inlist set the filelist to create Flame Graph \n");
+	printf("	       	console read filelist from the console to create Flame Graph \n");
 	printf("        --uprobe set uprobe to start/stop trace\n");
 }
 
@@ -1182,6 +1186,48 @@ static void do_test(void)
 	}
 }
 
+void do_flame(const char *args) {
+	int console=0;
+	string in_file;
+        string inlist_file;
+        string line = "";
+        string input_line;
+        struct params_parser parse(args);
+
+	console = parse.int_value("console");
+        in_file = parse.string_value("in");
+        inlist_file = parse.string_value("inlist");
+
+	char get_flame_cmd[1024];
+	if (console) {
+                 while (cin) {
+                         getline(cin, input_line);
+                         if (!cin.eof()) {
+				sprintf(get_flame_cmd, "cat %s | awk \'{if (substr($1,1,2) == \"**\") {print substr($0, 3)}}\' " \
+              				 "| /usr/diagnose-tools/flame-graph/flamegraph.pl > %s.svg", input_line.c_str(), input_line.c_str());
+        			system(get_flame_cmd);
+                         }
+                }
+         } else if (in_file.length() > 0) {
+		 sprintf(get_flame_cmd, "cat %s | awk \'{if (substr($1,1,2) == \"**\") {print substr($0, 3)}}\' " \
+                                         "| /usr/diagnose-tools/flame-graph/flamegraph.pl > %s.svg", in_file.c_str(), in_file.c_str());
+                 system(get_flame_cmd);
+	 } else if (inlist_file.length() > 0) {
+		ifstream in(inlist_file);
+                if (in) {
+                        while (getline(in, line)) {
+				if (line.c_str()) {
+					sprintf(get_flame_cmd, "cat %s | awk \'{if (substr($1,1,2) == \"**\") {print substr($0, 3)}}\' " \
+							 "| /usr/diagnose-tools/flame-graph/flamegraph.pl > %s.svg", line.c_str(), line.c_str());
+					system(get_flame_cmd);
+					
+				}
+			}
+		in.close();	
+                }
+	 } 
+}
+
 int run_trace_main(int argc, char **argv)
 {
 	static struct option long_options[] = {
@@ -1195,6 +1241,7 @@ int run_trace_main(int argc, char **argv)
 			{"set-syscall",     required_argument, 0,  0 },
 			{"clear-syscall",     required_argument, 0,  0 },
 			{"uprobe",     required_argument, 0,  0 },
+			{"flame",     required_argument, 0,  0 },
 			{0,         0,                 0,  0 }
 		};
 	int c;
@@ -1214,7 +1261,7 @@ int run_trace_main(int argc, char **argv)
 		case 0:
 			usage_run_trace();
 			break;
-	  case 1:
+	  	case 1:
 			do_activate(optarg ? optarg : "");
 			break;
 		case 2:
@@ -1241,6 +1288,9 @@ int run_trace_main(int argc, char **argv)
 		case 9:
 			do_uprobe(optarg);
 			break;
+		case 10:
+			do_flame(optarg);
+			break;
 		default:
 			usage_run_trace();
 			break;
@@ -1249,4 +1299,3 @@ int run_trace_main(int argc, char **argv)
 
 	return 0;
 }
-
