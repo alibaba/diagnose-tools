@@ -687,6 +687,10 @@ void diag_task_user_stack(struct task_struct *tsk, struct diag_user_stack_detail
 	unsigned long sp, ip, bp;
 	struct task_struct *leader;
 
+	if (!detail)
+		return;
+	
+	detail->stack[0] = 0;
 	if (!tsk || !tsk->mm)
 		return;
 
