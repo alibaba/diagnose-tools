@@ -355,6 +355,7 @@ static void do_dump(const char *arg)
 	string inlist_file;
 	string line = "";
 	string input_line;
+	int java_only = 0;
 
 	report_reverse = parse.int_value("reverse");
 	console = parse.int_value("console");
@@ -363,6 +364,8 @@ static void do_dump(const char *arg)
 	inlist_file = parse.string_value("inlist");
 	out_json = parse.int_value("json", 0);
 	out_flame = parse.int_value("flame", 1);
+	java_only = parse.int_value("java-only", 0);
+	g_symbol_parser.java_only = java_only;
 
 	memset(variant_buf, 0, 50 * 1024 * 1024);
 	if (console) {

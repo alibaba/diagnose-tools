@@ -319,6 +319,12 @@ bool symbol_parser::putin_symbol_cache(int tgid, unsigned long addr, std::string
 bool symbol_parser::get_symbol_info(int pid, symbol &sym, elf_file &file)
 {
     std::map<int, proc_vma>::iterator proc_vma_info;
+
+    if (java_only) {
+        file.type = UNKNOWN;
+        return true;
+    }
+
     proc_vma_info = machine_vma.find(pid);
     if (proc_vma_info == machine_vma.end()) {
         if (!load_pid_maps(pid)) {
@@ -350,6 +356,10 @@ bool symbol_parser::get_symbol_info(int pid, symbol &sym, elf_file &file)
 
 bool symbol_parser::find_elf_symbol(symbol &sym, const elf_file &file, int pid, int pid_ns)
 {
+    if (java_only) {
+        return find_java_symbol(sym, pid, pid_ns);
+    }
+
     if (file.type == JIT_TYPE) {
         return find_java_symbol(sym, pid, pid_ns);
     }
