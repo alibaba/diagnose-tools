@@ -51,7 +51,7 @@
 	&& !defined(UBUNTU_1604)
 
 #if  defined(CENTOS_8U)
-#define diag_last_queued rh_reserved3
+#define diag_last_queued rh_reserved2
 #else
 #if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
 #define diag_last_queued ali_reserved3
