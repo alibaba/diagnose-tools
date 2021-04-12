@@ -513,37 +513,31 @@ static void show_netlinks(void)
 #endif
 
 #if defined(EXPERIENTIAL) && !defined(XBY_UBUNTU_1604)
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 18, 0)
-__maybe_unused static void test_timer_handler(unsigned long data)
+static unsigned long test_hrtimer_ms;
+__maybe_unused static enum hrtimer_restart test_hrtimer_handler(struct hrtimer *hrtimer)
 {
-	unsigned long ms = data;
+	enum hrtimer_restart ret = HRTIMER_NORESTART;
+	unsigned long ms = test_hrtimer_ms;
 
 	if (ms >=1000)
 		ms = 1000;
 	mdelay(ms);
-}
-#else
-__maybe_unused static void test_timer_handler(struct timer_list *data)
-{
-	unsigned long ms = data->data;
 
-	if (ms >=1000)
-		ms = 1000;
-	mdelay(ms);
+	return ret;
 }
-#endif
 
 static void test_raise_timer(void *info)
 {
-	static struct timer_list timer;
+	static struct hrtimer  timer[255];
 	unsigned long ms = *(int *)info;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
-	timer_setup(&timer, test_timer_handler, ms);
-#else
-	setup_timer(&timer, test_timer_handler, ms);
-#endif
-	mod_timer(&timer, jiffies);
+	test_hrtimer_ms = ms;
+	hrtimer_init(&timer[smp_processor_id()], CLOCK_MONOTONIC, HRTIMER_MODE_PINNED);
+	timer[smp_processor_id()].function = test_hrtimer_handler;
+	hrtimer_start_range_ns(&timer[smp_processor_id()],
+			__ms_to_ktime(0),
+			0,
+			HRTIMER_MODE_REL_PINNED /*HRTIMER_MODE_PINNED*/);
 }
 
 static void test_irq_loop(char *cpus, int ms)
