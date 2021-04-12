@@ -539,9 +539,9 @@ static void test_raise_timer(void *info)
 	unsigned long ms = *(int *)info;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
-	timer_setup(&timer, timer_handler, ms);
+	timer_setup(&timer, test_timer_handler, ms);
 #else
-	setup_timer(&timer, timer_handler, ms);
+	setup_timer(&timer, test_timer_handler, ms);
 #endif
 	mod_timer(&timer, jiffies);
 }
