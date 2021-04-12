@@ -16,7 +16,7 @@ ifneq ($(findstring Ubuntu,$(UNAME_A) $(shell test -e /etc/os-release && head -1
 	cd rpmbuild; sudo dpkg -i diagnose-tools*.deb
 else
 	yum remove -y diagnose-tools
-	yum install -y rpmbuild/RPMS/x86_64/diagnose-tools-*.rpm
+	yum localinstall -y rpmbuild/RPMS/x86_64/diagnose-tools-*.rpm
 	diagnose-tools -v
 endif
 
