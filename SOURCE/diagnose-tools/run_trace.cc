@@ -70,7 +70,7 @@ static void do_activate(const char *arg)
 	struct diag_run_trace_settings settings;
 
 	memset(&settings, 0, sizeof(struct diag_run_trace_settings));
-	
+
 	threshold = parse.int_value("threshold");
 	if (threshold)
 		settings.threshold_us = threshold * 1000;
@@ -112,7 +112,7 @@ static void do_activate(const char *arg)
 static void do_deactivate(void)
 {
 	int ret = 0;
-	
+
 	ret = diag_deactivate("run-trace");
 	if (ret == 0) {
 		printf("run-trace is not activated\n");
@@ -178,7 +178,7 @@ static void do_settings(const char *arg)
 	}
 
 }
-	
+
 static void do_monitor_syscall(char *arg)
 {
 	int ret;
@@ -280,7 +280,7 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 
 		if (len < sizeof(struct event_start))
 			break;
-		
+
 		printf("开始跟踪：PID：%d[%lu:%lu]\n", event->header.task.pid,
 				event->header.tv.tv_sec, event->header.tv.tv_usec);
 		ss.str("");
@@ -291,7 +291,7 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 			ss << " " << ";";
 		}
 		ss << " " << "1000000" << endl;
-		
+
 		break;
 	}
 	case et_sched_in:
@@ -344,7 +344,7 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 	case et_sched_wakeup:
 	{
 		struct event_sched_wakeup *event = (struct event_sched_wakeup *)buf;
-		
+
 		if (len < sizeof(struct event_sched_wakeup))
 			break;
 
@@ -372,7 +372,7 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 	case et_sys_enter_raw:
 	{
 		struct event_sys_enter_raw *event = (struct event_sys_enter_raw *)buf;
-		
+
 		static unsigned long raw_stack[BACKTRACE_DEPTH];
 		memset(raw_stack, 0, sizeof(raw_stack));
 
@@ -383,32 +383,32 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 			event->header.task.pid,
 			event->syscall_id,
 			event->header.delta_ns);
-		
+
 		diag_printf_raw_stack(run_in_host ? event->header.task.tgid : event->header.task.container_tgid,
 				event->header.task.container_tgid,
 				event->header.task.comm,
 				&event->raw_stack);
 
 		ss << "**" << "step " << setw(4) << setfill('0') << event->header.seq << "：用户态运行，进入系统调用" << ";";
-		
+
 		diag_unwind_raw_stack(run_in_host ?  event->header.task.tgid : event->header.task.container_tgid,
                                 event->header.task.container_tgid,
 				&event->raw_stack,
 				raw_stack );
-		
+
 		for (i = 0; i < BACKTRACE_DEPTH; i++) {
 			if (raw_stack[i] == (size_t)-1 || raw_stack[i] == 0) {
 				break;
 			}
 			sym.reset(raw_stack[i]);
 			init_java_env("/tmp/libperfmap.so",
-				event->header.task.tgid,
+				run_in_host ? event->header.task.tgid : event->header.task.container_tgid,
 				event->header.task.container_tgid,
 				event->header.task.comm,
 				g_symbol_parser.get_java_procs());
-					
-			if (g_symbol_parser.get_symbol_info(event->header.task.tgid, sym, file)) {
-				if (g_symbol_parser.find_elf_symbol(sym, file, event->header.task.tgid, event->header.task.container_tgid)) {
+
+			if (g_symbol_parser.get_symbol_info(run_in_host ? event->header.task.tgid : event->header.task.container_tgid, sym, file)) {
+				if (g_symbol_parser.find_elf_symbol(sym, file, run_in_host ? event->header.task.tgid : event->header.task.container_tgid, event->header.task.container_tgid)) {
 					ss << sym.name.c_str() << ";";
 				} else {
 					ss << "UNKNOWN" << ";";
@@ -423,7 +423,7 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 		ss << " " << event->header.delta_ns + 500000 << endl;
 
 		break;
-	}	
+	}
 	case et_sys_enter:
 	{
 		struct event_sys_enter *event = (struct event_sys_enter *)buf;
@@ -447,13 +447,13 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 			}
 			sym.reset(event->user_stack.stack[i]);
 			init_java_env("/tmp/libperfmap.so",
-				event->header.task.tgid,
+				run_in_host ? event->header.task.tgid : event->header.task.container_tgid,
 				event->header.task.container_tgid,
 				event->header.task.comm,
 				g_symbol_parser.get_java_procs());
-					
-			if (g_symbol_parser.get_symbol_info(event->header.task.tgid, sym, file)) {
-				if (g_symbol_parser.find_elf_symbol(sym, file, event->header.task.tgid, event->header.task.container_tgid)) {
+
+			if (g_symbol_parser.get_symbol_info(run_in_host ? event->header.task.tgid : event->header.task.container_tgid, sym, file)) {
+				if (g_symbol_parser.find_elf_symbol(sym, file, run_in_host ? event->header.task.tgid : event->header.task.container_tgid, event->header.task.container_tgid)) {
 					ss << sym.name.c_str() << ";";
 				} else {
 					ss << "UNKNOWN" << ";";
@@ -472,7 +472,7 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 	case et_sys_exit:
 	{
 		struct event_sys_exit *event = (struct event_sys_exit *)buf;
-		
+
 		if (len < sizeof(struct event_sys_exit))
 			break;
 
@@ -494,7 +494,7 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 
 		if (len < sizeof(struct event_irq_handler_entry))
 			break;
-		
+
 		printf("    事件类型：进入中断[%d]，PID：%d, 距离上次事件(ns)：%lu\n",
 			event->irq,
 			event->header.task.pid,
@@ -502,7 +502,7 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 
 		ss << "**" << "step " << setw(4) << setfill('0') << event->header.seq << "：运行，进入中断" << ";";
 		ss << " " << event->header.delta_ns << endl;
-	
+
 		break;
 	}
 	case et_irq_handler_exit:
@@ -542,7 +542,7 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 	case et_softirq_exit:
 	{
 		struct event_softirq_exit *event = (struct event_softirq_exit *)buf;
-		
+
 		if (len < sizeof(struct event_softirq_exit))
 			break;
 
@@ -559,10 +559,10 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 	case et_timer_expire_entry:
 	{
 		struct event_timer_expire_entry *event = (struct event_timer_expire_entry *)buf;
-		
+
 		if (len < sizeof(struct event_timer_expire_entry))
 			break;
-		
+
 		printf("    事件类型：进入定时器[%lx]，PID：%d, 距离上次事件(ns)：%lu\n",
 			(unsigned long)event->func,
 			event->header.task.pid,
@@ -570,7 +570,7 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 
 		ss << "**" << "step " << setw(4) << setfill('0') << event->header.seq << "：运行，进入定时器" << ";";
 		ss << " " << event->header.delta_ns << endl;
-	
+
 		break;
 	}
 	case et_timer_expire_exit:
@@ -818,7 +818,7 @@ static int sls_extract_2(void *buf, unsigned int len, void *)
 	case et_sched_wakeup:
 	{
 		struct event_sched_wakeup *event = (struct event_sched_wakeup *)buf;
-		
+
 		if (len < sizeof(struct event_sched_wakeup))
 			break;
 
@@ -856,7 +856,7 @@ static int sls_extract_2(void *buf, unsigned int len, void *)
 			event->header.task.container_tgid,
 			event->header.task.comm,
 			&event->user_stack, root);
-	
+
 		write_file(sls_file, "run-trace", &event->header.start_tv, event->header.id, event->header.seq, root);
 		write_syslog(syslog_enabled, "run-trace", &event->header.start_tv, event->header.id, event->header.seq, root);
 
@@ -865,7 +865,7 @@ static int sls_extract_2(void *buf, unsigned int len, void *)
 	case et_sys_exit:
 	{
 		struct event_sys_exit *event = (struct event_sys_exit *)buf;
-		
+
 		if (len < sizeof(struct event_sys_exit))
 			break;
 
@@ -897,7 +897,7 @@ static int sls_extract_2(void *buf, unsigned int len, void *)
 		diag_sls_time(&event->header.tv, root);
 		root["irq"] = Json::Value(event->irq);
 		root["delta_ns"] = Json::Value(event->header.delta_ns);
-	
+
 		write_file(sls_file, "run-trace", &event->header.start_tv, event->header.id, event->header.seq, root);
 		write_syslog(syslog_enabled, "run-trace", &event->header.start_tv, event->header.id, event->header.seq, root);
 
@@ -948,7 +948,7 @@ static int sls_extract_2(void *buf, unsigned int len, void *)
 	case et_softirq_exit:
 	{
 		struct event_softirq_exit *event = (struct event_softirq_exit *)buf;
-		
+
 		if (len < sizeof(struct event_softirq_exit))
 			break;
 
@@ -969,7 +969,7 @@ static int sls_extract_2(void *buf, unsigned int len, void *)
 	case et_timer_expire_entry:
 	{
 		struct event_timer_expire_entry *event = (struct event_timer_expire_entry *)buf;
-		
+
 		if (len < sizeof(struct event_timer_expire_entry))
 			break;
 
@@ -1220,12 +1220,12 @@ void do_flame(const char *args) {
 					sprintf(get_flame_cmd, "cat %s | awk \'{if (substr($1,1,2) == \"**\") {print substr($0, 3)}}\' " \
 							 "| /usr/diagnose-tools/flame-graph/flamegraph.pl > %s.svg", line.c_str(), line.c_str());
 					system(get_flame_cmd);
-					
+
 				}
 			}
-		in.close();	
+		in.close();
                 }
-	 } 
+	 }
 }
 
 int run_trace_main(int argc, char **argv)
