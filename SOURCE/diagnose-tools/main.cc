@@ -46,7 +46,7 @@ unsigned long vmsize_limit = 1;
 
 static int report_version(int argc, char **argv)
 {
-	printf("diagnose-tools tools version 2.1-release\n");
+	printf(XBY_VERSION);
 	exit(0);
 
 	return 0;
@@ -402,10 +402,10 @@ static int check_in_host(void)
 
 	if (is_pid_1_has_environ("container"))
 		r = RUN_IN_CONTAINER;
-	else 
+	else
 		r = detect_container_by_pid_2();
 	if (debug_mode) {
-		printf("diagnose-tool is running in %s\n", r == RUN_IN_HOST ? 
+		printf("diagnose-tool is running in %s\n", r == RUN_IN_HOST ?
 				"HOST" : "CONTAINER");
 	}
 
