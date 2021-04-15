@@ -48,7 +48,7 @@
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32) && \
 	LINUX_VERSION_CODE <= KERNEL_VERSION(4, 20, 0) \
-	&& !defined(UBUNTU_1604)
+	&& !defined(UBUNTU_1604) && !defined(ALIOS_4000_009)
 
 #if  defined(CENTOS_8U)
 #define diag_last_queued rh_reserved2
@@ -151,7 +151,7 @@ static void trace_sched_switch_hit(struct rq *rq, struct task_struct *prev,
 		diag_variant_buffer_reserve(&sched_delay_variant_buffer, sizeof(struct sched_delay_dither));
 		diag_variant_buffer_write_nolock(&sched_delay_variant_buffer, dither, sizeof(struct sched_delay_dither));
 		diag_variant_buffer_seal(&sched_delay_variant_buffer);
-		diag_variant_buffer_spin_unlock(&sched_delay_variant_buffer, flags);	
+		diag_variant_buffer_spin_unlock(&sched_delay_variant_buffer, flags);
 	}
 }
 
