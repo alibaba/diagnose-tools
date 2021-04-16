@@ -411,8 +411,7 @@ void get_java_process(NAMESPACE_MAP &ns_map, int pid, int container_pid)
         name = get_link_dir(pi->pid, PROC_NS_PID);
         ns = &ns_map[name];
         ns->proc_map[pi->addr] = *pi;
-        //ns->is_host = (name == root_ns_pid);
-        ns->is_host = run_in_host;
+        ns->is_host = (name == root_ns_pid);
         if (!ns->is_host) {
             ns->ns_fd.open_ns_fd(pi->pid);
         }
