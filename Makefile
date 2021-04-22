@@ -2,6 +2,7 @@
 CWD = $(shell pwd)
 ARCH := $(shell uname -i)
 UNAME_A := $(shell uname -a)
+DEPS := $(shell pwd)/deps/
 
 ifeq ($(JOBS),)
 	JOBS := $(shell grep -c ^processor /proc/cpuinfo 2>/dev/null)
@@ -50,10 +51,11 @@ endif
 	sh ./vender/devel.sh
 
 deps:
-	#cd SOURCE/diagnose-tools/elfutils; autoreconf -ivf; ./configure CFLAGS="-g -O2" --disable-debuginfod --enable-maintainer-mode --prefix=$(PWD)/SOURCE/diagnose-tools/deps; make install
-	#cd SOURCE/diagnose-tools/libunwind; ./autogen.sh; ./configure CFLAGS="-g -O2" --prefix=$(PWD)/SOURCE/diagnose-tools/deps; make install
-	#cd SOURCE/diagnose-tools/xz; ./autogen.sh; ./configure CFLAGS="-g -O2" --prefix=$(PWD)/SOURCE/diagnose-tools/deps; make install
-	#cd SOURCE/diagnose-tools/zlib; ./configure --prefix=$(PWD)/SOURCE/diagnose-tools/deps; make install
+	cd $(DEPS)/elfutils; autoreconf -ivf; ./configure CFLAGS="-g -O2" --disable-debuginfod --enable-maintainer-mode --prefix=${DEPS}/; make install
+	cd $(DEPS)/libunwind; ./autogen.sh; ./configure CFLAGS="-g -O2" --prefix=${DEPS}/; make install
+	cd $(DEPS)/xz; ./autogen.sh; ./configure CFLAGS="-g -O2" --prefix=${DEPS}/; make install
+	cd $(DEPS)/zlib; ./configure --prefix=${DEPS}/; make install
+
 	cd SOURCE/diagnose-tools/java_agent; make
 	sh ./vender/deps.sh
 
@@ -65,7 +67,7 @@ module:
 	/bin/cp -f SOURCE/module/diagnose.ko build/lib/`uname -r`/
 
 tools:
-	cd SOURCE/diagnose-tools; make clean; VENDER_LDFLAGS="${VENDER_LDFLAGS}" make --jobs=${JOBS}
+	cd SOURCE/diagnose-tools; make clean; VENDER_LDFLAGS="-static -lunwind-x86_64 -lunwind -lelf -llzma -lz -L${DEPS}/lib -L${DEPS}/elfutils/libdwfl/" make --jobs=${JOBS}
 
 java_agent:
 	cd SOURCE/diagnose-tools/java_agent; make --jobs=${JOBS}

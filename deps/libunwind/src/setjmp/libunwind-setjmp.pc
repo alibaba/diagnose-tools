@@ -1,4 +1,4 @@
-prefix=/home/baoyou.xie/git/ali-diagnose/deps
+prefix=/home/baoyou.xie/git/diagnose-tools/deps
 exec_prefix=${prefix}
 libdir=${exec_prefix}/lib
 includedir=${prefix}/include
