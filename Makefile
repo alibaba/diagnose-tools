@@ -50,6 +50,8 @@ else
 endif
 	sh ./vender/devel.sh
 
+#ARM静态编译参数：-static-libgcc -static-libstdc++ -L`pwd` -L/usr/lib64 -lunwind-aarch64 -lunwind -lelf -llzma -lz
+
 deps:
 	cd $(DEPS)/elfutils; autoreconf -ivf; ./configure CFLAGS="-g -O2" --disable-debuginfod --enable-maintainer-mode --prefix=${DEPS}/; make install
 	cd $(DEPS)/libunwind; ./autogen.sh; ./configure CFLAGS="-g -O2" --prefix=${DEPS}/; make install
