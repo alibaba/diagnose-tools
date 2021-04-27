@@ -759,9 +759,7 @@ static ssize_t pupil_settings_file_write(struct diag_trace_file *trace_file,
 			last = now;
 		}
 		local_irq_enable();
-	}
-#if defined(EXPERIENTIAL) && !defined(XBY_UBUNTU_1604)
-	else if (strcmp(cmd, "mdelay") == 0) {
+	} else if (strcmp(cmd, "mdelay") == 0) {
 		int i, ms;
 
 		ret = sscanf(chr, "%s %d", cmd, &ms);
@@ -771,6 +769,7 @@ static ssize_t pupil_settings_file_write(struct diag_trace_file *trace_file,
 		for (i = 0; i < ms; i++)
 			mdelay(1);
 	}
+#if defined(EXPERIENTIAL) && !defined(XBY_UBUNTU_1604)
 	else if (strcmp(cmd, "print") == 0) {
 		char sub_cmd[255];
 
@@ -969,7 +968,7 @@ static ssize_t pupil_settings_file_write(struct diag_trace_file *trace_file,
 #endif
 			} else if (strcmp(sub_cmd, "irq-loop") == 0) {
  				char cpus[255];
-				 int ms;
+				int ms;
 
 				ret = sscanf(chr, "%s %s %s %d", cmd, sub_cmd, cpus, &ms);
 				if (ret == 4) {
@@ -977,7 +976,7 @@ static ssize_t pupil_settings_file_write(struct diag_trace_file *trace_file,
 				}
 			} else if (strcmp(sub_cmd, "sirq-loop") == 0) {
  				char cpus[255];
-				 int ms;
+				int ms;
 
 				ret = sscanf(chr, "%s %s %s %d", cmd, sub_cmd, cpus, &ms);
 				if (ret == 4) {
