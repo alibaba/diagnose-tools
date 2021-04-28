@@ -44,6 +44,9 @@
 #include "pub/trace_file.h"
 #include "pub/stack.h"
 
+#include <asm/msr.h>
+#include "pub/perf_event.h"
+
 extern struct mm_struct *get_task_mm(struct task_struct *task);
 extern void mmput(struct mm_struct *);
 
@@ -793,4 +796,42 @@ void diag_task_raw_stack(struct task_struct *tsk, struct diag_raw_stack_detail *
 
 		stack += 1024;
 	}
+}
+
+static inline u64 intel_pmu_lbr_tos(void)
+{
+    u64 tos;
+
+    rdmsrl(orig_x86_pmu->lbr_tos, tos);
+
+    return tos;
+}
+
+static inline u64 rdlbr_to(unsigned int idx)
+{
+    u64 val;
+
+    rdmsrl(orig_x86_pmu->lbr_to + idx, val);
+
+    return val;
+}
+
+
+int read_lbr_current(unsigned long stack[], int count)
+{
+    u64 tos;
+    unsigned lbr_idx, mask;
+    int i;
+
+    memset(stack, 0, count * sizeof(unsigned long));
+    mask = orig_x86_pmu->lbr_nr - 1;
+    tos = intel_pmu_lbr_tos();
+    tos = (tos < count)? tos : count;
+    for (i = 0; i < tos; i++) {
+        lbr_idx = (tos - i) & mask;
+        stack[i] = rdlbr_to(lbr_idx);
+    }
+
+    return 0;
+
 }

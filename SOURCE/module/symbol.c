@@ -12,6 +12,7 @@
 #include <linux/kallsyms.h>
 
 #include "internal.h"
+#include "pub/perf_event.h"
 
 struct mutex *orig_text_mutex;
 rwlock_t *orig_tasklist_lock;
@@ -108,7 +109,7 @@ atomic64_t xby_debug_counter4;
 atomic64_t xby_debug_counter5;
 
 int *orig_kptr_restrict;
-
+struct x86_pmu *orig_x86_pmu;
 
 static int lookup_syms(void)
 {
@@ -171,6 +172,7 @@ static int lookup_syms(void)
 	LOOKUP_SYMS_NORET(css_next_descendant_pre);
 	LOOKUP_SYMS_NORET(cpuacct_subsys);
 	LOOKUP_SYMS_NORET(css_get_next);
+    LOOKUP_SYMS_NORET(x86_pmu);
 
 	return 0;
 }
