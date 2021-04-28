@@ -172,7 +172,7 @@ static int lookup_syms(void)
 	LOOKUP_SYMS_NORET(css_next_descendant_pre);
 	LOOKUP_SYMS_NORET(cpuacct_subsys);
 	LOOKUP_SYMS_NORET(css_get_next);
-    LOOKUP_SYMS_NORET(x86_pmu);
+	LOOKUP_SYMS_NORET(x86_pmu);
 
 	return 0;
 }
