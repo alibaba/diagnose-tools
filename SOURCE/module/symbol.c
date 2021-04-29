@@ -12,7 +12,10 @@
 #include <linux/kallsyms.h>
 
 #include "internal.h"
+
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 33)
 #include "pub/perf_event.h"
+#endif
 
 struct mutex *orig_text_mutex;
 rwlock_t *orig_tasklist_lock;
