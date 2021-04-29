@@ -695,6 +695,7 @@ int java_attach_once(void)
 {
     NAMESPACE_MAP ns_map;
     PROCESS_MAP root_map;
+    static int first = 1;
 
     char buf[1024] = {0};
 
@@ -710,7 +711,8 @@ int java_attach_once(void)
 
     if (linux_2_6_x) {
         get_java_process(root_map, -1);
-        attach_java_process(root_map, 1);
+        attach_java_process(root_map, !first);
+        first = 0;
     } else {
         if (cur_ns.open_ns_fd(1)) {
             chdir(buf);
@@ -719,7 +721,8 @@ int java_attach_once(void)
         }
 
         get_java_process(ns_map, -1, -1);
-        attach_java_process(ns_map, 1);
+        attach_java_process(ns_map, 0);
+        first = 0;
     }
 
     chdir(buf);
