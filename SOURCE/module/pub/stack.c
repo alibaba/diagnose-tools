@@ -801,6 +801,7 @@ void diag_task_raw_stack(struct task_struct *tsk, struct diag_raw_stack_detail *
 	}
 }
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 33)
 static inline u64 intel_pmu_lbr_tos(void)
 {
     u64 tos;
@@ -838,3 +839,4 @@ int read_lbr_current(unsigned long stack[], int count)
     return 0;
 
 }
+#endif
