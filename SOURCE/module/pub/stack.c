@@ -45,7 +45,10 @@
 #include "pub/stack.h"
 
 #include <asm/msr.h>
+
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 33)
 #include "pub/perf_event.h"
+#endif
 
 extern struct mm_struct *get_task_mm(struct task_struct *task);
 extern void mmput(struct mm_struct *);
