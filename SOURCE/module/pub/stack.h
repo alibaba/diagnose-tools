@@ -22,7 +22,6 @@ void diagnose_print_stack_trace_unfold_user(int pre, unsigned long *backtrace);
 int diagnose_stack_trace_equal(unsigned long *backtrace1, unsigned long *backtrace2);
 int diagnose_stack_trace_cmp(unsigned long *backtrace1, unsigned long *backtrace2);
 void dump_all_task_stack(int pre);
-int read_lbr_current(unsigned long stack[], int count);
 
 #endif /* __DIAG_PUB_STACK_H */
 

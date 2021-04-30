@@ -56,7 +56,7 @@ void (*orig___do_page_fault)(struct pt_regs *regs, unsigned long error_code,
                 unsigned long address);
 #endif
 
-struct class *orig_block_class; 
+struct class *orig_block_class;
 struct device_type *orig_disk_type;
 char *(*orig_disk_name)(struct gendisk *hd, int partno, char *buf);
 struct task_struct *(*orig_find_task_by_vpid)(pid_t nr);
@@ -177,6 +177,10 @@ static int lookup_syms(void)
 	LOOKUP_SYMS_NORET(css_get_next);
 	LOOKUP_SYMS_NORET(x86_pmu);
 
+{
+	int offset = offsetof(struct x86_pmu, lbr_nr);
+	printk("xby-debug, offset is %d\n", offset);
+}
 	return 0;
 }
 
@@ -203,7 +207,7 @@ int diag_get_symbol_count(char *symbol)
 	struct diag_symbol_info info;
 
 	info.symbol = symbol;
-	info.count = 0;  
+	info.count = 0;
 	kallsyms_on_each_symbol(get_symbol_count_callback, &info);
 
 	return info.count;
