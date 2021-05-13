@@ -366,7 +366,7 @@ static void do_dump(const char *arg)
 	out_json = parse.int_value("json", 0);
 	out_flame = parse.int_value("flame", 1);
 	java_only = parse.int_value("java-only", 0);
-	user_symbol = parse.int_value("java-only", 1);
+	user_symbol = parse.int_value("user-symbol", 1);
 	g_symbol_parser.java_only = java_only;
 	g_symbol_parser.user_symbol = user_symbol;
 
