@@ -356,9 +356,6 @@ bool symbol_parser::get_symbol_info(int pid, symbol &sym, elf_file &file)
 
 bool symbol_parser::find_elf_symbol(symbol &sym, const elf_file &file, int pid, int pid_ns)
 {
-    if (user_symbol == 0) {
-        sym.name = std::to_string(sym.ip);
-    }
     if (java_only) {
         return find_java_symbol(sym, pid, pid_ns);
     }
