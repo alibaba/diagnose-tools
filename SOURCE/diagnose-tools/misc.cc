@@ -590,6 +590,13 @@ void diag_sls_user_stack(pid_t pid, pid_t ns_pid, const char *comm,
 		if (user_stack->stack[i] == (size_t)-1 || user_stack->stack[i] == 0) {
 			continue;
 		}
+
+		if (g_symbol_parser.user_symbol == 0) {
+			snprintf(buf, 255, "%lx", user_stack->stack[i]);
+			task["user_stack"].append(buf);
+			continue;
+		}
+
 		sym.reset(user_stack->stack[i]);
 		if (attach) {
 			init_java_env("/tmp/libperfmap.so", pid, ns_pid, comm, g_symbol_parser.get_java_procs());
@@ -597,6 +604,7 @@ void diag_sls_user_stack(pid_t pid, pid_t ns_pid, const char *comm,
 
 		if (g_symbol_parser.find_symbol_in_cache(pid, user_stack->stack[i], symbol)) {
 			snprintf(buf, 255, "%s", symbol.c_str());
+			task["user_stack"].append(buf);
 			continue;
 		}
 
