@@ -23,7 +23,7 @@ endif
 
 devel:
 ifneq ($(findstring Ubuntu,$(UNAME_A) $(shell test -e /etc/os-release && head -1 /etc/os-release)),)
-	apt update
+	#apt update
 	apt -y install gcc
 	apt -y install g++
 	apt -y install libunwind8-dev
