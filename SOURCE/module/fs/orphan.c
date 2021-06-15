@@ -19,7 +19,6 @@
 #include <linux/delay.h>
 
 #include "pub/fs_utils.h"
-#include "ext4.h"
 #include "internal.h"
 #include "mm_tree.h"
 
@@ -36,6 +35,8 @@
 		&& KERNEL_VERSION(4, 10, 0) > LINUX_VERSION_CODE) \
 	|| (KERNEL_VERSION(4, 19, 0) <= LINUX_VERSION_CODE\
 		&& KERNEL_VERSION(4, 20, 0) > LINUX_VERSION_CODE)
+
+#include "ext4.h"
 
 #if !defined(EXT4_SUPER_MAGIC)
 #define EXT4_SUPER_MAGIC	0xEF53

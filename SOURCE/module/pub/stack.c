@@ -71,6 +71,7 @@ static inline struct page *diag_follow_page(struct vm_area_struct *vma,
 }
 #endif
 
+#define INGORE_LBR
 #if !defined(INGORE_LBR)
 static inline u64 intel_pmu_lbr_tos(void)
 {

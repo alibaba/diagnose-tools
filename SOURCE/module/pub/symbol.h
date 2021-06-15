@@ -17,3 +17,4 @@ extern int diag_get_symbol_count(char *symbol);
 extern int diag_init_symbol(void);
 
 #endif /* __DIAG_PUB_SYMBOL_H */
+

@@ -28,7 +28,7 @@
 
 #include "internal.h"
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5,8,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,8,0) && LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0)
 int sysctl_alloc_cost[MAX_TEST_ORDER + 1];
 
 static u64 alloc_page_test(unsigned int order)

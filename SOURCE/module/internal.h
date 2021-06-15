@@ -725,14 +725,25 @@ int diag_copy_stack_frame(struct task_struct *tsk,
 #define synchronize_sched synchronize_rcu
 #endif
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 0)
+static inline void do_diag_gettimeofday(struct diag_timespec *tv)
+{
+	struct timespec ts;
+	ktime_get_real_ts(&ts);
+
+	tv->tv_sec = ts.tv_sec;
+	tv->tv_usec = ts.tv_nsec / 1000;
+}
+#else
 static inline void do_diag_gettimeofday(struct diag_timespec *tv)
 {
 	struct timespec64 ts;
 	ktime_get_real_ts64(&ts);
 
 	tv->tv_sec = ts.tv_sec;
-    tv->tv_usec = ts.tv_nsec / 1000;
+	tv->tv_usec = ts.tv_nsec / 1000;
 }
+#endif
 
 extern unsigned long diag_ignore_jump_check;
 

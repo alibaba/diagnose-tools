@@ -106,3 +106,4 @@ int diag_get_symbol_count(char *symbol)
 
 	return info.count;
 }
+
