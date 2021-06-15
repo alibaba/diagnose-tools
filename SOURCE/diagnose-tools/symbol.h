@@ -158,6 +158,7 @@ private:
     bool load_perf_map(int pid, int pid_ns);
 public:
     int java_only;
+    int user_symbol;
 };
 
 extern symbol_parser g_symbol_parser;

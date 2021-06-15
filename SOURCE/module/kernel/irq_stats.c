@@ -132,7 +132,7 @@ static void trace_irq_handler_exit_hit(void *ignore, int irq,
 			do_diag_gettimeofday(&ts);
 
 			sprintf(result->max_irq.timestamp,
-					"%llu / %llu",
+					"%lu / %lu",
 					ts.tv_sec,
 					ts.tv_usec);
 

@@ -141,7 +141,7 @@ bool symbol_parser::find_java_symbol(symbol &sym, int pid, int pid_ns)
         return search_symbol(it->second, sym);
     }
     return true;
-    
+
     //bool ret = search_symbol(syms, sym);
 #if 0
     if (!ret && !load_now) {
@@ -171,7 +171,7 @@ static bool load_kernel_symbol_list(std::vector<std::string> &sym_list)
         if ((type | 0x20) != 't') {
             continue;
         }
-        len = strlen(buf); 
+        len = strlen(buf);
         if (buf[len-1] == '\n') {
             buf[len-1] = ' ';
         }
@@ -198,7 +198,7 @@ static bool get_next_kernel_symbol(
         std::vector<std::string>::iterator cursor)
 {
     if (cursor == sym_list.end()) {
-        return false; 
+        return false;
     }
     symbol sym;
     size_t start, end;
@@ -420,7 +420,7 @@ bool symbol_parser::find_vma(pid_t pid, vma &vm)
     if (vma_iter != proc_vma_map->second.begin()) {
         --vma_iter;
     }
-    
+
     vm.start = vma_iter->second.start;
     vm.end = vma_iter->second.end;
     vm.name = vma_iter->second.name;
@@ -466,7 +466,7 @@ void symbol_parser::dump(void)
 			printf("xby-debug, file_symbols: %s, %lu\n",
 				file.filename.c_str(),
 				map.size());
-	    
+
 			count2 += map.size();
             std::set<symbol>::iterator it = map.begin();
             for(; it != map.end(); ++it) {

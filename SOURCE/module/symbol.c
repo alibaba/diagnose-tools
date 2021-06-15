@@ -13,6 +13,10 @@
 
 #include "internal.h"
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 33)
+#include "pub/perf_event.h"
+#endif
+
 struct mutex *orig_text_mutex;
 rwlock_t *orig_tasklist_lock;
 
@@ -52,7 +56,7 @@ void (*orig___do_page_fault)(struct pt_regs *regs, unsigned long error_code,
                 unsigned long address);
 #endif
 
-struct class *orig_block_class; 
+struct class *orig_block_class;
 struct device_type *orig_disk_type;
 char *(*orig_disk_name)(struct gendisk *hd, int partno, char *buf);
 struct task_struct *(*orig_find_task_by_vpid)(pid_t nr);
@@ -108,7 +112,7 @@ atomic64_t xby_debug_counter4;
 atomic64_t xby_debug_counter5;
 
 int *orig_kptr_restrict;
-
+struct x86_pmu *orig_x86_pmu;
 
 static int lookup_syms(void)
 {
@@ -171,6 +175,7 @@ static int lookup_syms(void)
 	LOOKUP_SYMS_NORET(css_next_descendant_pre);
 	LOOKUP_SYMS_NORET(cpuacct_subsys);
 	LOOKUP_SYMS_NORET(css_get_next);
+	LOOKUP_SYMS_NORET(x86_pmu);
 
 	return 0;
 }

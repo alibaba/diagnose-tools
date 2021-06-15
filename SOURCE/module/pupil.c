@@ -769,6 +769,30 @@ static ssize_t pupil_settings_file_write(struct diag_trace_file *trace_file,
 		for (i = 0; i < ms; i++)
 			mdelay(1);
 	}
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,7,0)
+	else if (strcmp(cmd, "kill") == 0) {
+		int id;
+		pid_t vpid;
+		struct task_struct *tsk = NULL;
+
+		ret = sscanf(chr, "%s %d", cmd, &id);
+		if (ret == 2) {
+			rcu_read_lock();
+
+			if (orig_find_task_by_pid_ns)
+				tsk = orig_find_task_by_pid_ns(id, &init_pid_ns);
+			if (tsk) {
+				vpid = task_tgid_nr_ns(tsk, task_active_pid_ns(tsk));
+				diag_trace_file_printk(&pupil_log_file,
+					"KILL process，容器内ＩＤ：%d，主机ＰＩＤ：%d，进程名称：%s, type: %d\n",
+					vpid, id, tsk->comm, diag_get_task_type(tsk));
+				force_sig(SIGKILL, tsk);
+			}
+
+			rcu_read_unlock();
+		}
+	}
+#endif
 #if defined(EXPERIENTIAL) && !defined(XBY_UBUNTU_1604)
 	else if (strcmp(cmd, "print") == 0) {
 		char sub_cmd[255];
