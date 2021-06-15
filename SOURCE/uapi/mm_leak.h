@@ -33,7 +33,7 @@ struct diag_mm_leak_settings {
 
 struct mm_leak_detail {
 	int et_type;
-	struct timeval tv;
+	struct diag_timespec tv;
 	int seq;
 	unsigned long id;
 	struct diag_kern_stack_detail kern_stack;

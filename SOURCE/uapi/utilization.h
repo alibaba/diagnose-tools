@@ -35,7 +35,7 @@ struct diag_utilization_settings {
 
 struct utilization_detail {
 	int et_type;
-	struct timeval tv;
+	struct diag_timespec tv;
 	struct diag_task_detail task;
 	struct diag_proc_chains_detail proc_chains;
 	unsigned long exec;

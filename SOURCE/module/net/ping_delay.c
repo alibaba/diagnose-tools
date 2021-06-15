@@ -100,7 +100,7 @@ static void trace_events(int action, void *func)
 		struct ping_delay_event event;
 
 		event.et_type = et_ping_delay_event;
-		do_gettimeofday(&event.tv);
+		do_diag_gettimeofday(&event.tv);
 		event.func = (unsigned long)func;
 		event.action = action;
 
@@ -357,7 +357,7 @@ static noinline void inspect_packet(const struct sk_buff *skb, const struct iphd
 		struct ping_delay_detail detail;
 
 		detail.et_type = et_ping_delay_detail;
-		do_gettimeofday(&detail.tv);
+		do_diag_gettimeofday(&detail.tv);
 		detail.saddr = source;
 		detail.daddr = dest;
 		detail.echo_id = be16_to_cpu(icmph->un.echo.id);
@@ -1989,7 +1989,7 @@ static ssize_t dump_data(void)
 
 	list_for_each_entry(this, &header, list) {
 		summary.et_type = et_ping_delay_summary;
-		do_gettimeofday(&summary.tv);
+		do_diag_gettimeofday(&summary.tv);
 		summary.saddr = this->saddr;
 		summary.daddr = this->daddr;
 		summary.echo_id = this->echo_id;

@@ -56,7 +56,7 @@ struct tcp_retrans_trace {
 	int dest_addr;
 	int dest_port;
 	int sync_or_skb;
-	struct timeval tv;
+	struct diag_timespec tv;
 };
 
 #define CMD_TCP_RETRANS_SET (0)

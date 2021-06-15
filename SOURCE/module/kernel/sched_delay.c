@@ -136,7 +136,7 @@ static void trace_sched_switch_hit(struct rq *rq, struct task_struct *prev,
 		dither = &diag_percpu_context[smp_processor_id()]->sched_delay_dither;
 		dither->et_type = et_sched_delay_dither;
 		dither->id = diag_sched_delay_id;
-		do_gettimeofday(&dither->tv);
+		do_diag_gettimeofday(&dither->tv);
 		dither->seq = sched_delay_seq;
 		sched_delay_seq++;
 		dither->now	= now;
@@ -218,7 +218,7 @@ static void dump_data(void)
 
 	rq.et_type = et_sched_delay_rq;
 	rq.id = diag_sched_delay_id;
-	do_gettimeofday(&rq.tv);
+	do_diag_gettimeofday(&rq.tv);
 
 	for_each_online_cpu(cpu)
 	{

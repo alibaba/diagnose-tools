@@ -65,7 +65,7 @@ void irq_delay_timer(struct diag_percpu_context *context)
 		detail->et_type = et_irq_delay_detail;
 		detail->cpu = smp_processor_id();
 		detail->delay_ns = delay_ns;
-		do_gettimeofday(&detail->tv);
+		do_diag_gettimeofday(&detail->tv);
 		diag_task_brief(current, &detail->task);
 		diag_task_kern_stack(current, &detail->kern_stack);
 		diag_task_user_stack(current, &detail->user_stack);

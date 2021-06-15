@@ -133,7 +133,7 @@ static int lookup_syms(void)
 #endif /* DIAG_ARM64 */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
-	orig_runqueues = (void *)__kallsyms_lookup_name("per_cpu__runqueues");
+	orig_runqueues = (void *)diag_kallsyms_lookup_name("per_cpu__runqueues");
 	if (orig_runqueues == NULL) {
 		return -EINVAL;
 	}
@@ -173,35 +173,6 @@ static int lookup_syms(void)
 	LOOKUP_SYMS_NORET(css_get_next);
 
 	return 0;
-}
-
-struct diag_symbol_info {
-    char *symbol;
-    int count;
-};
-
-static inline int get_symbol_count_callback(void *data, const char *name,
-            struct module *mod, unsigned long addr)
-{
-    struct diag_symbol_info *info = data;
-
-    if (strcmp(name, info->symbol) == 0) {
-        info->count++;
-        return 0;
-    }
-
-    return 0;
-}
-
-int diag_get_symbol_count(char *symbol)
-{
-	struct diag_symbol_info info;
-
-	info.symbol = symbol;
-	info.count = 0;  
-	kallsyms_on_each_symbol(get_symbol_count_callback, &info);
-
-	return info.count;
 }
 
 int alidiagnose_symbols_init(void)

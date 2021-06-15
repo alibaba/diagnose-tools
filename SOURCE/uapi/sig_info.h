@@ -110,7 +110,7 @@ struct sig_info_detail {
 	unsigned long id;
 	unsigned long seq;
 	unsigned long sig;
-	struct timeval tv;
+	struct diag_timespec tv;
 	struct diag_proc_chains_detail proc_chains;
 	struct diag_task_detail task;
 	struct diag_kern_stack_detail kern_stack;

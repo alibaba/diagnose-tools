@@ -291,18 +291,6 @@ void diag_linux_proc_exit(void)
 	destroy_diag_trace_file(&controller_file);
 }
 
-unsigned long (*__kallsyms_lookup_name)(const char *name);
-static int symbol_walk_callback(void *data, const char *name,
-	struct module *mod, unsigned long addr)
-{
-	if (strcmp(name, "kallsyms_lookup_name") == 0) {
-		__kallsyms_lookup_name = (void *)addr;
-		return addr;
-	}
-
-	return 0;
-}
-
 static void diag_cb_sys_enter(void *data, struct pt_regs *regs, long id)
 {
 	if (id >= DIAG_BASE_SYSCALL) {
@@ -453,11 +441,9 @@ static int __init diagnosis_init(void)
 	char cgroup_buf[256];
 	int i;
 
-	ret = kallsyms_on_each_symbol(symbol_walk_callback, NULL);
-	if (!ret || !__kallsyms_lookup_name) {
-		ret = -EINVAL;
+	ret = diag_init_symbol();
+	if (ret)
 		goto out;
-	}
 
 	ret = alidiagnose_symbols_init();
 	if (ret)

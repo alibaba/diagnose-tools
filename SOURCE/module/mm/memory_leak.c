@@ -297,7 +297,7 @@ static void do_dump(void)
 			spin_unlock_irqrestore(&tree_lock, flags);
 	
 			detail.et_type = et_mm_leak_detail;
-			do_gettimeofday(&detail.tv);
+			do_diag_gettimeofday(&detail.tv);
 			for (j = 0; j < BACKTRACE_DEPTH; j++) {
 				detail.kern_stack.stack[j] = desc->trace_buf[j];
 			}

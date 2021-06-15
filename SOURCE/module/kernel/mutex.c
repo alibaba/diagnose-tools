@@ -295,7 +295,7 @@ static __used noinline void hook_mutex_unlock(struct mutex *lock)
 		detail.et_type = et_mutex_monitor_detail;
 		detail.lock = lock;
 		detail.delay_ns = delay_ns;
-		do_gettimeofday(&detail.tv);
+		do_diag_gettimeofday(&detail.tv);
 		diag_task_brief(current, &detail.task);
 		diag_task_kern_stack(current, &detail.kern_stack);
 		diag_task_user_stack(current, &detail.user_stack);
@@ -609,23 +609,23 @@ static int lookup_syms(void)
 {
 	LOOKUP_SYMS(__mutex_lock_slowpath);
 	
-	orig___mutex_unlock_slowpath = (void *)__kallsyms_lookup_name("__mutex_unlock_slowpath.isra.0");
+	orig___mutex_unlock_slowpath = (void *)diag_kallsyms_lookup_name("__mutex_unlock_slowpath.isra.0");
 	if (orig___mutex_unlock_slowpath == NULL)
-		orig___mutex_unlock_slowpath = (void *)__kallsyms_lookup_name("__mutex_unlock_slowpath.isra.12");
+		orig___mutex_unlock_slowpath = (void *)diag_kallsyms_lookup_name("__mutex_unlock_slowpath.isra.12");
 	if (orig___mutex_unlock_slowpath == NULL)
-		orig___mutex_unlock_slowpath = (void *)__kallsyms_lookup_name("__mutex_unlock_slowpath.isra.14");
+		orig___mutex_unlock_slowpath = (void *)diag_kallsyms_lookup_name("__mutex_unlock_slowpath.isra.14");
 	if (orig___mutex_unlock_slowpath == NULL)
-		orig___mutex_unlock_slowpath = (void *)__kallsyms_lookup_name("__mutex_unlock_slowpath.isra.15");
+		orig___mutex_unlock_slowpath = (void *)diag_kallsyms_lookup_name("__mutex_unlock_slowpath.isra.15");
 	if (orig___mutex_unlock_slowpath == NULL)
-		orig___mutex_unlock_slowpath = (void *)__kallsyms_lookup_name("__mutex_unlock_slowpath.isra.16");
+		orig___mutex_unlock_slowpath = (void *)diag_kallsyms_lookup_name("__mutex_unlock_slowpath.isra.16");
 	if (orig___mutex_unlock_slowpath == NULL)
-		orig___mutex_unlock_slowpath = (void *)__kallsyms_lookup_name("__mutex_unlock_slowpath.isra.18");
+		orig___mutex_unlock_slowpath = (void *)diag_kallsyms_lookup_name("__mutex_unlock_slowpath.isra.18");
 	if (orig___mutex_unlock_slowpath == NULL)
-		orig___mutex_unlock_slowpath = (void *)__kallsyms_lookup_name("__mutex_unlock_slowpath.isra.17");
+		orig___mutex_unlock_slowpath = (void *)diag_kallsyms_lookup_name("__mutex_unlock_slowpath.isra.17");
 	if (orig___mutex_unlock_slowpath == NULL)
-		orig___mutex_unlock_slowpath = (void *)__kallsyms_lookup_name("__mutex_unlock_slowpath.isra.19");
+		orig___mutex_unlock_slowpath = (void *)diag_kallsyms_lookup_name("__mutex_unlock_slowpath.isra.19");
 	if (orig___mutex_unlock_slowpath == NULL)
-		orig___mutex_unlock_slowpath = (void *)__kallsyms_lookup_name("__mutex_unlock_slowpath");
+		orig___mutex_unlock_slowpath = (void *)diag_kallsyms_lookup_name("__mutex_unlock_slowpath");
 	if (orig___mutex_unlock_slowpath == NULL)
 		return -EINVAL;
 

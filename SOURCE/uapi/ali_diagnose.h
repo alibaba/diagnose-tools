@@ -17,6 +17,11 @@
 
 struct pt_regs;
 
+struct diag_timespec {
+	unsigned long tv_sec;
+	unsigned long tv_usec;
+};
+
 #ifndef __KERNEL__
 #include <unistd.h>
 #include <fcntl.h>

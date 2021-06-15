@@ -115,7 +115,7 @@ static void dump_task_info(struct task_struct *tsk)
 		return;
 
 	detail->et_type = et_utilization_detail;
-	do_gettimeofday(&detail->tv);
+	do_diag_gettimeofday(&detail->tv);
 	diag_task_brief(tsk, &detail->task);
 		if (utilization_settings.style == 2) {
 		dump_proc_chains_simple(tsk, &detail->proc_chains);

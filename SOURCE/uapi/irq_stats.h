@@ -30,7 +30,7 @@ struct diag_irq_stats_settings {
 struct irq_stats_header {
 	int et_type;
 	unsigned long id;
-	struct timeval tv;
+	struct diag_timespec tv;
 };
 
 struct irq_stats_irq_summary {

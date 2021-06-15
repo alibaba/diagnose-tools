@@ -96,7 +96,7 @@ unlock:
 		detail = &diag_percpu_context[smp_processor_id()]->task_monitor_info.detail;
 		event_id = get_cycles();
 		detail->id = event_id;
-		do_gettimeofday(&detail->tv);
+		do_diag_gettimeofday(&detail->tv);
 		detail->et_type = et_task_monitor_detail;
 		diag_task_brief(tasks[i], &detail->task);
 		diag_task_kern_stack(tasks[i], &detail->kern_stack);
@@ -120,7 +120,7 @@ unlock:
 
 	summary.id = get_cycles();
 	summary.et_type = et_task_monitor_summary;
-	do_gettimeofday(&summary.tv);
+	do_diag_gettimeofday(&summary.tv);
 
 	summary.task_a = nr_r + nr_d;
 	summary.task_r = nr_r;

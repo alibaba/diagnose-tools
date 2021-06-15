@@ -274,7 +274,7 @@ static void hook_rw(enum rw_type rw_type, struct file *file, size_t count)
 				perf->et_type = et_rw_top_raw_perf;
 				perf->id = 0;
 				perf->seq = 0;
-				do_gettimeofday(&perf->tv);
+				do_diag_gettimeofday(&perf->tv);
 				diag_task_brief(current, &perf->task);
 				diag_task_kern_stack(current, &perf->kern_stack);
 				diag_task_raw_stack(current, &perf->raw_stack);
@@ -294,7 +294,7 @@ static void hook_rw(enum rw_type rw_type, struct file *file, size_t count)
 				perf->et_type = et_rw_top_perf;
 				perf->id = 0;
 				perf->seq = 0;
-				do_gettimeofday(&perf->tv);
+				do_diag_gettimeofday(&perf->tv);
 				diag_task_brief(current, &perf->task);
 				diag_task_kern_stack(current, &perf->kern_stack);
 				diag_task_user_stack(current, &perf->user_stack);

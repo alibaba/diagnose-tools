@@ -42,7 +42,7 @@ static unsigned long sls_sirq_count = 0;
 static unsigned long sls_sirq_sum = 0;
 static unsigned long sls_sirq_counts[DIAG_NR_SOFTIRQS];
 static unsigned long sls_sirq_sums[DIAG_NR_SOFTIRQS];
-static struct timeval sls_tv;
+static struct diag_timespec sls_tv;
 static unsigned long sls_id;
 static char sls_file[256];
 static int syslog_enabled;

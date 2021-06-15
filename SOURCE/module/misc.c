@@ -141,7 +141,7 @@ void diag_printk_all_partitions(void)
                                bdevt_str(part_devt(part), devt_buf),
                                 (unsigned long long)part->nr_sects >> 1,
                                orig_disk_name(disk, part->partno, name_buf));
-#else
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(5,8,0)
 			diag_trace_printk("%s%s %10llu %s %s", is_part0 ? "" : "  ",
 			       bdevt_str(part_devt(part), devt_buf),
 				(unsigned long long)part_nr_sects_read(part) >> 1,

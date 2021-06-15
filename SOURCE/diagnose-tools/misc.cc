@@ -65,7 +65,7 @@ std::string & pid_cmdline::get_pid_cmdline(int pid)
 	return cmdlines[pid];
 }
 
-void diag_printf_time(struct timeval *tv)
+void diag_printf_time(struct diag_timespec *tv)
 {
 	printf("    时间：[%lu:%lu].\n",
 		tv->tv_sec, tv->tv_usec);
@@ -381,7 +381,7 @@ void diag_unwind_raw_stack(int pid, int ns_pid,
 			&stack_sample);
 }
 
-void diag_sls_time(struct timeval *tv, Json::Value &owner)
+void diag_sls_time(struct diag_timespec *tv, Json::Value &owner)
 {
 	owner["tv_sec"] = Json::Value(tv->tv_sec);
 	owner["tv_usec"] = Json::Value(tv->tv_usec);
@@ -438,7 +438,7 @@ int log_config(char *arg, char *sls_file, int *p_syslog_enabled)
 	return 1;
 }
 
-void write_syslog(int enabled, const char mod[], struct timeval *tv, unsigned long id, int seq, Json::Value &root)
+void write_syslog(int enabled, const char mod[], struct diag_timespec *tv, unsigned long id, int seq, Json::Value &root)
 {
 	std::string str_log;
 	stringstream ss;
@@ -461,7 +461,7 @@ void write_syslog(int enabled, const char mod[], struct timeval *tv, unsigned lo
 	return;
 }
 
-void write_file(char *sls_file, const char mod[], struct timeval *tv, unsigned long id, int seq, Json::Value &root)
+void write_file(char *sls_file, const char mod[], struct diag_timespec *tv, unsigned long id, int seq, Json::Value &root)
 {
 	ofstream os;
 	Json::StreamWriterBuilder builder;
@@ -735,4 +735,16 @@ int is_linux_2_6_x(void)
     }
 
     return 0;
+}
+
+#include <sys/time.h>
+extern "C" {
+void diag_gettimeofday(struct diag_timespec *tv, struct timezone *tz)
+{
+	struct timeval ts;
+	
+	gettimeofday(&ts, tz);
+	tv->tv_sec = ts.tv_sec;
+	tv->tv_usec = ts.tv_usec;
+}
 }

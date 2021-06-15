@@ -12,13 +12,15 @@
 #ifndef __DIAG_SYMBOL_H
 #define __DIAG_SYMBOL_H
 
+#include "pub/symbol.h"
+
 struct mutex;
 struct stack_trace;
 struct pid_namespace;
 extern struct mutex *orig_text_mutex;
 extern rwlock_t *orig_tasklist_lock;
 
-extern unsigned long (*__kallsyms_lookup_name)(const char *name);
+extern unsigned long (*diag_kallsyms_lookup_name)(const char *name);
 
 #if defined(DIAG_ARM64)
 extern void (*orig___flush_dcache_area)(void *addr, size_t len);

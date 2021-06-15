@@ -60,7 +60,7 @@ static inline void __percpu_counter_add(struct percpu_counter *fbc,
  * 手工替换函数相关的宏
  */
 #define LOOKUP_SYMS(name) do {					\
-		orig_##name = (void *)__kallsyms_lookup_name(#name);		\
+		orig_##name = (void *)diag_kallsyms_lookup_name(#name);		\
 		if (!orig_##name) {						\
 			pr_err("kallsyms_lookup_name: %s\n", #name);		\
 			return -EINVAL;						\
@@ -68,7 +68,7 @@ static inline void __percpu_counter_add(struct percpu_counter *fbc,
 	} while (0)
 
 #define LOOKUP_SYMS_NORET(name) do {							\
-		orig_##name = (void *)__kallsyms_lookup_name(#name);		\
+		orig_##name = (void *)diag_kallsyms_lookup_name(#name);		\
 		if (!orig_##name)						\
 			pr_err("kallsyms_lookup_name: %s\n", #name);		\
 	} while (0)
@@ -725,16 +725,14 @@ int diag_copy_stack_frame(struct task_struct *tsk,
 #define synchronize_sched synchronize_rcu
 #endif
 
-#if KERNEL_VERSION(5, 0, 0) <= LINUX_VERSION_CODE
-static inline void do_gettimeofday(struct timeval *tv)
+static inline void do_diag_gettimeofday(struct diag_timespec *tv)
 {
 	struct timespec64 ts;
-
 	ktime_get_real_ts64(&ts);
+
 	tv->tv_sec = ts.tv_sec;
-	tv->tv_usec = ts.tv_nsec/1000;
+    tv->tv_usec = ts.tv_nsec / 1000;
 }
-#endif
 
 extern unsigned long diag_ignore_jump_check;
 

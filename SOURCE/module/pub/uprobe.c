@@ -26,7 +26,7 @@ void unhook_uprobe(struct diag_uprobe *consumer)
 #else
 
 #include "pub/fs_utils.h"
-#include "symbol.h"
+#include "../symbol.h"
 
 int hook_uprobe(int fd, loff_t offset, struct diag_uprobe *diag_uprobe)
 {

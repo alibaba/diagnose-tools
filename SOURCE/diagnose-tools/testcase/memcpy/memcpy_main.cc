@@ -12,6 +12,8 @@
 #include <stdio.h>     /* for printf */
 #include <stdlib.h>    /* for exit */
 
+#include "../../internal.h"
+
 using namespace std;
 
 void usage_test_memcpy(void)
@@ -42,7 +44,7 @@ int memcpy_main(int argc, char* argv[])
 	int  loop = 20000;
 	char* p = new char[len];
 	char* q = p;
-	struct timeval start, end;
+	struct diag_timespec start, end;
 	double total_us = 0;
 	double total_size;
 
@@ -98,7 +100,7 @@ int memcpy_main(int argc, char* argv[])
 		}
 	}
 
-	gettimeofday(&start, NULL);
+	diag_gettimeofday(&start, NULL);
 	for (int i =0; i < loop; ++i) {
 		char* p = new char[len];
 		*p = char(i);
@@ -106,7 +108,7 @@ int memcpy_main(int argc, char* argv[])
 		memcpy(p, q, len);
 		delete [] p;
 	}
-	gettimeofday(&end, NULL);
+	diag_gettimeofday(&end, NULL);
 
 	total_us = (end.tv_sec - start.tv_sec) * 1000 * 1000 * 1000 + double(end.tv_usec - start.tv_usec);
 	total_size = len * loop;

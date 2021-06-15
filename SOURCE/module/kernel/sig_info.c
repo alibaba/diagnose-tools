@@ -82,7 +82,7 @@ static void inspect_signal(int signum, struct task_struct *rtask)
 	detail->id = 0;
 	detail->seq = 0;
 	detail->sig = signum;
-	do_gettimeofday(&detail->tv);
+	do_diag_gettimeofday(&detail->tv);
 	diag_task_brief(rtask, &detail->receive_task);
 	diag_task_brief(current, &detail->task);
 	diag_task_kern_stack(current, &detail->kern_stack);

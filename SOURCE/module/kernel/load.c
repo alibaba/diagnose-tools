@@ -164,7 +164,7 @@ void diag_load_timer(struct diag_percpu_context *context)
 		event_id = get_cycles();
 		detail.id = event_id;
 		detail.et_type = et_load_monitor_detail;
-		do_gettimeofday(&detail.tv);
+		do_diag_gettimeofday(&detail.tv);
 
 		rcu_read_lock();
 		diag_variant_buffer_spin_lock(&load_monitor_variant_buffer, flags);

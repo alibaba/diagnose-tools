@@ -17,7 +17,6 @@
 #include <errno.h>
 #include <getopt.h>
 
-#include <sys/time.h>
 #include <string.h>
 #include <stdio.h>     /* for printf */
 #include <stdlib.h>    /* for exit */

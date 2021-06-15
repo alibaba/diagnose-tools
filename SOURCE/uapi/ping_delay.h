@@ -70,7 +70,7 @@ struct diag_ping_delay_settings {
 
 struct ping_delay_summary {
 	int et_type;
-	struct timeval tv;
+	struct diag_timespec tv;
 	int saddr;
 	int daddr;
 	int echo_id;
@@ -80,7 +80,7 @@ struct ping_delay_summary {
 
 struct ping_delay_detail {
 	int et_type;
-	struct timeval tv;
+	struct diag_timespec tv;
 	int saddr;
 	int daddr;
 	int echo_id;
@@ -90,7 +90,7 @@ struct ping_delay_detail {
 
 struct ping_delay_event {
 	int et_type;
-	struct timeval tv;
+	struct diag_timespec tv;
 	int action;
 	unsigned long func;
 };

@@ -254,7 +254,7 @@ static int sls_extract(void *buf, unsigned int len, void *)
 	int *et_type;
 	struct rw_top_detail *detail;
 	Json::Value root;
-	struct timeval tv;
+	struct diag_timespec tv;
 
 	if (len == 0)
 		return 0;
@@ -274,7 +274,7 @@ static int sls_extract(void *buf, unsigned int len, void *)
 		root["comm"] = Json::Value(detail->comm);
 		root["path_name"] = Json::Value(detail->path_name);
 
-		gettimeofday(&tv, NULL);
+		diag_gettimeofday(&tv, NULL);
 		write_file(sls_file, "rw-top", &tv, detail->id, detail->seq, root);
 		write_syslog(syslog_enabled, "rw-top", &tv, detail->id, detail->seq, root);
 

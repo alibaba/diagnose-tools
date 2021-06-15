@@ -1006,7 +1006,7 @@ static ssize_t pupil_log_file_write(struct diag_trace_file *trace_file,
 static void save_task_info(struct task_struct *tsk, struct pupil_task_detail *detail)
 {
 	detail->et_type = et_pupil_task;
-	do_gettimeofday(&detail->tv);
+	do_diag_gettimeofday(&detail->tv);
 	detail->pid = tsk->pid;
 	detail->proc_chains.chains[0][0] = 0;
 	dump_proc_chains_simple(tsk, &detail->proc_chains);

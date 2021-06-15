@@ -445,10 +445,18 @@ ssize_t dump_pid_cmdline(int pre, enum diag_printk_type type, void *obj,
 		goto out_mmput;
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
+	down_read(&mm->mmap_lock);
+#else
 	down_read(&mm->mmap_sem);
+#endif
 	arg_start = mm->arg_start;
 	arg_end = mm->arg_end;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
+	up_read(&mm->mmap_lock);
+#else
 	up_read(&mm->mmap_sem);
+#endif
 
 	if (arg_start > arg_end) {
 		return -EFAULT;

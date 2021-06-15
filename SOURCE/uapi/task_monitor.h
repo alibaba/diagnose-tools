@@ -33,7 +33,7 @@ struct diag_task_monitor_settings {
 struct task_monitor_summary {
 	int et_type;
 	unsigned long id;
-	struct timeval tv;
+	struct diag_timespec tv;
 	unsigned int task_a;
 	unsigned int task_r;
 	unsigned int task_d;
@@ -42,7 +42,7 @@ struct task_monitor_summary {
 struct task_monitor_detail {
 	int et_type;
 	unsigned long id;
-	struct timeval tv;
+	struct diag_timespec tv;
 	struct diag_task_detail task;
 	struct diag_kern_stack_detail kern_stack;
 	struct diag_user_stack_detail user_stack;
