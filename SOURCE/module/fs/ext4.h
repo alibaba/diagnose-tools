@@ -902,7 +902,7 @@ struct ext4_inode_info {
 	 * File creation time. Its function is same as that of
 	 * struct diag_timespec i_{a,c,m}time in the generic inode.
 	 */
-	struct diag_timespec i_crtime;
+	struct timespec64 i_crtime;
 
 	/* mballoc */
 	struct list_head i_prealloc_list;

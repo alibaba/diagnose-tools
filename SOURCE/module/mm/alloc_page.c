@@ -36,6 +36,7 @@ static u64 alloc_page_test(unsigned int order)
 	ktime_t time_start, time_stop, time;
 	struct diag_timespec diag_timespec;
 	struct page *ret;
+	struct timespec64 ts;
 
 	time_start = ktime_get();
 
@@ -45,11 +46,13 @@ static u64 alloc_page_test(unsigned int order)
 
 	time_stop = ktime_get();
 	time = ktime_sub(time_stop, time_start);
-	diag_timespec = ktime_to_timespec64(time);
+	ts = ktime_to_timespec64(time);
+	diag_timespec.tv_sec = ts.tv_sec;
+	diag_timespec.tv_usec = ts.tv_nsec / 1000;
 
 	__free_pages(ret, order);
 
-	return diag_timespec.tv_sec * 1000000000 + diag_timespec.tv_nsec;
+	return diag_timespec.tv_sec * 1000000000 + diag_timespec.tv_usec * 1000;
 }
 
 static void stress_alloc_page(void)
