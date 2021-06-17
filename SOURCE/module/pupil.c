@@ -769,7 +769,7 @@ static ssize_t pupil_settings_file_write(struct diag_trace_file *trace_file,
 		for (i = 0; i < ms; i++)
 			mdelay(1);
 	}
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5,7,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,4,0)
 	else if (strcmp(cmd, "kill") == 0) {
 		int id;
 		pid_t vpid;
