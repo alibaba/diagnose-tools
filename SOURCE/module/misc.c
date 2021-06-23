@@ -476,7 +476,7 @@ unsigned int ipstr2int(const char *ipstr)
 	unsigned int a, b, c, d;
 	unsigned int ip = 0;
 	int count;
-	
+
 	count = sscanf(ipstr, "%u.%u.%u.%u", &a, &b, &c, &d);
 	if (count == 4) {
 		a = (a << 24);
@@ -532,7 +532,7 @@ void diag_task_brief(struct task_struct *tsk, struct diag_task_detail *detail)
 	struct pid_namespace *ns;
 	struct pt_regs *regs;
 	struct task_struct *leader;
-	
+
 	if (!detail)
 		return;
 
