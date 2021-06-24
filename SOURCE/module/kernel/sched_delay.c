@@ -51,6 +51,13 @@
 	&& !defined(UBUNTU_1604)
 
 #if defined(ALIOS_4000_009)
+static unsigned long *get_last_queued_addr(struct task_struct *p)
+{
+	/**
+	 * task_stack_page, but not end_of_stack !!
+	 */
+	return task_stack_page(p) + sizeof(struct thread_info) + 32;
+}
 #else
 #if  defined(CENTOS_8U)
 #define diag_last_queued rh_reserved2
@@ -62,16 +69,31 @@
 #define diag_last_queued rh_reserved[0]
 #endif
 
+static unsigned long *get_last_queued_addr(struct task_struct *p)
+{
+	return &p->diag_last_queued;
+}
+#endif
+
 static unsigned long read_last_queued(struct task_struct *p)
 {
-	return p->diag_last_queued;
+	unsigned long *ptr = get_last_queued_addr(p);
+
+	if (ptr) {
+		return *ptr;
+	} else {
+		return 0;
+	}
 }
 
 static void update_last_queued(struct task_struct *p, unsigned long stamp)
 {
-	p->diag_last_queued = stamp;
+	unsigned long *ptr = get_last_queued_addr(p);
+
+	if (ptr) {
+		*ptr = stamp;
+	}
 }
-#endif
 
 __maybe_unused static atomic64_t diag_nr_running = ATOMIC64_INIT(0);
 struct diag_sched_delay_settings sched_delay_settings = {
