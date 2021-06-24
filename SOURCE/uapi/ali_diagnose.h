@@ -57,8 +57,8 @@ extern unsigned long run_in_host;
 extern unsigned long debug_mode;
 #endif
 
-#define XBY_VERSION					"diagnose-tools 2.2-rc1"
-#define DIAG_VERSION		((2 << 24) | (1 << 16) | 0x1)
+#define XBY_VERSION					"diagnose-tools 3.0-rc1"
+#define DIAG_VERSION		((3 << 24) | (0 << 16) | 0x1)
 
 #define DIAG_DEV_NAME "diagnose-tools"
 
