@@ -51,8 +51,8 @@
 	&& !defined(UBUNTU_1604)
 
 #if defined(ALIOS_4000_009)
-
-#elif  defined(CENTOS_8U)
+#else
+#if  defined(CENTOS_8U)
 #define diag_last_queued rh_reserved2
 #elif KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
 #define diag_last_queued ali_reserved3
@@ -60,6 +60,17 @@
 #define diag_last_queued rh_reserved3
 #else
 #define diag_last_queued rh_reserved[0]
+#endif
+
+static unsigned long read_last_queued(struct task_struct *p)
+{
+	return p->diag_last_queued;
+}
+
+static void update_last_queued(struct task_struct *p, unsigned long stamp)
+{
+	p->diag_last_queued = stamp;
+}
 #endif
 
 __maybe_unused static atomic64_t diag_nr_running = ATOMIC64_INIT(0);
@@ -81,7 +92,7 @@ static void trace_sched_wakeup_hit(void *__data, struct task_struct *p, bool unu
 static void trace_sched_wakeup_hit(struct rq *rq, struct task_struct *p, bool unused)
 #endif
 {
-	p->diag_last_queued = ktime_to_ms(ktime_get());
+	update_last_queued(p, ktime_to_ms(ktime_get()));
 }
 
 #if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
@@ -118,8 +129,8 @@ static void trace_sched_switch_hit(struct rq *rq, struct task_struct *prev,
 		return;
 	}
 
-	t_queued = next->diag_last_queued;
-	next->diag_last_queued = 0;
+	t_queued = read_last_queued(next);
+	update_last_queued(next, 0);
 	if (t_queued <= 0)
 		return;
 
