@@ -61,7 +61,7 @@ static void do_activate(const char *arg)
 	string str;
 
 	memset(&settings, 0, sizeof(struct diag_sched_delay_settings));
-	
+
 	settings.verbose = parse.int_value("verbose");
 	settings.tgid = parse.int_value("tgid");
 	settings.pid = parse.int_value("pid");
@@ -87,7 +87,7 @@ static void do_activate(const char *arg)
 	}
 
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
-	printf("    进程ID：\t%d\n", settings.pid);
+	printf("    进程ID：\t%d\n", settings.tgid);
 	printf("    线程ID：\t%d\n", settings.pid);
 	printf("    进程名称：\t%s\n", settings.comm);
 	printf("    监控阈值(ms)：\t%d\n", settings.threshold_ms);
@@ -137,7 +137,7 @@ static void do_settings(const char *arg)
 		{
 			printf("功能设置：\n");
 			printf("    是否激活：\t%s\n", settings.activated ? "√" : "×");
-			printf("    进程ID：\t%d\n", settings.pid);
+			printf("    进程ID：\t%d\n", settings.tgid);
 			printf("    线程ID：\t%d\n", settings.pid);
 			printf("    进程名称：\t%s\n", settings.comm);
 			printf("    监控阈值(ms)：\t%d\n", settings.threshold_ms);
@@ -263,7 +263,7 @@ static int sls_extract(void *buf, unsigned int len, void *)
 	struct sched_delay_dither *dither;
 	struct sched_delay_rq *rq;
     symbol sym;
-	
+
 	Json::Value root;
 	Json::Value task;
 	Json::Value kern_stack;
