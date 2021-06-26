@@ -96,14 +96,14 @@ run_trace() {
 	cat run-trace.log | awk '{if (substr($1,1,2) == "**") {print substr($0, 3)}}' | /usr/diagnose-tools/flame-graph/flamegraph.pl > run-trace.svg
 	echo "火焰图位于run-trace.svg"
 
-	TEST_ADDR="`objdump -s -d $DIAG_BINPATH | grep '<_ZL6mytestv>:' | awk '{printf $1}' | tr '[a-z]' '[A-Z]'`"
+	TEST_ADDR="`objdump -s -d $DIAG_BINPATH | grep '<mytest>:' | awk '{printf $1}' | tr '[a-z]' '[A-Z]'`"
         TEST_OFFSET=`echo "obase=10; ibase=16; $TEST_ADDR - 400000" | bc`
 	TEST_END=$[$TEST_OFFSET+10]
 
 	eval "$DIAG_CMD test-run-trace --type=2 --count=10 &"
 	TEST_PID=`ps aux | grep diagnose-tools | grep test-run-trace | awk '{printf $2}'`
 
-	eval "$DIAG_CMD run-trace --uprobe=\"tgid=$TEST_PID start-file=$DIAG_BINPATH start-offset=$TEST_OFFSET stop-file=$DIAG_BINPATH stop-offset=$TEST_END\" --activate --settings"
+	eval "$DIAG_CMD run-trace --uprobe=\"tgid=$TEST_PID start-file=$DIAG_BINPATH start-offset=$TEST_OFFSET stop-file=$DIAG_BINPATH stop-offset=$TEST_END\" --activate=\"raw-stack=1\" --settings"
 	
 	sleep 10
 	eval "$DIAG_CMD run-trace --report --deactivate" > run-trace.log
