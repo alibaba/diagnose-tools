@@ -38,6 +38,8 @@ unsigned int (*orig_stack_trace_save_user)(unsigned long *store, unsigned int si
 void (*orig_save_stack_trace_user)(struct stack_trace *trace);
 void (*orig_save_stack_trace_tsk)(struct task_struct *tsk, struct stack_trace *trace);
 #endif
+#else  /*DIAG_ARM64*/
+void (*orig_save_stack_trace_tsk)(struct task_struct *tsk, struct stack_trace *trace);
 #endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
 void (*orig___do_page_fault)(struct pt_regs *regs,
@@ -117,6 +119,7 @@ static int lookup_syms(void)
 #if defined(DIAG_ARM64)
 	LOOKUP_SYMS(__flush_dcache_area);
 	LOOKUP_SYMS(aarch64_insn_patch_text);
+	LOOKUP_SYMS(save_stack_trace_tsk);
 #else
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,12,0)
 	LOOKUP_SYMS(text_poke_smp);
