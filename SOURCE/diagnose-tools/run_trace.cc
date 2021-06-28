@@ -253,7 +253,7 @@ static void do_uprobe(const char *arg)
 	} else {
 		ret = -ENOSYS;
 		syscall(DIAG_RUN_TRACE_UPROBE, &ret, params.tgid, params.fd_start,
-				params.offset_start, params.offset_start, params.offset_stop);
+				params.offset_start, params.fd_stop, params.offset_stop);
 	}
 
 	printf("uprobe for run-trace: tgid %lu, start-file: %s, start-offset: %lu, stop-file: %s, stop-offset: %lu, ret is %d\n",
