@@ -50,11 +50,16 @@ int hook_uprobe(int fd, loff_t offset, struct diag_uprobe *diag_uprobe)
 	if (file && file->f_path.dentry && file->f_path.dentry->d_inode) {
 		inode = file->f_path.dentry->d_inode;
 		ret = uprobe_register(inode, offset, &diag_uprobe->uprobe_consumer);
+		printk("xby-debug in hook_uprobe step 1, %p, %p, %d\n", file, inode, ret);
 		if (!ret) {
 			diag_uprobe->register_status = 1;
 			diag_uprobe->inode = inode;
         	diag_uprobe->offset = offset;
 			diag_get_file_path(file, diag_uprobe->file_name, 255);
+			printk("xby-debug in hook_uprobe step 2, %s, %d, %x\n",
+				diag_uprobe->file_name,
+				diag_uprobe->offset,
+				diag_uprobe->inode);
 		}
 	}
 
