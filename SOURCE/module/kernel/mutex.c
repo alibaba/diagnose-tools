@@ -139,7 +139,8 @@ static inline void mutex_clear_owner(struct mutex *lock)
 
 static atomic64_t diag_nr_running = ATOMIC64_INIT(0);
 struct diag_mutex_monitor_settings mutex_monitor_settings = {
-	.threshold = 1000,
+	.threshold_mutex = 1000,
+	.threshold_rw_sem = 200,
 };
 
 static int mutex_monitor_alloced;
@@ -287,7 +288,7 @@ static __used noinline void hook_lock(void *lock)
 	}
 }
 
-static __used noinline void hook_unlock(void *lock)
+static __used noinline void hook_unlock(void *lock, int threshold)
 {
 	struct mutex_desc *tmp;
 	u64 delay_ns;
@@ -299,7 +300,7 @@ static __used noinline void hook_unlock(void *lock)
 	if (tmp->lock_time == 0)
 		return;
 	delay_ns = sched_clock() - tmp->lock_time;
-	if (delay_ns > mutex_monitor_settings.threshold * 1000 * 1000) {
+	if (delay_ns > threshold * 1000 * 1000) {
 		unsigned long flags;
 
 		diag_variant_buffer_spin_lock(&mutex_monitor_variant_buffer, flags);
@@ -352,7 +353,7 @@ void new_mutex_lock(struct mutex *lock)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
 static void diag_mutex_unlock(struct mutex *lock)
 {
-	hook_unlock(lock);
+	hook_unlock(lock, mutex_monitor_settings.threshold_mutex);
 #ifndef CONFIG_DEBUG_LOCK_ALLOC
 	if (__mutex_unlock_fast(lock))
 		return;
@@ -374,7 +375,7 @@ static void diag_mutex_unlock(struct mutex *lock)
 	 */
 	mutex_clear_owner(lock);
 #endif
-	hook_unlock(lock);
+	hook_unlock(lock, mutex_monitor_settings.threshold_mutex);
 	__mutex_fastpath_unlock(&lock->count, *orig___mutex_unlock_slowpath);
 }
 #endif
@@ -576,7 +577,7 @@ static void diag_down_read(struct rw_semaphore *sem)
 
 static void diag_up_read(struct rw_semaphore *sem)
 {
-	hook_unlock(sem);
+	hook_unlock(sem, mutex_monitor_settings.threshold_rw_sem);
 	rwsem_release(&sem->dep_map, 1, _RET_IP_);
 
 	diag___up_read(sem);
@@ -618,14 +619,14 @@ int diag_down_read_trylock(struct rw_semaphore *sem)
 
 	if (ret == 1) {
 		rwsem_acquire_read(&sem->dep_map, 0, 1, _RET_IP_);
-		hook_unlock(sem);
+		hook_lock(sem);
 	}
 	return ret;
 }
 
 static void diag_up_write(struct rw_semaphore *sem)
 {
-	hook_unlock(sem);
+	hook_unlock(sem, mutex_monitor_settings.threshold_rw_sem);
 	rwsem_release(&sem->dep_map, 1, _RET_IP_);
 
 	rwsem_clear_owner(sem);
