@@ -157,11 +157,11 @@ static void (*orig___mutex_lock_slowpath)(atomic_t *lock_count);
 static void (*orig___mutex_unlock_slowpath)(atomic_t *lock_count);
 #endif
 
-static void (*orig_call_rwsem_wake)(struct rw_semaphore *sem);
-static void (*orig_call_rwsem_down_read_failed)(struct rw_semaphore *sem);
-static struct rw_semaphore *(*orig_call_rwsem_down_write_failed)(struct rw_semaphore *sem);
+static asmlinkage void (*orig_call_rwsem_wake)(struct rw_semaphore *sem);
+static asmlinkage void (*orig_call_rwsem_down_read_failed)(struct rw_semaphore *sem);
+static asmlinkage struct rw_semaphore *(*orig_call_rwsem_down_write_failed)(struct rw_semaphore *sem);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
-static struct rw_semaphore *(*orig_call_rwsem_down_write_failed_killable)(struct rw_semaphore *sem);
+static asmlinkage struct rw_semaphore *(*orig_call_rwsem_down_write_failed_killable)(struct rw_semaphore *sem);
 #endif
 
 DEFINE_ORIG_FUNC(void, down_read, 1, struct rw_semaphore *, sem);
@@ -395,23 +395,23 @@ void new_mutex_unlock(struct mutex *lock)
 
 #define RWSEM_READER_OWNED	((struct task_struct *)1UL)
 
-void wrap_call_rwsem_down_read_failed(struct rw_semaphore *sem)
+void asmlinkage wrap_call_rwsem_down_read_failed(struct rw_semaphore *sem)
 {
 	orig_call_rwsem_down_read_failed(sem);
 }
 
-void wrap_call_rwsem_wake(struct rw_semaphore *sem)
+void asmlinkage wrap_call_rwsem_wake(struct rw_semaphore *sem)
 {
 	orig_call_rwsem_wake(sem);
 }
 
-struct rw_semaphore * wrap_call_rwsem_down_write_failed(struct rw_semaphore *sem)
+struct rw_semaphore * asmlinkage wrap_call_rwsem_down_write_failed(struct rw_semaphore *sem)
 {
 	return orig_call_rwsem_down_write_failed(sem);
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
-struct rw_semaphore * wrap_call_rwsem_down_write_failed_killable(struct rw_semaphore *sem)
+struct rw_semaphore * asmlinkage wrap_call_rwsem_down_write_failed_killable(struct rw_semaphore *sem)
 {
 	return orig_call_rwsem_down_write_failed_killable(sem);
 }
@@ -423,7 +423,7 @@ static inline void diag___down_read(struct rw_semaphore *sem)
 		     LOCK_PREFIX _ASM_INC "(%1)\n\t"
 		     /* adds 0x00000001 */
 		     "  jns        1f\n"
-		     "  call wrap_call_rwsem_down_read_failed\n"
+		     "  call rwsem_down_read_failed\n"
 		     "1:\n\t"
 		     "# ending down_read\n\t"
 		     : "+m" (sem->count)
@@ -441,7 +441,7 @@ static inline void diag___up_read(struct rw_semaphore *sem)
 		     LOCK_PREFIX "  xadd      %1,(%2)\n\t"
 		     /* subtracts 1, returns the old value */
 		     "  jns        1f\n\t"
-		     "  call wrap_call_rwsem_wake\n" /* expects old value in %edx */
+		     "  call rwsem_wake\n" /* expects old value in %edx */
 		     "1:\n"
 		     "# ending __up_read\n"
 		     : "+m" (sem->count), "=d" (tmp)
@@ -459,7 +459,7 @@ static inline void diag___up_write(struct rw_semaphore *sem)
 		     LOCK_PREFIX "  xadd      %1,(%2)\n\t"
 		     /* subtracts 0xffff0001, returns the old value */
 		     "  jns        1f\n\t"
-			 "  call wrap_call_rwsem_wake\n" /* expects old value in %edx */
+			 "  call rwsem_wake\n" /* expects old value in %edx */
 		     "1:\n\t"
 		     "# ending __up_write\n"
 		     : "+m" (sem->count), "=d" (tmp)
@@ -522,7 +522,7 @@ static inline void rwsem_set_reader_owned(struct rw_semaphore *sem)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
 static inline void diag___down_write(struct rw_semaphore *sem)
 {
-	____down_write(sem, "wrap_call_rwsem_down_write_failed");
+	____down_write(sem, "rwsem_down_write_failed");
 }
 #else
 
@@ -538,7 +538,7 @@ static inline void diag___down_write_nested(struct rw_semaphore *sem, int subcla
 		     "  test " __ASM_SEL(%w1,%k1) "," __ASM_SEL(%w1,%k1) "\n\t"
 		     /* was the active mask 0 before? */
 		     "  jz        1f\n"
-		     "  call wrap_call_rwsem_down_write_failed\n"
+		     "  call rwsem_down_write_failed\n"
 		     "1:\n"
 		     "# ending down_write"
 		     : "+m" (sem->count), "=d" (tmp)
@@ -587,7 +587,7 @@ static void diag_down_write(struct rw_semaphore *sem)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
 static inline int diag___down_write_killable(struct rw_semaphore *sem)
 {
-	if (IS_ERR(____down_write(sem, "wrap_call_rwsem_down_write_failed_killable")))
+	if (IS_ERR(____down_write(sem, "rwsem_down_write_failed_killable")))
 		return -EINTR;
 
 	return 0;
