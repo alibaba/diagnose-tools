@@ -403,7 +403,7 @@ void wrap_call_rwsem_down_write_failed(struct rw_semaphore *sem)
 	orig_call_rwsem_down_write_failed(sem);
 }
 
-static inline void diag__down_read(struct rw_semaphore *sem)
+static inline void diag___down_read(struct rw_semaphore *sem)
 {
 	asm volatile("# beginning down_read\n\t"
 		     LOCK_PREFIX _ASM_INC "(%1)\n\t"
@@ -420,7 +420,7 @@ static inline void diag__down_read(struct rw_semaphore *sem)
 /*
  * unlock after reading
  */
-static inline void diag__up_read(struct rw_semaphore *sem)
+static inline void diag___up_read(struct rw_semaphore *sem)
 {
 	long tmp;
 	asm volatile("# beginning __up_read\n\t"
@@ -458,11 +458,6 @@ static inline void diag__up_read(struct rw_semaphore *sem)
 		     : "memory", "cc");			\
 	ret;						\
 })
-
-static inline void diag___down_write(struct rw_semaphore *sem)
-{
-	____down_write(sem, "wrap_call_rwsem_down_write_failed");
-}
 
 /*
  * unlock after writing
@@ -534,12 +529,45 @@ static inline void rwsem_set_reader_owned(struct rw_semaphore *sem)
 }
 #endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
+static inline void diag___down_write(struct rw_semaphore *sem)
+{
+	____down_write(sem, "wrap_call_rwsem_down_write_failed");
+}
+#else
+
+/*
+ * lock for writing
+ */
+static inline void diag___down_write_nested(struct rw_semaphore *sem, int subclass)
+{
+	long tmp;
+	asm volatile("# beginning down_write\n\t"
+		     LOCK_PREFIX "  xadd      %1,(%2)\n\t"
+		     /* adds 0xffff0001, returns the old value */
+		     "  test " __ASM_SEL(%w1,%k1) "," __ASM_SEL(%w1,%k1) "\n\t"
+		     /* was the active mask 0 before? */
+		     "  jz        1f\n"
+		     "  call wrap_call_rwsem_down_write_failed\n"
+		     "1:\n"
+		     "# ending down_write"
+		     : "+m" (sem->count), "=d" (tmp)
+		     : "a" (sem), "1" (RWSEM_ACTIVE_WRITE_BIAS)
+		     : "memory", "cc");
+}
+
+static inline void diag___down_write(struct rw_semaphore *sem)
+{
+	diag___down_write_nested(sem, 0);
+}
+#endif
+
 static void diag_down_read(struct rw_semaphore *sem)
 {
 	might_sleep();
 	rwsem_acquire_read(&sem->dep_map, 0, 0, _RET_IP_);
 
-	LOCK_CONTENDED(sem, __down_read_trylock, diag__down_read);
+	LOCK_CONTENDED(sem, __down_read_trylock, diag___down_read);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
 	rwsem_set_reader_owned(sem);
 #endif
@@ -551,7 +579,7 @@ static void diag_up_read(struct rw_semaphore *sem)
 	hook_unlock(sem);
 	rwsem_release(&sem->dep_map, 1, _RET_IP_);
 
-	diag__up_read(sem);
+	diag___up_read(sem);
 }
 
 static void diag_down_write(struct rw_semaphore *sem)
