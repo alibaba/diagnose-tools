@@ -898,10 +898,12 @@ int mutex_monitor_syscall(struct pt_regs *regs, long id)
 			for (i = 0; i < ms; i++)
 				mdelay(1);
 			up_write(&sem);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
 			ret = down_write_killable(&sem);
 			for (i = 0; i < ms; i++)
 				mdelay(1);
 			up_write(&sem);
+#endif
 		}
 		break;
 	default:
@@ -962,10 +964,12 @@ long diag_ioctl_mutex_monitor(unsigned int cmd, unsigned long arg)
 				for (i = 0; i < ms; i++)
 					mdelay(1);
 				up_write(&sem);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
 				ret = down_write_killable(&sem);
 				for (i = 0; i < ms; i++)
 					mdelay(1);
 				up_write(&sem);
+#endif
 			}
 		}
 		break;
@@ -984,7 +988,9 @@ static int lookup_syms(void)
 	LOOKUP_SYMS(call_rwsem_wake);
 	LOOKUP_SYMS(call_rwsem_down_read_failed);
 	LOOKUP_SYMS(call_rwsem_down_write_failed);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
 	LOOKUP_SYMS(call_rwsem_down_write_failed_killable);
+#endif
 	LOOKUP_SYMS(down_read);
 	LOOKUP_SYMS(up_read);
 	LOOKUP_SYMS(down_write);
