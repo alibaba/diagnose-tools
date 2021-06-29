@@ -223,6 +223,8 @@ static void do_uprobe(const char *arg)
 	string file_start;
 	string file_stop;
 	struct diag_run_trace_uprobe params;
+	char buf[255];
+	int len;
 
 	params.tgid = parse.int_value("tgid");
 	file_start = parse.string_value("start-file");
@@ -248,6 +250,10 @@ static void do_uprobe(const char *arg)
 		return;
 	}
 
+	len = read(params.fd_start, buf, 255);
+	printf("xby-debug, %d, %d\n", params.fd_start, len);
+	len = read(params.fd_stop, buf, 255);
+	printf("xby-debug, %d, %d\n", params.fd_stop, len);
 	if (run_in_host) {
 		ret = diag_call_ioctl(DIAG_IOCTL_RUN_TRACE_UPROBE, (long)&params);
 	} else {
