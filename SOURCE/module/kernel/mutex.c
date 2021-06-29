@@ -299,7 +299,7 @@ static __used noinline void hook_unlock(void *lock)
 	if (tmp->lock_time == 0)
 		return;
 	delay_ns = sched_clock() - tmp->lock_time;
-	if (delay_ns > mutex_monitor_settings.threshold * 10000 * 1000) {
+	if (delay_ns > mutex_monitor_settings.threshold * 1000 * 1000) {
 		unsigned long flags;
 
 		diag_variant_buffer_spin_lock(&mutex_monitor_variant_buffer, flags);
