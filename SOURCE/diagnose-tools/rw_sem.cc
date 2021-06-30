@@ -37,7 +37,7 @@ void usage_rw_sem(void)
 	printf("        --activate\n");
 	printf("            verbose VERBOSE\n");
 	printf("            style dump style: 0 - common, 1 - process chains\n");
-	printf("            rw-sem set the threshold for rw-sem");
+	printf("            threshold set the threshold for rw-sem(ms)\n");
 	printf("        --deactivate\n");
 	printf("        --settings dump settings with text.\n");
 	printf("        --report dump log with text.\n");
@@ -57,7 +57,7 @@ static void do_activate(const char *arg)
 	
 	settings.verbose = parse.int_value("verbose");
 	settings.style = parse.int_value("style");
-	settings.threshold_rw_sem = parse.int_value("rw-sem", 200);
+	settings.threshold = parse.int_value("threshold", 200);
 
 	if (run_in_host) {
 		ret = diag_call_ioctl(DIAG_IOCTL_RW_SEM_SET, (long)&settings);
@@ -67,7 +67,7 @@ static void do_activate(const char *arg)
 	}
 
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
-	printf("    阀值(ms)：\t%d \n", settings.threshold_rw_sem);
+	printf("    阀值(ms)：\t%d \n", settings.threshold);
 	printf("    输出级别：\t%d\n", settings.verbose);
 	printf("    STYLE：\t%d\n", settings.style);
 	
@@ -101,7 +101,7 @@ static void print_settings_in_json(struct diag_rw_sem_settings *settings, int re
 
 	if (ret == 0) {
 		root["activated"] = Json::Value(settings->activated);
-		root["threshold_rw_sem"] = Json::Value(settings->threshold_rw_sem);
+		root["threshold"] = Json::Value(settings->threshold);
 		root["verbose"] = Json::Value(settings->verbose);
 		root["STYLE"] = Json::Value(settings->style);
 	} else {
@@ -136,7 +136,7 @@ static void do_settings(const char *arg)
 	if (ret == 0) {
 		printf("功能设置：\n");
 		printf("    是否激活：\t%s\n", settings.activated ? "√" : "×");
-		printf("    阀值(ms)：\t%d\n",settings.threshold_rw_sem);
+		printf("    阀值(ms)：\t%d\n",settings.threshold);
 		printf("    输出级别：\t%d\n", settings.verbose);
 		printf("    STYLE：\t%d\n", settings.style);
 	} else {

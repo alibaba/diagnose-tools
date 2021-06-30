@@ -51,7 +51,7 @@ void diag_rw_sem_exit(void)
 
 static atomic64_t diag_nr_running = ATOMIC64_INIT(0);
 struct diag_rw_sem_settings rw_sem_settings = {
-	.threshold_rw_sem = 200,
+	.threshold = 200,
 };
 
 static int rw_sem_alloced;
@@ -241,7 +241,7 @@ static int kprobe_up_write_pre(struct kprobe *p, struct pt_regs *regs)
 {
 	struct rw_semaphore *sem = (void *)ORIG_PARAM1(regs);
 
-	hook_unlock(sem, rw_sem_settings.threshold_rw_sem);
+	hook_unlock(sem, rw_sem_settings.threshold);
 
 	return 0;
 }

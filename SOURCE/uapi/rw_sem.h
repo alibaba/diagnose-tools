@@ -27,7 +27,7 @@ struct diag_rw_sem_settings {
 	unsigned int activated;
 	unsigned int verbose;
 	unsigned int style;
-	unsigned int threshold_rw_sem;
+	unsigned int threshold;
 };
 
 struct rw_sem_detail {
