@@ -134,7 +134,7 @@ EOF
 }
 
 kprobe() {
-	eval "$DIAG_CMD kprobe --deactivate --activate='probe=hrtimer_interrupt'"
+	eval "$DIAG_CMD kprobe --deactivate --activate='probe=down_write'"
         files=""
         for i in `seq 10`; do
                 sleep 1

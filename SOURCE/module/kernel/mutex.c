@@ -38,6 +38,7 @@
 #include "internal.h"
 #include "pub/trace_file.h"
 #include "pub/trace_point.h"
+#include "pub/kprobe.h"
 
 #include "uapi/mutex_monitor.h"
 
@@ -157,22 +158,9 @@ static void (*orig___mutex_lock_slowpath)(atomic_t *lock_count);
 static void (*orig___mutex_unlock_slowpath)(atomic_t *lock_count);
 #endif
 
-static asmlinkage void (*orig_call_rwsem_wake)(struct rw_semaphore *sem);
-static asmlinkage void (*orig_call_rwsem_down_read_failed)(struct rw_semaphore *sem);
-static asmlinkage struct rw_semaphore *(*orig_call_rwsem_down_write_failed)(struct rw_semaphore *sem);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
-static asmlinkage struct rw_semaphore *(*orig_call_rwsem_down_write_failed_killable)(struct rw_semaphore *sem);
-#endif
-
-DEFINE_ORIG_FUNC(void, down_read, 1, struct rw_semaphore *, sem);
-DEFINE_ORIG_FUNC(void, up_read, 1, struct rw_semaphore *, sem);
-DEFINE_ORIG_FUNC(void, down_write, 1, struct rw_semaphore *, sem);
-DEFINE_ORIG_FUNC(void, up_write, 1, struct rw_semaphore *, sem);
-DEFINE_ORIG_FUNC(int, down_write_trylock, 1, struct rw_semaphore *, sem);
-DEFINE_ORIG_FUNC(int, down_read_trylock, 1, struct rw_semaphore *, sem);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
-DEFINE_ORIG_FUNC(int, down_write_killable, 1, struct rw_semaphore *, sem);
-#endif
+static struct kprobe kprobe_down_write;
+static struct kprobe kprobe_down_write_killable;
+static struct kprobe kprobe_up_write;
 
 struct mutex_desc {
 	struct mutex *mutex;
@@ -393,382 +381,31 @@ void new_mutex_unlock(struct mutex *lock)
 	atomic64_dec_return(&diag_nr_running);
 }
 
-#define RWSEM_READER_OWNED	((struct task_struct *)1UL)
-
-void asmlinkage wrap_call_rwsem_down_read_failed(struct rw_semaphore *sem)
+static int kprobe_down_write_pre(struct kprobe *p, struct pt_regs *regs)
 {
-	orig_call_rwsem_down_read_failed(sem);
-}
+	struct rw_semaphore *sem = (void *)ORIG_PARAM1(regs);
 
-void asmlinkage wrap_call_rwsem_wake(struct rw_semaphore *sem)
-{
-	orig_call_rwsem_wake(sem);
-}
-
-struct rw_semaphore * asmlinkage wrap_call_rwsem_down_write_failed(struct rw_semaphore *sem)
-{
-	return orig_call_rwsem_down_write_failed(sem);
-}
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
-struct rw_semaphore * asmlinkage wrap_call_rwsem_down_write_failed_killable(struct rw_semaphore *sem)
-{
-	return orig_call_rwsem_down_write_failed_killable(sem);
-}
-#endif
-
-static inline void diag___down_read(struct rw_semaphore *sem)
-{
-	asm volatile("# beginning down_read\n\t"
-		     LOCK_PREFIX _ASM_INC "(%1)\n\t"
-			 "  jns        1f\n"
-		     /* adds 0x00000001 */
-			"  pushq %%rdi	\n\t"
-        	"  pushq %%rsi	\n\t"
-        	"  pushq %%rcx	\n\t"
-        	"  pushq %%r8	\n\t"
-        	"  pushq %%r9	\n\t"
-        	"  pushq %%r10	\n\t"
-        	"  pushq %%r11	\n\t"
-			"  movq %%rax,%%rdi	\n\t"
-		    "  call rwsem_down_read_failed\n"
-			"  popq %%r11	\n\t"
-        	"  popq %%r10	\n\t"
-        	"  popq %%r9	\n\t"
-        	"  popq %%r8	\n\t"
-        	"  popq %%rcx	\n\t"
-        	"  popq %%rsi	\n\t"
-        	"  popq %%rdi	\n\t"
-		     "1:\n\t"
-		     "# ending down_read\n\t"
-		     : "+m" (sem->count)
-		     : "a" (sem)
-		     : "memory", "cc");
-}
-
-/*
- * unlock after reading
- */
-static inline void diag___up_read(struct rw_semaphore *sem)
-{
-	long tmp;
-	asm volatile("# beginning __up_read\n\t"
-		     LOCK_PREFIX "  xadd      %1,(%2)\n\t"
-		     /* subtracts 1, returns the old value */
-		     "  jns        1f\n\t"
-			"  pushq %%rdi	\n\t"
-        	"  pushq %%rsi	\n\t"
-        	"  pushq %%rcx	\n\t"
-        	"  pushq %%r8	\n\t"
-        	"  pushq %%r9	\n\t"
-        	"  pushq %%r10	\n\t"
-        	"  pushq %%r11	\n\t"
-			"  movq %%rax,%%rdi	\n\t"
-		     "  call rwsem_wake\n" /* expects old value in %edx */
-			"  popq %%r11	\n\t"
-        	"  popq %%r10	\n\t"
-        	"  popq %%r9	\n\t"
-        	"  popq %%r8	\n\t"
-        	"  popq %%rcx	\n\t"
-        	"  popq %%rsi	\n\t"
-        	"  popq %%rdi	\n\t"
-		     "1:\n"
-		     "# ending __up_read\n"
-		     : "+m" (sem->count), "=d" (tmp)
-		     : "a" (sem), "1" (-RWSEM_ACTIVE_READ_BIAS)
-		     : "memory", "cc");
-}
-
-/*
- * unlock after writing
- */
-static inline void diag___up_write(struct rw_semaphore *sem)
-{
-	long tmp;
-	asm volatile("# beginning __up_write\n\t"
-		     LOCK_PREFIX "  xadd      %1,(%2)\n\t"
-		     /* subtracts 0xffff0001, returns the old value */
-		     "  jns        1f\n\t"
-			"  pushq %%rdi	\n\t"
-        	"  pushq %%rsi	\n\t"
-        	"  pushq %%rcx	\n\t"
-        	"  pushq %%r8	\n\t"
-        	"  pushq %%r9	\n\t"
-        	"  pushq %%r10	\n\t"
-        	"  pushq %%r11	\n\t"
-			"  movq %%rax,%%rdi	\n\t"
-			 "  call rwsem_wake\n" /* expects old value in %edx */
-			"  popq %%r11	\n\t"
-        	"  popq %%r10	\n\t"
-        	"  popq %%r9	\n\t"
-        	"  popq %%r8	\n\t"
-        	"  popq %%rcx	\n\t"
-        	"  popq %%rsi	\n\t"
-        	"  popq %%rdi	\n\t"
-		     "1:\n\t"
-		     "# ending __up_write\n"
-		     : "+m" (sem->count), "=d" (tmp)
-		     : "a" (sem), "1" (-RWSEM_ACTIVE_WRITE_BIAS)
-		     : "memory", "cc");
-}
-
-#ifdef CONFIG_RWSEM_SPIN_ON_OWNER
-/*
- * All writes to owner are protected by WRITE_ONCE() to make sure that
- * store tearing can't happen as optimistic spinners may read and use
- * the owner value concurrently without lock. Read from owner, however,
- * may not need READ_ONCE() as long as the pointer value is only used
- * for comparison and isn't being dereferenced.
- */
-static inline void rwsem_set_owner(struct rw_semaphore *sem)
-{
-	WRITE_ONCE(sem->owner, current);
-}
-
-static inline void rwsem_clear_owner(struct rw_semaphore *sem)
-{
-	WRITE_ONCE(sem->owner, NULL);
-}
-
-static inline void rwsem_set_reader_owned(struct rw_semaphore *sem)
-{
-	/*
-	 * We check the owner value first to make sure that we will only
-	 * do a write to the rwsem cacheline when it is really necessary
-	 * to minimize cacheline contention.
-	 */
-	if (sem->owner != RWSEM_READER_OWNED)
-		WRITE_ONCE(sem->owner, RWSEM_READER_OWNED);
-}
-
-static inline bool rwsem_owner_is_writer(struct task_struct *owner)
-{
-	return owner && owner != RWSEM_READER_OWNED;
-}
-
-static inline bool rwsem_owner_is_reader(struct task_struct *owner)
-{
-	return owner == RWSEM_READER_OWNED;
-}
-#else
-static inline void rwsem_set_owner(struct rw_semaphore *sem)
-{
-}
-
-static inline void rwsem_clear_owner(struct rw_semaphore *sem)
-{
-}
-
-static inline void rwsem_set_reader_owned(struct rw_semaphore *sem)
-{
-}
-#endif
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
-static inline void diag___down_write(struct rw_semaphore *sem)
-{
-	____down_write(sem, "rwsem_down_write_failed");
-}
-#else
-
-/*
- * lock for writing
- */
-static inline void diag___down_write_nested(struct rw_semaphore *sem, int subclass)
-{
-	long tmp;
-	asm volatile("# beginning down_write\n\t"
-		     LOCK_PREFIX "  xadd      %1,(%2)\n\t"
-		     /* adds 0xffff0001, returns the old value */
-		     "  test " __ASM_SEL(%w1,%k1) "," __ASM_SEL(%w1,%k1) "\n\t"
-		     /* was the active mask 0 before? */
-		     "  jz        1f\n"
-			"  pushq %%rdi	\n\t"
-        	"  pushq %%rsi	\n\t"
-        	"  pushq %%rcx	\n\t"
-        	"  pushq %%r8	\n\t"
-        	"  pushq %%r9	\n\t"
-        	"  pushq %%r10	\n\t"
-        	"  pushq %%r11	\n\t"
-			"  movq %%rax,%%rdi	\n\t"
-		     "  call rwsem_down_write_failed\n"
-			"  popq %%r11	\n\t"
-        	"  popq %%r10	\n\t"
-        	"  popq %%r9	\n\t"
-        	"  popq %%r8	\n\t"
-        	"  popq %%rcx	\n\t"
-        	"  popq %%rsi	\n\t"
-        	"  popq %%rdi	\n\t"
-		     "1:\n"
-		     "# ending down_write"
-		     : "+m" (sem->count), "=d" (tmp)
-		     : "a" (sem), "1" (RWSEM_ACTIVE_WRITE_BIAS)
-		     : "memory", "cc");
-}
-
-static inline void diag___down_write(struct rw_semaphore *sem)
-{
-	diag___down_write_nested(sem, 0);
-}
-#endif
-
-static void diag_down_read(struct rw_semaphore *sem)
-{
-	might_sleep();
-	rwsem_acquire_read(&sem->dep_map, 0, 0, _RET_IP_);
-
-	LOCK_CONTENDED(sem, __down_read_trylock, diag___down_read);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
-	rwsem_set_reader_owned(sem);
-#endif
-	hook_lock(sem);
-}
-
-static void diag_up_read(struct rw_semaphore *sem)
-{
-	hook_unlock(sem, mutex_monitor_settings.threshold_rw_sem);
-	rwsem_release(&sem->dep_map, 1, _RET_IP_);
-
-	diag___up_read(sem);
-}
-
-static void diag_down_write(struct rw_semaphore *sem)
-{
-	might_sleep();
-	rwsem_acquire(&sem->dep_map, 0, 0, _RET_IP_);
-
-	LOCK_CONTENDED(sem, __down_write_trylock, diag___down_write);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
-	rwsem_set_owner(sem);
-#endif
-	hook_lock(sem);
-}
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
-static inline int diag___down_write_killable(struct rw_semaphore *sem)
-{
-	if (IS_ERR(____down_write(sem, "rwsem_down_write_failed_killable")))
-		return -EINTR;
-
-	return 0;
-}
-
-static int diag_down_write_killable(struct rw_semaphore *sem)
-{
-	might_sleep();
-	rwsem_acquire(&sem->dep_map, 0, 0, _RET_IP_);
-
-	if (LOCK_CONTENDED_RETURN(sem, __down_write_trylock, diag___down_write_killable)) {
-		rwsem_release(&sem->dep_map, 1, _RET_IP_);
-		return -EINTR;
-	}
-
-	rwsem_set_owner(sem);
 	hook_lock(sem);
 
 	return 0;
 }
-#endif
 
-/*
- * trylock for writing -- returns 1 if successful, 0 if contention
- */
-int diag_down_write_trylock(struct rw_semaphore *sem)
+static int kprobe_down_write_killable_pre(struct kprobe *p, struct pt_regs *regs)
 {
-	int ret = __down_write_trylock(sem);
+	struct rw_semaphore *sem = (void *)ORIG_PARAM1(regs);
 
-	if (ret == 1) {
-		rwsem_acquire(&sem->dep_map, 0, 1, _RET_IP_);
-		hook_lock(sem);
-	}
+	hook_lock(sem);
 
-	return ret;
+	return 0;
 }
 
-/*
- * trylock for reading -- returns 1 if successful, 0 if contention
- */
-int diag_down_read_trylock(struct rw_semaphore *sem)
+static int kprobe_up_write_pre(struct kprobe *p, struct pt_regs *regs)
 {
-	int ret = __down_read_trylock(sem);
+	struct rw_semaphore *sem = (void *)ORIG_PARAM1(regs);
 
-	if (ret == 1) {
-		rwsem_acquire_read(&sem->dep_map, 0, 1, _RET_IP_);
-		hook_lock(sem);
-	}
-	return ret;
-}
-
-static void diag_up_write(struct rw_semaphore *sem)
-{
 	hook_unlock(sem, mutex_monitor_settings.threshold_rw_sem);
-	rwsem_release(&sem->dep_map, 1, _RET_IP_);
 
-	rwsem_clear_owner(sem);
-	diag___up_write(sem);
-}
-
-void new_down_read(struct rw_semaphore *sem)
-{
-	atomic64_inc_return(&diag_nr_running);
-	diag_down_read(sem);
-	atomic64_dec_return(&diag_nr_running);
-}
-
-void new_up_read(struct rw_semaphore *sem)
-{
-	atomic64_inc_return(&diag_nr_running);
-	diag_up_read(sem);
-	atomic64_dec_return(&diag_nr_running);
-}
-
-void new_down_write(struct rw_semaphore *sem)
-{
-	atomic64_inc_return(&diag_nr_running);
-	diag_down_write(sem);
-	atomic64_dec_return(&diag_nr_running);
-}
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
-int new_down_write_killable(struct rw_semaphore *sem)
-{
-	int ret = 0;
-
-	atomic64_inc_return(&diag_nr_running);
-	ret = diag_down_write_killable(sem);
-	atomic64_dec_return(&diag_nr_running);
-
-	return ret;
-}
-#endif
-
-void new_up_write(struct rw_semaphore *sem)
-{
-	atomic64_inc_return(&diag_nr_running);
-	diag_up_write(sem);
-	atomic64_dec_return(&diag_nr_running);
-}
-
-int new_down_write_trylock(struct rw_semaphore *sem)
-{
-	int ret = 0;
-
-	atomic64_inc_return(&diag_nr_running);
-	ret = diag_down_write_trylock(sem);
-	atomic64_dec_return(&diag_nr_running);
-
-	return ret;
-}
-
-int new_down_read_trylock(struct rw_semaphore *sem)
-{
-	int ret = 0;
-
-	atomic64_inc_return(&diag_nr_running);
-	ret = diag_down_read_trylock(sem);
-	atomic64_dec_return(&diag_nr_running);
-
-	return ret;
+	return 0;
 }
 
 #if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
@@ -821,19 +458,17 @@ static int __activate_mutex_monitor(void)
 	}
 	//get_argv_processes(&mm_tree);
 
+	hook_kprobe(&kprobe_down_write, "down_write",
+				kprobe_down_write_pre, NULL);
+	hook_kprobe(&kprobe_down_write_killable, "down_write_killable",
+				kprobe_down_write_killable_pre, NULL);
+	hook_kprobe(&kprobe_up_write, "up_write",
+				kprobe_up_write_pre, NULL);
+
 	get_online_cpus();
 	new_mutex_lock(orig_text_mutex);
 	JUMP_INSTALL(mutex_lock);
 	JUMP_INSTALL(mutex_unlock);
-	JUMP_INSTALL(down_read);
-	JUMP_INSTALL(up_read);
-	JUMP_INSTALL(down_write);
-	JUMP_INSTALL(up_write);
-	JUMP_INSTALL(down_write_trylock);
-	JUMP_INSTALL(down_read_trylock);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
-	JUMP_INSTALL(down_write_killable);
-#endif
 	new_mutex_unlock(orig_text_mutex);
 	put_online_cpus();
 
@@ -851,19 +486,16 @@ static void __deactivate_mutex_monitor(void)
 		unhook_tracepoint("sched_process_exit", trace_sched_process_exit_hit, NULL);
 	}
 
+	unhook_kprobe(&kprobe_down_write);
+	unhook_kprobe(&kprobe_down_write_killable);
+	unhook_kprobe(&kprobe_up_write);
+	
 	get_online_cpus();
 	new_mutex_lock(orig_text_mutex);
+
 	JUMP_REMOVE(mutex_lock);
 	JUMP_REMOVE(mutex_unlock);
-	JUMP_REMOVE(down_read);
-	JUMP_REMOVE(up_read);
-	JUMP_REMOVE(down_write);
-	JUMP_REMOVE(up_write);
-	JUMP_REMOVE(down_write_trylock);
-	JUMP_REMOVE(down_read_trylock);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
-	JUMP_REMOVE(down_write_killable);
-#endif
+
 	new_mutex_unlock(orig_text_mutex);
 	put_online_cpus();
 
@@ -1045,22 +677,6 @@ static int lookup_syms(void)
 {
 	LOOKUP_SYMS(__mutex_lock_slowpath);
 
-	LOOKUP_SYMS(call_rwsem_wake);
-	LOOKUP_SYMS(call_rwsem_down_read_failed);
-	LOOKUP_SYMS(call_rwsem_down_write_failed);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
-	LOOKUP_SYMS(call_rwsem_down_write_failed_killable);
-#endif
-	LOOKUP_SYMS(down_read);
-	LOOKUP_SYMS(up_read);
-	LOOKUP_SYMS(down_write);
-	LOOKUP_SYMS(up_write);
-	LOOKUP_SYMS(down_write_trylock);
-	LOOKUP_SYMS(down_read_trylock);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
-	LOOKUP_SYMS(down_write_killable);
-#endif
-
 	orig___mutex_unlock_slowpath = (void *)diag_kallsyms_lookup_name("__mutex_unlock_slowpath.isra.0");
 	if (orig___mutex_unlock_slowpath == NULL)
 		orig___mutex_unlock_slowpath = (void *)diag_kallsyms_lookup_name("__mutex_unlock_slowpath.isra.12");
@@ -1091,15 +707,6 @@ static void jump_init(void)
 {
 	JUMP_INIT(mutex_lock);
 	JUMP_INIT(mutex_unlock);
-	JUMP_INIT(down_read);
-	JUMP_INIT(up_read);
-	JUMP_INIT(down_write);
-	JUMP_INIT(up_write);
-	JUMP_INIT(down_write_trylock);
-	JUMP_INIT(down_read_trylock);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
-	JUMP_INIT(down_write_killable);
-#endif
 }
 
 int diag_mutex_init(void)
