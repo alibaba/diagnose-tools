@@ -287,13 +287,18 @@ static __used noinline void hook_unlock(void *lock, int threshold)
 	struct mutex_desc *tmp;
 	u64 delay_ns;
 	static struct mutex_monitor_detail detail;
+	u64 now;
 
 	tmp = __find_desc(lock);
 	if (!tmp)
 		return;
 	if (tmp->lock_time == 0)
 		return;
-	delay_ns = sched_clock() - tmp->lock_time;
+	now = sched_clock();
+	if (now <= tmp->lock_time)
+		return;
+
+	delay_ns = now - tmp->lock_time;
 	if (delay_ns > threshold * 1000 * 1000) {
 		unsigned long flags;
 
@@ -590,6 +595,9 @@ int mutex_monitor_syscall(struct pt_regs *regs, long id)
 			for (i = 0; i < ms; i++)
 				mdelay(1);
 			up_write(&sem);
+			down_write(&sem);
+			mdelay(1);
+			up_write(&sem);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
 			ret = down_write_killable(&sem);
 			for (i = 0; i < ms; i++)
@@ -655,6 +663,9 @@ long diag_ioctl_mutex_monitor(unsigned int cmd, unsigned long arg)
 				down_write(&sem);
 				for (i = 0; i < ms; i++)
 					mdelay(1);
+				up_write(&sem);
+				down_write(&sem);
+				mdelay(1);
 				up_write(&sem);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
 				ret = down_write_killable(&sem);
