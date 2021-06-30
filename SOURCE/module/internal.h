@@ -53,6 +53,7 @@ static inline void __percpu_counter_add(struct percpu_counter *fbc,
 #include "uapi/utilization.h"
 #include "uapi/sig_info.h"
 #include "uapi/task_monitor.h"
+#include "uapi/rss_monitor.h"
 #include "pub/variant_buffer.h"
 #include "pub/stack.h"
 
@@ -470,6 +471,11 @@ struct diag_percpu_context {
 	struct {
 		struct task_monitor_detail detail;
 	} task_monitor_info;
+
+	struct {
+		struct rss_monitor_detail rss_monitor_detail;
+		struct rss_monitor_raw_stack_detail rss_monitor_raw_stack_detail;
+	} rss_monitor;
 };
 
 extern struct diag_percpu_context *diag_percpu_context[NR_CPUS];
@@ -846,6 +852,11 @@ void diag_sig_info_exit(void);
 
 int activate_task_monitor(void);
 int deactivate_task_monitor(void);
+
+int activate_rss_monitor(void);
+int deactivate_rss_monitor(void);
+int diag_rss_monitor_init(void);
+void diag_rss_monitor_exit(void);
 
 int diag_dev_init(void);
 void diag_dev_cleanup(void);

@@ -56,6 +56,7 @@
 #include "uapi/reboot.h"
 #include "uapi/net_bandwidth.h"
 #include "uapi/task_monitor.h"
+#include "uapi/rss_monitor.h"
 
 unsigned long diag_timer_period = 10;
 
@@ -167,6 +168,8 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 			activate_sig_info();
 		} else if (strcmp(func, "task-monitor") == 0) {
 			activate_task_monitor();
+		} else if (strcmp(func, "rss-monitor") == 0) {
+			activate_rss_monitor();
 		}
 
 		up(&controller_sem);
@@ -236,6 +239,8 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 			deactivate_sig_info();
 		} else if (strcmp(func, "task-monitor") == 0) {
 			deactivate_task_monitor();
+		} else if (strcmp(func, "rss-monitor") == 0) {
+			deactivate_rss_monitor();
 		}
 
 		up(&controller_sem);
@@ -391,6 +396,9 @@ static void diag_cb_sys_enter(void *data, struct pt_regs *regs, long id)
 		} else if (id >= DIAG_BASE_SYSCALL_TASK_MONITOR
 		   && id < DIAG_BASE_SYSCALL_TASK_MONITOR + DIAG_SYSCALL_INTERVAL) {
 			ret = task_monitor_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_RSS_MONITOR
+		   && id < DIAG_BASE_SYSCALL_RSS_MONITOR + DIAG_SYSCALL_INTERVAL) {
+			ret = rss_monitor_syscall(regs, id);
 		} 
 
 		up(&controller_sem);

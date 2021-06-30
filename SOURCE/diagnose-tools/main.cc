@@ -119,6 +119,7 @@ static int usage(int argc, char **argv)
 	usage_net_bandwidth();
 	usage_sig_info();
 	usage_task_monitor();
+	usage_rss_monitor();
 
 	printf("\n");
 	printf("/***************************************************************************/\n");
@@ -238,6 +239,7 @@ static struct diagnose_func all_funcs[] {
 	{"net-bandwidth", net_bandwidth_main, 0},
 	{"sig-info", sig_info_main, 0},
 	{"task-monitor", task_monitor_main, 0},
+	{"rss-monitor", rss_monitor_main, 0},
 	{"test", testcase_main, 0},
 };
 
