@@ -56,6 +56,7 @@
 #include "uapi/reboot.h"
 #include "uapi/net_bandwidth.h"
 #include "uapi/task_monitor.h"
+#include "uapi/rw_sem.h"
 
 unsigned long diag_timer_period = 10;
 
@@ -167,6 +168,8 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 			activate_sig_info();
 		} else if (strcmp(func, "task-monitor") == 0) {
 			activate_task_monitor();
+		} else if (strcmp(func, "rw-sem") == 0) {
+			activate_rw_sem();
 		}
 
 		up(&controller_sem);
@@ -236,6 +239,8 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 			deactivate_sig_info();
 		} else if (strcmp(func, "task-monitor") == 0) {
 			deactivate_task_monitor();
+		} else if ( strcmp(func, "rw-sem") == 0) {
+			deactivate_rw_sem();
 		}
 
 		up(&controller_sem);
@@ -391,7 +396,10 @@ static void diag_cb_sys_enter(void *data, struct pt_regs *regs, long id)
 		} else if (id >= DIAG_BASE_SYSCALL_TASK_MONITOR
 		   && id < DIAG_BASE_SYSCALL_TASK_MONITOR + DIAG_SYSCALL_INTERVAL) {
 			ret = task_monitor_syscall(regs, id);
-		} 
+		} else if (id >= DIAG_BASE_SYSCALL_RW_SEM
+                   && id < DIAG_BASE_SYSCALL_RW_SEM + DIAG_SYSCALL_INTERVAL) {
+                        ret = rw_sem_syscall(regs, id);
+                }
 
 		up(&controller_sem);
 		if (ret != -ENOSYS) {
