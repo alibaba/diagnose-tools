@@ -211,7 +211,7 @@ ifneq ($(KERNELRELEASE),)
 			kernel/uprobe.o kernel/sys_cost.o kernel/sig_info.o kernel/task_monitor.o \
 			kernel/rw_sem.o
 
-	$(TARGET)-objs += mm/mm_entry.o mm/alloc_page.o mm/alloc_top.o mm/high_order.o
+	$(TARGET)-objs += mm/mm_entry.o mm/alloc_page.o mm/alloc_top.o mm/high_order.o mm/rss_monitor.o
 	$(TARGET)-objs += io/io_entry.o
 	$(TARGET)-objs += fs/fs_entry.o fs/orphan.o fs/shm.o fs/rw_top.o
 	$(TARGET)-objs += net/net_entry.o net/tcp_retrans.o net/drop_packet.o net/ping_delay.o net/net_bandwidth.o

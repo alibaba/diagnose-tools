@@ -120,6 +120,7 @@ static int usage(int argc, char **argv)
 	usage_sig_info();
 	usage_task_monitor();
 	usage_rw_sem();
+	usage_rss_monitor();
 
 	printf("\n");
 	printf("/***************************************************************************/\n");
@@ -240,6 +241,7 @@ static struct diagnose_func all_funcs[] {
 	{"sig-info", sig_info_main, 0},
 	{"task-monitor", task_monitor_main, 0},
 	{"rw-sem", rw_sem_main, 0},
+	{"rss-monitor", rss_monitor_main, 0},
 	{"test", testcase_main, 0},
 };
 

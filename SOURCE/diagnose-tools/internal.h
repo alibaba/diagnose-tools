@@ -54,6 +54,7 @@ int net_bandwidth_main(int argc, char *argv[]);
 int sig_info_main(int argc, char *argv[]);
 int task_monitor_main(int argc, char **argv);
 int rw_sem_main(int argc, char **argv);
+int rss_monitor_main(int argc, char **argv);
 
 void usage_run_trace(void);
 void usage_sys_delay(void);
@@ -85,6 +86,7 @@ void usage_net_bandwidth(void);
 void usage_sig_info(void);
 void usage_task_monitor(void);
 void usage_rw_sem(void);
+void usage_rss_monitor(void);
 
 int uprobe_main(int argc, char **argv);
 void usage_uprobe();
