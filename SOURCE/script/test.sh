@@ -318,9 +318,15 @@ task_monitor() {
 }
 
 rw_sem() {
-        eval "$DIAG_CMD rw-sem --deactivate --activate='style=0' --test --report --deactivate --settings" > rw_sem.log
-        eval "$DIAG_CMD rw-sem --deactivate --activate='style=1' --test --report --deactivate" > rw_sem.log
-	eval "$DIAG_CMD rw-sem --deactivate --activate='style=1 threshold=100' --test --report --deactivate --settings" > rw_sem.log
+        eval "$DIAG_CMD rw-sem --deactivate --activate='style=0'"
+	sleep 3
+	eval "$DIAG_CMD rw-sem --report --deactivate --settings" > rw_sem.log
+        eval "$DIAG_CMD rw-sem --deactivate --activate='style=1'"
+	sleep 3
+	eval "$DIAG_CMD rw-sem --report --deactivate --settings" >> rw_sem.log
+	sleep 3
+	eval "$DIAG_CMD rw-sem --deactivate --activate='style=1 threshold=100'"
+	eval "$DIAG_CMD rw-sem --report --deactivate --settings" >> rw_sem.log
 }
 
 call_sub_cmd() {
