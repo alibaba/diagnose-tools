@@ -140,7 +140,7 @@ static inline void mutex_clear_owner(struct mutex *lock)
 
 static atomic64_t diag_nr_running = ATOMIC64_INIT(0);
 struct diag_mutex_monitor_settings mutex_monitor_settings = {
-	.threshold_mutex = 1000,
+	.threshold = 1000,
 };
 
 static int mutex_monitor_alloced;
@@ -347,7 +347,7 @@ void new_mutex_lock(struct mutex *lock)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
 static void diag_mutex_unlock(struct mutex *lock)
 {
-	hook_unlock(lock, mutex_monitor_settings.threshold_mutex);
+	hook_unlock(lock, mutex_monitor_settings.threshold);
 #ifndef CONFIG_DEBUG_LOCK_ALLOC
 	if (__mutex_unlock_fast(lock))
 		return;
@@ -369,7 +369,7 @@ static void diag_mutex_unlock(struct mutex *lock)
 	 */
 	mutex_clear_owner(lock);
 #endif
-	hook_unlock(lock, mutex_monitor_settings.threshold_mutex);
+	hook_unlock(lock, mutex_monitor_settings.threshold);
 	__mutex_fastpath_unlock(&lock->count, *orig___mutex_unlock_slowpath);
 }
 #endif

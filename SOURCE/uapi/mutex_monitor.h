@@ -27,7 +27,7 @@ struct diag_mutex_monitor_settings {
 	unsigned int activated;
 	unsigned int verbose;
 	unsigned int style;
-	unsigned int threshold_mutex;
+	unsigned int threshold;
 };
 
 struct mutex_monitor_detail {

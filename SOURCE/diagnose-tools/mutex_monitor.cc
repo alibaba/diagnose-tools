@@ -37,7 +37,7 @@ void usage_mutex_monitor(void)
 	printf("        --activate\n");
 	printf("            verbose VERBOSE\n");
 	printf("            style dump style: 0 - common, 1 - process chains\n");
-	printf("            mutex set the threshold for mutex");
+	printf("            threshold set the threshold for mutex(ms)\n");
 	printf("        --deactivate\n");
 	printf("        --settings dump settings with text.\n");
 	printf("        --report dump log with text.\n");
@@ -57,7 +57,7 @@ static void do_activate(const char *arg)
 	
 	settings.verbose = parse.int_value("verbose");
 	settings.style = parse.int_value("style");
-	settings.threshold_mutex = parse.int_value("mutex", 1000);
+	settings.threshold = parse.int_value("threshold", 1000);
 
 	if (run_in_host) {
 		ret = diag_call_ioctl(DIAG_IOCTL_MUTEX_MONITOR_SET, (long)&settings);
@@ -67,7 +67,7 @@ static void do_activate(const char *arg)
 	}
 
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
-	printf("    阀值(ms)：\t%d\n", settings.threshold_mutex);
+	printf("    阀值(ms)：\t%d\n", settings.threshold);
 	printf("    输出级别：\t%d\n", settings.verbose);
 	printf("    STYLE：\t%d\n", settings.style);
 	
@@ -101,7 +101,7 @@ static void print_settings_in_json(struct diag_mutex_monitor_settings *settings,
 
 	if (ret == 0) {
 		root["activated"] = Json::Value(settings->activated);
-		root["threshold_mutex"] = Json::Value(settings->threshold_mutex);
+		root["threshold"] = Json::Value(settings->threshold);
 		root["verbose"] = Json::Value(settings->verbose);
 		root["STYLE"] = Json::Value(settings->style);
 	} else {
@@ -136,7 +136,7 @@ static void do_settings(const char *arg)
 	if (ret == 0) {
 		printf("功能设置：\n");
 		printf("    是否激活：\t%s\n", settings.activated ? "√" : "×");
-		printf("    阀值(ms)：\t%d\n", settings.threshold_mutex);
+		printf("    阀值(ms)：\t%d\n", settings.threshold);
 		printf("    输出级别：\t%d\n", settings.verbose);
 		printf("    STYLE：\t%d\n", settings.style);
 	} else {
