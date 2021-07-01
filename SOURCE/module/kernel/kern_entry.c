@@ -251,6 +251,10 @@ int diag_kernel_init(void)
 	if (ret)
 		goto out_task_monitor;
 
+	ret = diag_rw_sem_init();
+        if (ret)
+                goto out_rw_sem;
+
 	on_each_cpu(start_timer, NULL, 1);
 
 #if !defined(XBY_UBUNTU_1604) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
@@ -259,6 +263,8 @@ int diag_kernel_init(void)
 
 	return 0;
 
+out_rw_sem:
+	diag_task_monitor_exit();
 out_task_monitor:
 	diag_sig_info_exit();
 out_sig_info:
@@ -336,6 +342,7 @@ void diag_kernel_exit(void)
 		}
 	}
 
+	diag_rw_sem_exit();
 	diag_task_monitor_exit();
 	diag_sig_info_exit();
 	diag_uprobe_exit();

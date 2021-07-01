@@ -1130,3 +1130,33 @@ void __weak task_monitor_timer(struct diag_percpu_context *context)
 {
         return;
 }
+
+int __weak diag_rw_sem_init(void)
+{
+        return 0;
+}
+
+void __weak diag_rw_sem_exit(void)
+{
+}
+
+long __weak diag_ioctl_rw_sem(unsigned int cmd, unsigned long arg)
+{
+        return -EINVAL;
+}
+
+int __weak rw_sem_syscall(struct pt_regs *regs, long id)
+{
+        return -ENOSYS;
+}
+
+int __weak deactivate_rw_sem(void)
+{
+        return -EINVAL;
+}
+
+int __weak activate_rw_sem(void)
+{
+        return -EINVAL;
+}
+

@@ -141,7 +141,6 @@ static inline void mutex_clear_owner(struct mutex *lock)
 static atomic64_t diag_nr_running = ATOMIC64_INIT(0);
 struct diag_mutex_monitor_settings mutex_monitor_settings = {
 	.threshold_mutex = 1000,
-	.threshold_rw_sem = 200,
 };
 
 static int mutex_monitor_alloced;
@@ -157,10 +156,6 @@ static void (*orig___mutex_unlock_slowpath)(struct mutex *lock, unsigned long ip
 static void (*orig___mutex_lock_slowpath)(atomic_t *lock_count);
 static void (*orig___mutex_unlock_slowpath)(atomic_t *lock_count);
 #endif
-
-static struct kprobe kprobe_down_write;
-static struct kprobe kprobe_down_write_killable;
-static struct kprobe kprobe_up_write;
 
 struct mutex_desc {
 	struct mutex *mutex;
@@ -386,33 +381,6 @@ void new_mutex_unlock(struct mutex *lock)
 	atomic64_dec_return(&diag_nr_running);
 }
 
-static int kprobe_down_write_pre(struct kprobe *p, struct pt_regs *regs)
-{
-	struct rw_semaphore *sem = (void *)ORIG_PARAM1(regs);
-
-	hook_lock(sem);
-
-	return 0;
-}
-
-static int kprobe_down_write_killable_pre(struct kprobe *p, struct pt_regs *regs)
-{
-	struct rw_semaphore *sem = (void *)ORIG_PARAM1(regs);
-
-	hook_lock(sem);
-
-	return 0;
-}
-
-static int kprobe_up_write_pre(struct kprobe *p, struct pt_regs *regs)
-{
-	struct rw_semaphore *sem = (void *)ORIG_PARAM1(regs);
-
-	hook_unlock(sem, mutex_monitor_settings.threshold_rw_sem);
-
-	return 0;
-}
-
 #if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
 __maybe_unused static void trace_sched_process_exec_hit(void *__data,
 	struct task_struct *tsk,
@@ -463,13 +431,6 @@ static int __activate_mutex_monitor(void)
 	}
 	//get_argv_processes(&mm_tree);
 
-	hook_kprobe(&kprobe_down_write, "down_write",
-				kprobe_down_write_pre, NULL);
-	hook_kprobe(&kprobe_down_write_killable, "down_write_killable",
-				kprobe_down_write_killable_pre, NULL);
-	hook_kprobe(&kprobe_up_write, "up_write",
-				kprobe_up_write_pre, NULL);
-
 	get_online_cpus();
 	new_mutex_lock(orig_text_mutex);
 	JUMP_INSTALL(mutex_lock);
@@ -491,10 +452,6 @@ static void __deactivate_mutex_monitor(void)
 		unhook_tracepoint("sched_process_exit", trace_sched_process_exit_hit, NULL);
 	}
 
-	unhook_kprobe(&kprobe_down_write);
-	unhook_kprobe(&kprobe_down_write_killable);
-	unhook_kprobe(&kprobe_up_write);
-	
 	get_online_cpus();
 	new_mutex_lock(orig_text_mutex);
 
@@ -539,7 +496,6 @@ int mutex_monitor_syscall(struct pt_regs *regs, long id)
 	int ret = 0;
 	struct diag_mutex_monitor_settings settings;
 	static DEFINE_MUTEX(lock);
-	static DECLARE_RWSEM(sem);
 
 	switch (id) {
 	case DIAG_MUTEX_MONITOR_SET:
@@ -591,19 +547,6 @@ int mutex_monitor_syscall(struct pt_regs *regs, long id)
 			for (i = 0; i < ms; i++)
 				mdelay(1);
 			mutex_unlock(&lock);
-			down_write(&sem);
-			for (i = 0; i < ms; i++)
-				mdelay(1);
-			up_write(&sem);
-			down_write(&sem);
-			mdelay(1);
-			up_write(&sem);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
-			ret = down_write_killable(&sem);
-			for (i = 0; i < ms; i++)
-				mdelay(1);
-			up_write(&sem);
-#endif
 		}
 		break;
 	default:
@@ -621,7 +564,6 @@ long diag_ioctl_mutex_monitor(unsigned int cmd, unsigned long arg)
 	struct diag_mutex_monitor_settings settings;
 	struct diag_ioctl_dump_param dump_param;
 	static DEFINE_MUTEX(lock);
-	static DECLARE_RWSEM(sem);
 
 	switch (cmd) {
 	case CMD_MUTEX_MONITOR_SET:
@@ -660,19 +602,6 @@ long diag_ioctl_mutex_monitor(unsigned int cmd, unsigned long arg)
 				for (i = 0; i < ms; i++)
 					mdelay(1);
 				mutex_unlock(&lock);
-				down_write(&sem);
-				for (i = 0; i < ms; i++)
-					mdelay(1);
-				up_write(&sem);
-				down_write(&sem);
-				mdelay(1);
-				up_write(&sem);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
-				ret = down_write_killable(&sem);
-				for (i = 0; i < ms; i++)
-					mdelay(1);
-				up_write(&sem);
-#endif
 			}
 		}
 		break;
