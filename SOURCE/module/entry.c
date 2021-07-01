@@ -57,6 +57,7 @@
 #include "uapi/net_bandwidth.h"
 #include "uapi/task_monitor.h"
 #include "uapi/rw_sem.h"
+#include "uapi/rss_monitor.h"
 
 unsigned long diag_timer_period = 10;
 
@@ -170,6 +171,8 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 			activate_task_monitor();
 		} else if (strcmp(func, "rw-sem") == 0) {
 			activate_rw_sem();
+		} else if (strcmp(func, "rss-monitor") == 0) {
+			activate_rss_monitor();
 		}
 
 		up(&controller_sem);
@@ -241,6 +244,8 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 			deactivate_task_monitor();
 		} else if ( strcmp(func, "rw-sem") == 0) {
 			deactivate_rw_sem();
+		} else if (strcmp(func, "rss-monitor") == 0) {
+			deactivate_rss_monitor();
 		}
 
 		up(&controller_sem);
@@ -400,6 +405,10 @@ static void diag_cb_sys_enter(void *data, struct pt_regs *regs, long id)
                    && id < DIAG_BASE_SYSCALL_RW_SEM + DIAG_SYSCALL_INTERVAL) {
                         ret = rw_sem_syscall(regs, id);
                 }
+		} else if (id >= DIAG_BASE_SYSCALL_RSS_MONITOR
+		   && id < DIAG_BASE_SYSCALL_RSS_MONITOR + DIAG_SYSCALL_INTERVAL) {
+			ret = rss_monitor_syscall(regs, id);
+		} 
 
 		up(&controller_sem);
 		if (ret != -ENOSYS) {

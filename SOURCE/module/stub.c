@@ -1160,3 +1160,22 @@ int __weak activate_rw_sem(void)
         return -EINVAL;
 }
 
+int __weak diag_rss_monitor_init(void)
+{
+	return 0;
+}
+
+void __weak diag_rss_monitor_exit(void)
+{
+	//
+}
+
+long __weak diag_ioctl_rss_monitor(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+int __weak rss_monitor_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
+}
