@@ -404,7 +404,6 @@ static void diag_cb_sys_enter(void *data, struct pt_regs *regs, long id)
 		} else if (id >= DIAG_BASE_SYSCALL_RW_SEM
                    && id < DIAG_BASE_SYSCALL_RW_SEM + DIAG_SYSCALL_INTERVAL) {
                         ret = rw_sem_syscall(regs, id);
-                }
 		} else if (id >= DIAG_BASE_SYSCALL_RSS_MONITOR
 		   && id < DIAG_BASE_SYSCALL_RSS_MONITOR + DIAG_SYSCALL_INTERVAL) {
 			ret = rss_monitor_syscall(regs, id);
