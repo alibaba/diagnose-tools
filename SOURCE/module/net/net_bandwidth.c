@@ -54,7 +54,7 @@
 
 #include "uapi/net_bandwidth.h"
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0) && !defined(XBY_UBUNTU_1604) \
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 20, 0) && !defined(XBY_UBUNTU_1604) \
 	&& !defined(CENTOS_3_10_123_9_3)
 
 __maybe_unused static atomic64_t diag_nr_running = ATOMIC64_INIT(0);
