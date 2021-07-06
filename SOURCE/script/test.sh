@@ -302,7 +302,7 @@ net_bandwidth() {
 	eval "$DIAG_CMD net-bandwidth --deactivate --activate"
 	ping www.baidu.com -c 1 > /dev/null
 	sleep 1
-	eval "$DIAG_CMD net-bandwidth --report='testcount=2' --deactivate --settings" > net_bandwidth.log
+	eval "$DIAG_CMD net-bandwidth --report --deactivate --settings" > net_bandwidth.log
 }
 
 sig_info() {
