@@ -263,8 +263,8 @@ static int process_net_bandwidth(void *buf)
 
 static int bandwidth_map_compare(const void *a, const void *b)
 {
-	bandwidth_info *info1 = (bandwidth_info *)a;
-	bandwidth_info *info2 = (bandwidth_info *)b;
+	bandwidth_info *info1 = *(bandwidth_info **)a;
+	bandwidth_info *info2 = *(bandwidth_info **)b;
 
 	return info2->sum_truesize[NET_RECV_SKB] + info2->sum_truesize[NET_SEND_SKB]
 		- info1->sum_truesize[NET_RECV_SKB] - info1->sum_truesize[NET_SEND_SKB];
@@ -279,13 +279,13 @@ static int display()
 	unsigned char *daddr;
 	char path[50];
 
-	array = (struct bandwidth_info **)malloc(sizeof(struct bandwidth_info) * bandwidth_map.size());
+	array = (struct bandwidth_info **)malloc(sizeof(struct bandwidth_info*) * bandwidth_map.size());
 
 	BANDWIDTH_MAP::iterator it;
 	for (it = bandwidth_map.begin(); it != bandwidth_map.end(); it++) {
 		array[n++] = &it->second;
 	}
-	qsort(array, n, sizeof(struct bandwidth_info), bandwidth_map_compare);
+	qsort(array, n, sizeof(struct bandwidth_info*), bandwidth_map_compare);
 
 	printf("%s %46s %20s %20s\n\n", "协议", "路径", "入向带宽", "出向带宽");
 
