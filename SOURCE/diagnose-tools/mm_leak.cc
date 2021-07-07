@@ -25,19 +25,48 @@
 #include "internal.h"
 #include "symbol.h"
 #include "uapi/mm_leak.h"
+#include "params_parse.h"
+
 void usage_mm_leak(void)
 {
 	printf("    mm-leak usage:\n");
-	printf("        --help mm-leak help info\n");
-	printf("        --activate\n");
-	printf("        --deactivate\n");
-	printf("        --verbose VERBOSE\n");
-	printf("        --report dump log with text.\n");
+	printf("	--help mm-leak help info\n");
+	printf("	--activate\n");
+	printf("	    time-threshold default threshold(ms)\n");
+	printf("	    max-bytes max bytes recorded\n");
+	printf("	    min-bytes min bytes recorded \n");
+	printf("	--deactivate\n");
+	printf("	--verbose VERBOSE\n");
+	printf("	--report dump log with text.\n");
 }
 
-static void do_activate(void)
+static void do_activate(const char *arg)
 {
 	int ret = 0;
+
+	struct diag_mm_leak_settings settings;
+	struct params_parser parse(arg);
+
+	memset(&settings, 0, sizeof(struct diag_mm_leak_settings));
+
+	settings.time_threshold = parse.int_value("time-threshold");
+	settings.max_bytes =  parse.int_value("max-bytes");
+	settings.min_bytes = parse.int_value("min-bytes");
+
+	if (run_in_host) {
+		ret = diag_call_ioctl(DIAG_IOCTL_MM_LEAK_SET, (long)&settings);
+	} else {
+		ret = -ENOSYS;
+		syscall(DIAG_MM_LEAK_SET, &ret, &settings, sizeof(struct diag_mm_leak_settings));
+	}
+
+	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
+	printf("    阀值(ms)：%d\n", settings.time_threshold);
+	printf("    输出级别：%d\n", settings.verbose);
+	printf("    MAX-BYTES：%d\n", settings.max_bytes);
+	printf("    MIN-BYTES：%d\n", settings.min_bytes);
+	if (ret)
+		return;
 	
 	ret = diag_activate("mm-leak");
 	if (ret == 1) {
@@ -82,8 +111,8 @@ static int mm_leak_extract(void *buf, unsigned int len, void *)
 {
 	int *et_type;
 	struct mm_leak_detail *detail;
-    symbol sym;
-    elf_file file;
+	symbol sym;
+	elf_file file;
 
 	if (len == 0)
 		return 0;
@@ -100,11 +129,13 @@ static int mm_leak_extract(void *buf, unsigned int len, void *)
 				detail->task.cgroup_buf,
 				detail->task.pid,
 				0);
-		printf("#*        0xffffffffffffff %llu / %lu [%lx] (UNKNOWN)\n",
-				detail->bytes_req, detail->bytes_alloc, detail->addr);
+		printf("#*        0xffffffffffffff %lu / %lu  %lu  [%lx] (UNKNOWN)\n",
+				detail->bytes_req,
+				detail->bytes_alloc,
+				detail->delta_time,
+				detail->addr);
 		diag_printf_kern_stack(&detail->kern_stack);
 		printf("##\n");
-
 		break;
 	default:
 		break;
@@ -123,6 +154,7 @@ static void do_dump(void)
 	static char variant_buf[5 * 1024 * 1024];
 	int len;
 	int ret = 0;
+
 	struct diag_ioctl_dump_param_cycle dump_param = {
 		.user_ptr_len = &len,
 		.user_buf_len = 5 * 1024 * 1024,
@@ -163,6 +195,9 @@ static void do_settings(void)
 		printf("功能设置：\n");
 		printf("    是否激活：%s\n", settings.activated ? "√" : "×");
 		printf("    输出级别：%d\n", settings.verbose);
+		printf("    阀值(ms)：%d\n", settings.time_threshold);
+		printf("    MAX-BYTES：%d\n", settings.max_bytes);
+		printf("    MIN-BYTES：%d\n", settings.min_bytes);
 	} else {
 		printf("获取mm-leak设置失败，请确保正确安装了diagnose-tools工具\n");
 	}
@@ -172,7 +207,7 @@ int mm_leak_main(int argc, char **argv)
 {
 	static struct option long_options[] = {
 			{"help",     no_argument, 0,  0 },
-			{"activate",     no_argument, 0,  0 },
+			{"activate",     optional_argument, 0,  0 },
 			{"deactivate", no_argument,       0,  0 },
 			{"settings",     no_argument, 0,  0 },
 			{"report",     no_argument, 0,  0 },
@@ -196,8 +231,8 @@ int mm_leak_main(int argc, char **argv)
 		case 0:
 			usage_mm_leak();
 			break;
-	    case 1:
-			do_activate();
+		case 1:
+			do_activate(optarg ? optarg : "");
 			break;
 		case 2:
 			do_deactivate();
