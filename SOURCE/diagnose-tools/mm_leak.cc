@@ -36,8 +36,7 @@ void usage_mm_leak(void)
 	printf("	    max-bytes max bytes recorded\n");
 	printf("	    min-bytes min bytes recorded \n");
 	printf("	--deactivate\n");
-	printf("	--verbose VERBOSE\n");
-	printf("	--report dump log with text.\n");
+	printf("	--report dump log with text\n");
 }
 
 static void do_activate(const char *arg)
@@ -86,25 +85,6 @@ static void do_deactivate(void)
 	} else {
 		printf("deactivate mm-leak fail, ret is %d\n", ret);
 	}
-}
-
-static void do_verbose(char *arg)
-{
-	int ret;
-	unsigned int verbose;
-
-	ret = sscanf(arg, "%d", &verbose);
-	if (ret != 1)
-		return;
-
-	if (run_in_host) {
-		ret = diag_call_ioctl(DIAG_IOCTL_MM_LEAK_VERBOSE, (unsigned long)&verbose);
-	} else {
-		ret = -ENOSYS;
-		syscall(DIAG_MM_LEAK_VERBOSE, &ret, verbose);
-	}
-
-	printf("set verbose for mm-leak: %d, ret is %d\n", verbose, ret);
 }
 
 static int mm_leak_extract(void *buf, unsigned int len, void *)
@@ -211,8 +191,6 @@ int mm_leak_main(int argc, char **argv)
 			{"deactivate", no_argument,       0,  0 },
 			{"settings",     no_argument, 0,  0 },
 			{"report",     no_argument, 0,  0 },
-			{"verbose",     required_argument, 0,  0 },
-			{"v",     required_argument, 0,  0 },
 			{0,         0,                 0,  0 }
 		};
 	int c;
@@ -242,10 +220,6 @@ int mm_leak_main(int argc, char **argv)
 			break;
 		case 4:
 			do_dump();
-			break;
-		case 5:
-		case 6:
-			do_verbose(optarg);
 			break;
 		default:
 			usage_mm_leak();

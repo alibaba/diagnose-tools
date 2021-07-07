@@ -341,10 +341,6 @@ int mm_leak_syscall(struct pt_regs *regs, long id)
 	struct diag_mm_leak_settings settings;
 
 	switch (id) {
-	case DIAG_MM_LEAK_VERBOSE:
-		verbose = (unsigned int)SYSCALL_PARAM1(regs);
-		mm_leak_settings.verbose = verbose;
-		break;
 	case DIAG_MM_LEAK_SET:
 		buf = (void __user *)SYSCALL_PARAM1(regs);
 		buf_len = (size_t)SYSCALL_PARAM2(regs);
@@ -405,12 +401,6 @@ long diag_ioctl_mm_leak(unsigned int cmd, unsigned long arg)
 	struct diag_ioctl_dump_param_cycle dump_param;
 
 	switch (cmd) {
-	case CMD_MM_LEAK_VERBOSE:
-		ret = copy_from_user(&verbose, (void *)arg, sizeof(unsigned int));
-		if (!ret) {
-			mm_leak_settings.verbose = verbose;
-		}
-		break;
 	case CMD_MM_LEAK_SET:
 		if (mm_leak_settings.activated) {
 			ret = -EBUSY;
