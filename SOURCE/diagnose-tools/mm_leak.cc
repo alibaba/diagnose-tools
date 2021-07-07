@@ -113,7 +113,7 @@ static int mm_leak_extract(void *buf, unsigned int len, void *)
 				detail->bytes_req,
 				detail->bytes_alloc,
 				detail->delta_time,
-				detail->addr);
+				(unsigned long)detail->addr);
 		diag_printf_kern_stack(&detail->kern_stack);
 		printf("##\n");
 		break;

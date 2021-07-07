@@ -331,7 +331,6 @@ static void do_dump(void)
 
 int mm_leak_syscall(struct pt_regs *regs, long id)
 {
-	unsigned int verbose;
 	int __user *ptr_len;
 	void __user *buf;
 	size_t __user buf_len;
@@ -395,7 +394,6 @@ int mm_leak_syscall(struct pt_regs *regs, long id)
 
 long diag_ioctl_mm_leak(unsigned int cmd, unsigned long arg)
 {
-	unsigned int verbose;
 	int ret = 0;
 	struct diag_mm_leak_settings settings;
 	struct diag_ioctl_dump_param_cycle dump_param;

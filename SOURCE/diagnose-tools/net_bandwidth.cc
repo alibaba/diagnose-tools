@@ -274,7 +274,7 @@ static int display()
 {
 	struct bandwidth_info **array;
 	struct bandwidth_info *info;
-	unsigned rows, n = 0, j;
+	unsigned n = 0, j;
 	unsigned char *saddr;
 	unsigned char *daddr;
 	char path[50];
