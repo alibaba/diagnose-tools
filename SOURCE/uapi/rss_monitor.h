@@ -24,22 +24,29 @@ struct diag_rss_monitor_settings {
 	unsigned int verbose;
 	unsigned int tgid;
 	unsigned int pid;
+	unsigned long time_threshold;
 	unsigned long raw_stack;
 };
 
 struct rss_monitor_detail {
-        int et_type;
-        struct diag_timespec tv;
-        struct diag_task_detail task;
+	int et_type;
+	unsigned long addr;
+	unsigned long alloc_len;
+	unsigned long  delta_time;
+	struct diag_timespec tv;
+	struct diag_task_detail task;
 	//struct diag_kern_stack_detail kern_stack;
-        struct diag_user_stack_detail user_stack;
+	struct diag_user_stack_detail user_stack;
 };
 
 struct rss_monitor_raw_stack_detail {
-        int et_type;
+	int et_type;
+	unsigned long addr;
+	unsigned long alloc_len;
+	unsigned long  delta_time;
 	struct diag_timespec tv;
 	struct diag_task_detail task;
-        //struct diag_kern_stack_detail kern_stack;
+	//struct diag_kern_stack_detail kern_stack;
 	struct diag_user_stack_detail user_stack;
 	struct diag_raw_stack_detail raw_stack;
 };
