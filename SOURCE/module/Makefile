@@ -197,7 +197,7 @@ ifneq ($(KERNELRELEASE),)
 
 	ccflags-y += -I$(PWD) -I$(PWD)/../ -Wuninitialized
 
-	$(TARGET)-objs = pub/trace_buffer.o pub/trace_file.o pub/variant_buffer.o pub/trace_point.o \
+	$(TARGET)-objs = pub/mem_pool.o pub/trace_buffer.o pub/trace_file.o pub/variant_buffer.o pub/trace_point.o \
 			pub/kprobe.o pub/stack.o pub/cgroup.o pub/fs_utils.o pub/uprobe.o pub/symbol.o
 	ifeq ($(EXPERIENTIAL),1)
 		$(TARGET)-objs += pub/remote_stack.o
@@ -220,9 +220,7 @@ ifneq ($(KERNELRELEASE),)
 		$(TARGET)-objs += test/test.o
 	endif
 
-	ifeq ($(EXPERIENTIAL),1)
-		$(TARGET)-objs += mm/memory_leak.o
-	endif
+	$(TARGET)-objs += mm/memory_leak.o
 
 	ifeq ($(EXPERIENTIAL),1)
 		$(TARGET)-objs += fs/cache.o

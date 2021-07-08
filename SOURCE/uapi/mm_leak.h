@@ -36,6 +36,10 @@ struct mm_leak_detail {
 	struct diag_timespec tv;
 	int seq;
 	unsigned long id;
+	void *addr;
+	size_t bytes_req;
+	size_t bytes_alloc;
+	struct diag_task_detail task;
 	struct diag_kern_stack_detail kern_stack;
 };
 

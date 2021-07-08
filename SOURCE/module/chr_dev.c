@@ -171,6 +171,9 @@ static long diag_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     case DIAG_IOCTL_TYPE_RSS_MONITOR:
         ret = diag_ioctl_rss_monitor(nr, arg);
         break;
+    case DIAG_IOCTL_TYPE_MM_LEAK:
+        ret = diag_ioctl_mm_leak(nr, arg);
+        break;
     default:
         break;
     }

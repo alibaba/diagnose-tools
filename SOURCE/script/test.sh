@@ -26,7 +26,7 @@ declare -a __all_case=(["1"]="sys-delay" ["2"]="sys-cost" ["3"]="sched-delay" \
 			["21"]="rw-top" ["22"]="fs-shm" ["23"]="fs-orphan" \
 			["24"]="fs-cache" ["25"]="task-info" ["26"]="reboot" \
 			["27"]="net-bandwidth" ["28"]="sig-info" ["29"]="task_monitor" \
-			[30]="rw-sem" ["999"]="kern-demo" )
+			[30]="rw-sem" [31]="mm-leak" ["999"]="kern-demo" )
 
 sys_delay() {
 	eval "$DIAG_CMD sys-delay --deactivate --activate='style=0' --test --report --deactivate --settings" > sys-delay.log
@@ -327,6 +327,12 @@ rw_sem() {
 	sleep 3
 	eval "$DIAG_CMD rw-sem --deactivate --activate='style=1 threshold=100'"
 	eval "$DIAG_CMD rw-sem --report --deactivate --settings" >> rw_sem.log
+}
+
+mm_leak() {
+        eval "$DIAG_CMD mm-leak --deactivate --activate --settings"
+        sleep 1
+        eval "$DIAG_CMD mm-leak --report --deactivate" > sig_info.log
 }
 
 call_sub_cmd() {

@@ -96,8 +96,14 @@ static int mm_leak_extract(void *buf, unsigned int len, void *)
 		detail = (struct mm_leak_detail *)buf;
 
 		printf("内存泄漏\n");
-
+		printf("##CGROUP:[%s]  %d      [%03d]  采样命中\n",
+				detail->task.cgroup_buf,
+				detail->task.pid,
+				0);
+		printf("#*        0xffffffffffffff %llu / %lu [%lx] (UNKNOWN)\n",
+				detail->bytes_req, detail->bytes_alloc, detail->addr);
 		diag_printf_kern_stack(&detail->kern_stack);
+		printf("##\n");
 
 		break;
 	default:
@@ -114,31 +120,30 @@ static void do_extract(char *buf, int len)
 
 static void do_dump(void)
 {
-	static char variant_buf[1024 * 1024];
+	static char variant_buf[5 * 1024 * 1024];
 	int len;
 	int ret = 0;
-	unsigned long cycle = 1;
 	struct diag_ioctl_dump_param_cycle dump_param = {
 		.user_ptr_len = &len,
-		.user_buf_len = 1024 * 1024,
+		.user_buf_len = 5 * 1024 * 1024,
 		.user_buf = variant_buf,
-		.cycle = cycle,
+		.cycle = 1,
 	};
 
-	memset(variant_buf, 0, 1024 * 1024);
+	memset(variant_buf, 0, 5 * 1024 * 1024);
 	do {
 		if (run_in_host) {
 			ret = diag_call_ioctl(DIAG_IOCTL_MM_LEAK_DUMP, (long)&dump_param);
 		} else {
 			ret = -ENOSYS;
-			syscall(DIAG_MM_LEAK_DUMP, &ret, &len, variant_buf, 5 * 1024 * 1024, cycle);
+			syscall(DIAG_MM_LEAK_DUMP, &ret, &len, variant_buf, 5 * 1024 * 1024, dump_param.cycle);
 		}
 
 		if (ret == 0 && len > 0) {
 			do_extract(variant_buf, len);
 		}
 
-		cycle = 0;
+		dump_param.cycle = 0;
 	} while (ret == 0 && len > 0);
 }
 
