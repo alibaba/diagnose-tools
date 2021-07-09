@@ -251,9 +251,9 @@ static void do_uprobe(const char *arg)
 	}
 
 	len = read(params.fd_start, buf, 255);
-	printf("xby-debug, %d, %d\n", params.fd_start, len);
+	printf("xby-debug, %lu, %d\n", params.fd_start, len);
 	len = read(params.fd_stop, buf, 255);
-	printf("xby-debug, %d, %d\n", params.fd_stop, len);
+	printf("xby-debug, %lu, %d\n", params.fd_stop, len);
 	if (run_in_host) {
 		ret = diag_call_ioctl(DIAG_IOCTL_RUN_TRACE_UPROBE, (long)&params);
 	} else {

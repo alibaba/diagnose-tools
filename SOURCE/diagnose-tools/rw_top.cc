@@ -295,7 +295,6 @@ static int json_extract(void *buf, unsigned int len, void *)
 	int *et_type;
 	struct rw_top_detail *detail;
 	struct rw_top_perf *perf;
-	struct rw_top_raw_perf *raw_perf;
 	Json::Value root;
 	Json::Value task;
 	if (len == 0)
