@@ -23,7 +23,7 @@ int mm_leak_syscall(struct pt_regs *regs, long id);
 struct diag_mm_leak_settings {
 	unsigned int activated;
 	unsigned int verbose;
-	unsigned int time_threshold;
+	unsigned long time_threshold;
 	unsigned int max_bytes;
 	unsigned int min_bytes;
 };

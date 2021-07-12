@@ -32,7 +32,7 @@ void usage_mm_leak(void)
 	printf("    mm-leak usage:\n");
 	printf("	--help mm-leak help info\n");
 	printf("	--activate\n");
-	printf("	    time-threshold default threshold(ms)\n");
+	printf("	    time-threshold default threshold(s)\n");
 	printf("	    max-bytes max bytes recorded\n");
 	printf("	    min-bytes min bytes recorded \n");
 	printf("	--deactivate\n");
@@ -60,7 +60,7 @@ static void do_activate(const char *arg)
 	}
 
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
-	printf("    阀值(ms)：%d\n", settings.time_threshold);
+	printf("    阀值(s)：%lu\n", settings.time_threshold);
 	printf("    输出级别：%d\n", settings.verbose);
 	printf("    MAX-BYTES：%d\n", settings.max_bytes);
 	printf("    MIN-BYTES：%d\n", settings.min_bytes);
@@ -109,7 +109,7 @@ static int mm_leak_extract(void *buf, unsigned int len, void *)
 				detail->task.cgroup_buf,
 				detail->task.pid,
 				0);
-		printf("#*        0xffffffffffffff %lu / %lu  %lu  [%lx] (UNKNOWN)\n",
+		printf("#*        0xffffffffffffff %lu / %lu  %lu(s)  [%lx] (UNKNOWN)\n",
 				detail->bytes_req,
 				detail->bytes_alloc,
 				detail->delta_time,
@@ -175,7 +175,7 @@ static void do_settings(void)
 		printf("功能设置：\n");
 		printf("    是否激活：%s\n", settings.activated ? "√" : "×");
 		printf("    输出级别：%d\n", settings.verbose);
-		printf("    阀值(ms)：%d\n", settings.time_threshold);
+		printf("    阀值(s)：%lu\n", settings.time_threshold);
 		printf("    MAX-BYTES：%d\n", settings.max_bytes);
 		printf("    MIN-BYTES：%d\n", settings.min_bytes);
 	} else {

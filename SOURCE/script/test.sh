@@ -333,6 +333,13 @@ mm_leak() {
         eval "$DIAG_CMD mm-leak --deactivate --activate --settings"
         sleep 1
         eval "$DIAG_CMD mm-leak --report --deactivate" > sig_info.log
+        eval "$DIAG_CMD mm-leak --deactivate --activate='max-bytes=1000 min-bytes=100' --settings"
+        sleep 3
+        eval "$DIAG_CMD mm-leak --report --deactivate" > sig_info.log
+        eval "$DIAG_CMD mm-leak --deactivate --activate='time-threshold=1 max-bytes=2000 min-bytes=500' --settings"
+        sleep 5
+        eval "$DIAG_CMD mm-leak --report --deactivate" > sig_info.log
+
 }
 
 call_sub_cmd() {

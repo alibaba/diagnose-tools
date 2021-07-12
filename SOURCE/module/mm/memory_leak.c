@@ -40,7 +40,7 @@
 
 struct mm_block_desc {
 	void *addr;
-	unsigned long stamp;
+	u64 stamp;
 	size_t bytes_req;
 	size_t bytes_alloc;
 	struct diag_task_detail task;
@@ -277,8 +277,8 @@ static void do_dump(void)
 	struct mm_block_desc *desc;
 	unsigned long flags;
 	int count = 0;
-	unsigned long now = sched_clock();
-	unsigned long delta_time;
+	u64 now = sched_clock();
+	u64 delta_time;
 
 	rcu_read_lock();
 
@@ -292,7 +292,7 @@ static void do_dump(void)
 			pos = (unsigned long)desc->addr + 1;
 
 			delta_time = now - desc->stamp;
-			if (delta_time < mm_leak_settings.time_threshold * 1000 * 1000)
+			if (delta_time < (u64)mm_leak_settings.time_threshold * 1000 * 1000 * 1000)
 				continue;
 	
 			detail.et_type = et_mm_leak_detail;
@@ -304,7 +304,7 @@ static void do_dump(void)
 			detail.addr = (void *)desc->addr;
 			detail.bytes_req = desc->bytes_req;
 			detail.bytes_alloc = desc->bytes_alloc;
-			detail.delta_time = delta_time;
+			detail.delta_time = delta_time / (1000 * 1000 * 1000); //s
 
 			spin_lock_irqsave(&tree_lock, flags);
 			desc = radix_tree_delete(&mm_leak_tree, (unsigned long)desc->addr);
@@ -321,9 +321,9 @@ static void do_dump(void)
 			diag_variant_buffer_spin_unlock(&mm_leak_variant_buffer, flags);
 
 			count++;
-			if (count >= 10000)
-				break;
 		}
+		if (count >= 10000)
+			break;
 	} while (nr_found > 0);
 
 	rcu_read_unlock();
