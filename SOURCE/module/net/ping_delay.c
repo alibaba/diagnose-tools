@@ -59,7 +59,7 @@
 	&& !defined(CENTOS_3_10_123_9_3) && !defined(UBUNTU_1604) && !defined(CENTOS_8U)
 
 __maybe_unused static atomic64_t diag_nr_running = ATOMIC64_INIT(0);
-struct diag_ping_delay_settings ping_delay_settings;
+static struct diag_ping_delay_settings ping_delay_settings;
 
 static unsigned int ping_delay_alloced;
 
@@ -1924,7 +1924,6 @@ int deactivate_ping_delay(void)
 static int lookup_syms(void)
 {
 	LOOKUP_SYMS(inet_protos);
-	LOOKUP_SYMS(ip_rcv_finish);
 	LOOKUP_SYMS(ip_rcv);
 	LOOKUP_SYMS(ip_rcv_finish);
 	LOOKUP_SYMS(ip_send_skb);

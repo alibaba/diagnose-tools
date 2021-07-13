@@ -155,6 +155,8 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 			activate_fs_orphan();
 		} else if (strcmp(func, "ping-delay") == 0) {
 			activate_ping_delay();
+		} else if (strcmp(func, "ping-delay6") == 0) {
+			activate_ping_delay6();
 		} else if (strcmp(func, "uprobe") == 0) {
 			activate_uprobe();
 		} else if (strcmp(func, "sys-cost") == 0) {
@@ -228,6 +230,8 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 			deactivate_fs_orphan();
 		} else if (strcmp(func, "ping-delay") == 0) {
 			deactivate_ping_delay();
+		} else if (strcmp(func, "ping-delay6") == 0) {
+			deactivate_ping_delay6();
 		} else if (strcmp(func, "uprobe") == 0) {
 			deactivate_uprobe();
 		} else if (strcmp(func, "sys-cost") == 0) {
@@ -309,6 +313,7 @@ static void diag_cb_sys_enter(void *data, struct pt_regs *regs, long id)
 		atomic64_inc_return(&diag_nr_running);
 	
 		down(&controller_sem);
+
 		if (id == DIAG_VERSION) {
 			ret = DIAG_VERSION;
 		} else if (id >= DIAG_BASE_SYSCALL_PUPIL
@@ -380,6 +385,9 @@ static void diag_cb_sys_enter(void *data, struct pt_regs *regs, long id)
 		} else if (id >= DIAG_BASE_SYSCALL_PING_DELAY
 		   && id < DIAG_BASE_SYSCALL_PING_DELAY + DIAG_SYSCALL_INTERVAL) {
 			ret = ping_delay_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_PING_DELAY6
+		   && id < DIAG_BASE_SYSCALL_PING_DELAY6 + DIAG_SYSCALL_INTERVAL) {
+			ret = ping_delay6_syscall(regs, id);
 		} else if (id >= DIAG_BASE_SYSCALL_UPROBE
 		   && id < DIAG_BASE_SYSCALL_UPROBE + DIAG_SYSCALL_INTERVAL) {
 			ret = uprobe_syscall(regs, id);
@@ -407,9 +415,10 @@ static void diag_cb_sys_enter(void *data, struct pt_regs *regs, long id)
 		} else if (id >= DIAG_BASE_SYSCALL_RSS_MONITOR
 		   && id < DIAG_BASE_SYSCALL_RSS_MONITOR + DIAG_SYSCALL_INTERVAL) {
 			ret = rss_monitor_syscall(regs, id);
-		} 
+		}
 
 		up(&controller_sem);
+
 		if (ret != -ENOSYS) {
 			__user int *ret_ptr = (void *)ORIG_PARAM1(regs);
 

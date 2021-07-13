@@ -107,6 +107,7 @@ static int usage(int argc, char **argv)
 	usage_mm_leak();
 	usage_sched_delay();
 	usage_ping_delay();
+	usage_ping_delay6();
 	usage_reboot();
 	usage_uprobe();
 	usage_sys_cost();
@@ -221,6 +222,7 @@ static struct diagnose_func all_funcs[] {
 	{"kprobe", kprobe_main, 0},
 	{"mm-leak",mm_leak_main, 0},
 	{"ping-delay", ping_delay_main, 0},
+	{"ping-delay6", ping_delay6_main, 0},
 	{"uprobe", uprobe_main, 0},
 	{"--vmsize", no_vmsize, 1},
 	{"-V", report_version, 0},
