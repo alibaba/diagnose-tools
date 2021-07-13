@@ -823,6 +823,12 @@ int ping_delay_syscall(struct pt_regs *regs, long id);
 int diag_ping_delay_init(void);
 void diag_ping_delay_exit(void);
 
+int activate_ping_delay6(void);
+int deactivate_ping_delay6(void);
+int ping_delay6_syscall(struct pt_regs *regs, long id);
+int diag_ping_delay6_init(void);
+void diag_ping_delay6_exit(void);
+
 int activate_uprobe(void);
 int deactivate_uprobe(void);
 int diag_uprobe_init(void);

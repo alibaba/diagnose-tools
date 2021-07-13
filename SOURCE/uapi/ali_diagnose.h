@@ -87,7 +87,8 @@ extern unsigned long debug_mode;
 #define DIAG_IOCTL_TYPE_SCHED_DELAY (DIAG_IOCTL_TYPE_IRQ_TRACE + 1)
 #define DIAG_IOCTL_TYPE_REBOOT (DIAG_IOCTL_TYPE_SCHED_DELAY + 1)
 #define DIAG_IOCTL_TYPE_PING_DELAY (DIAG_IOCTL_TYPE_REBOOT + 1)
-#define DIAG_IOCTL_TYPE_UPROBE (DIAG_IOCTL_TYPE_PING_DELAY + 1)
+#define DIAG_IOCTL_TYPE_PING_DELAY6 (DIAG_IOCTL_TYPE_PING_DELAY + 1)
+#define DIAG_IOCTL_TYPE_UPROBE (DIAG_IOCTL_TYPE_PING_DELAY6 + 1)
 #define DIAG_IOCTL_TYPE_SYS_COST (DIAG_IOCTL_TYPE_UPROBE + 1)
 #define DIAG_IOCTL_TYPE_FS_CACHE (DIAG_IOCTL_TYPE_SYS_COST + 1)
 #define DIAG_IOCTL_TYPE_HIGH_ORDER (DIAG_IOCTL_TYPE_FS_CACHE + 1)
@@ -119,6 +120,7 @@ long diag_ioctl_high_order(unsigned int cmd, unsigned long arg);
 long diag_ioctl_drop_packet(unsigned int cmd, unsigned long arg);
 long diag_ioctl_tcp_retrans(unsigned int cmd, unsigned long arg);
 long diag_ioctl_ping_delay(unsigned int cmd, unsigned long arg);
+long diag_ioctl_ping_delay6(unsigned int cmd, unsigned long arg);
 long diag_ioctl_rw_top(unsigned int cmd, unsigned long arg);
 long diag_ioctl_fs_shm(unsigned int cmd, unsigned long arg);
 long diag_ioctl_fs_orphan(unsigned int cmd, unsigned long arg);
@@ -324,10 +326,15 @@ struct diag_ioctl_dump_param_cycle {
 
 // 1750
 #define DIAG_BASE_SYSCALL_RW_SEM \
-         (DIAG_BASE_SYSCALL_TASK_MONITOR + DIAG_SYSCALL_INTERVAL)
-///1750
+	(DIAG_BASE_SYSCALL_TASK_MONITOR + DIAG_SYSCALL_INTERVAL)
+
+///1800
 #define DIAG_BASE_SYSCALL_RSS_MONITOR \
 	(DIAG_BASE_SYSCALL_RW_SEM + DIAG_SYSCALL_INTERVAL)
+
+///1850
+#define DIAG_BASE_SYSCALL_PING_DELAY6 \
+	(DIAG_BASE_SYSCALL_RSS_MONITOR + DIAG_SYSCALL_INTERVAL)
 
 #define DIAG_SYSCALL_END (DIAG_BASE_SYSCALL + DIAG_SYSCALL_INTERVAL * 1000)
 

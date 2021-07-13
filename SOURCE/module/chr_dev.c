@@ -142,6 +142,9 @@ static long diag_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     case DIAG_IOCTL_TYPE_PING_DELAY:
         ret = diag_ioctl_ping_delay(nr, arg);
         break;
+    case DIAG_IOCTL_TYPE_PING_DELAY6:
+        ret = diag_ioctl_ping_delay6(nr, arg);
+        break;
     case DIAG_IOCTL_TYPE_RW_TOP:
         ret = diag_ioctl_rw_top(nr, arg);
         break;

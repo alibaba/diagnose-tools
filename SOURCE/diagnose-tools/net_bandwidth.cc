@@ -279,13 +279,13 @@ static int display()
 	unsigned char *daddr;
 	char path[50];
 
-	array = (struct bandwidth_info **)malloc(sizeof(struct bandwidth_info*) * bandwidth_map.size());
+	array = (struct bandwidth_info **)malloc(sizeof(struct bandwidth_info *) * bandwidth_map.size());
 
 	BANDWIDTH_MAP::iterator it;
 	for (it = bandwidth_map.begin(); it != bandwidth_map.end(); it++) {
 		array[n++] = &it->second;
 	}
-	qsort(array, n, sizeof(struct bandwidth_info*), bandwidth_map_compare);
+	qsort(array, n, sizeof(struct bandwidth_info *), bandwidth_map_compare);
 
 	printf("%s %46s %20s %20s\n\n", "协议", "路径", "入向带宽", "出向带宽");
 

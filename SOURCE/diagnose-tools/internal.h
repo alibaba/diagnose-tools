@@ -93,6 +93,8 @@ void usage_uprobe();
 
 int ping_delay_main(int argc, char *argv[]);
 void usage_ping_delay(void);
+int ping_delay6_main(int argc, char *argv[]);
+void usage_ping_delay6(void);
 
 int test_run_trace_main(int argc, char *argv[]);
 void usage_test_run_trace(void);
