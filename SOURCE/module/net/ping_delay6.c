@@ -1,9 +1,9 @@
 /*
- * Linux内核诊断工具--内核态ping-delay功能
+ * Linux内核诊断工具--内核态ping-delay6功能
  *
  * Copyright (C) 2021 Alibaba Ltd.
  *
- * 作者: Yang Wei <albin.yangwei@linux.alibaba.com>
+ * 作者: Yang Wei <albin.yangwei@alibaba-inc.com>
  *
  * License terms: GNU General Public License (GPL) version 3
  *
@@ -11,13 +11,9 @@
 
 #include <linux/module.h>
 #include <linux/stacktrace.h>
-#include <linux/hrtimer.h>
 #include <linux/kernel.h>
 #include <linux/kallsyms.h>
-#include <linux/module.h>
 #include <linux/sched.h>
-#include <linux/slab.h>
-#include <linux/timex.h>
 #include <linux/tracepoint.h>
 #include <trace/events/irq.h>
 #include <linux/proc_fs.h>
@@ -44,7 +40,6 @@
 #endif
 
 #include <net/xfrm.h>
-#include <net/icmp.h>
 #include <net/if_inet6.h>
 #include <net/addrconf.h>
 #include <linux/inetdevice.h>
@@ -57,8 +52,7 @@
 #include "pub/kprobe.h"
 #include "uapi/ping_delay6.h"
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0) && !defined(XBY_UBUNTU_1604) \
-	&& !defined(CENTOS_3_10_123_9_3) && !defined(UBUNTU_1604) && !defined(CENTOS_8U)
+#if defined(ALIOS_7U) && LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 
 __maybe_unused static atomic64_t diag_nr_running = ATOMIC64_INIT(0);
 static struct diag_ping_delay6_settings ping_delay6_settings;
@@ -186,7 +180,7 @@ static void trace_softirq_exit_hit(void *ignore, unsigned long nr_sirq)
 	trace_events(ping_delay6_event_exit_softirq, func);
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)  //4.9.x 4.19.x
 static void (*orig_ip6_route_input)(struct sk_buff *skb);
 DEFINE_ORIG_FUNC(int, ip6_rcv_finish, 3,
 				 struct net *, net,
@@ -201,8 +195,9 @@ static void (*orig_ip6_route_input)(struct sk_buff *skb);
 DEFINE_ORIG_FUNC(int, ip6_rcv_finish, 2,
 				 struct sock *, sk,
 				 struct sk_buff *, skb);
-DEFINE_ORIG_FUNC(int, __ip6_local_out, 1,
-                                 struct sk_buff *, skb);
+DEFINE_ORIG_FUNC(int, __ip6_local_out_sk, 2,
+				 struct sock *, sk,
+				 struct sk_buff *, skb);
 #else  // < KERNEL_VERSION(3, 10, 0)
 
 #endif
@@ -352,7 +347,65 @@ static noinline void inspect_packet(const struct sk_buff *skb, const struct ipv6
 	skb_info->time_stamp[step] = sched_clock();
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
+
+static int diag_ip6_rcv_finish(struct net *net, struct sock *sk, struct sk_buff *skb)
+{
+	const struct ipv6hdr *ip6h = ipv6_hdr(skb);
+	void (*edemux)(struct sk_buff *skb);
+
+	inspect_packet(skb, ip6h, PD_IP6_RCV_FINISH);
+
+	/* if ingress device is enslaved to an L3 master device pass the
+	 * skb to its handler for processing
+	 */
+	skb = l3mdev_ip6_rcv(skb);
+	if (!skb)
+		return NET_RX_SUCCESS;
+
+	if (net->ipv4.sysctl_ip_early_demux && !skb_dst(skb) && skb->sk == NULL) {
+		const struct inet6_protocol *ipprot;
+
+		ipprot = rcu_dereference(inet6_protos[ipv6_hdr(skb)->nexthdr]);
+		if (ipprot && (edemux = READ_ONCE(ipprot->early_demux)))
+			edemux(skb);
+	}
+	if (!skb_valid_dst(skb))
+		orig_ip6_route_input(skb);
+
+	inspect_packet(skb, ip6h, PD_DST_INPUT);
+
+	return dst_input(skb);
+}
+
+static int diag___ip6_local_out(struct net *net, struct sock *sk, struct sk_buff *skb)
+{
+	int len;
+
+	len = skb->len - sizeof(struct ipv6hdr);
+	if (len > IPV6_MAXPLEN)
+		len = 0;
+	ipv6_hdr(skb)->payload_len = htons(len);
+	IP6CB(skb)->nhoff = offsetof(struct ipv6hdr, nexthdr);
+
+	/* if egress device is enslaved to an L3 master device pass the
+	 * skb to its handler for processing
+	 */
+	skb = l3mdev_ip6_out(sk, skb);
+	if (unlikely(!skb))
+		return 0;
+
+	skb->protocol = htons(ETH_P_IPV6);
+
+	inspect_packet(skb, ipv6_hdr(skb), PD_DST_OUTPUT);
+
+	return nf_hook(NFPROTO_IPV6, NF_INET_LOCAL_OUT,
+		       net, sk, skb, NULL, skb_dst(skb)->dev,
+		       dst_output);
+}
+
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
+
 static int diag_ip6_rcv_finish(struct net *net, struct sock *sk, struct sk_buff *skb)
 {
 	const struct ipv6hdr *ip6h = ipv6_hdr(skb);
@@ -430,7 +483,7 @@ static int diag_ip6_rcv_finish(struct sock *sk, struct sk_buff *skb)
 	return dst_input(skb);
 }
 
-static int diag___ip6_local_out(struct sk_buff *skb)
+static int diag___ip6_local_out_sk(struct sock *sk, struct sk_buff *skb)
 {
 	int len;
 
@@ -441,7 +494,7 @@ static int diag___ip6_local_out(struct sk_buff *skb)
 
 	inspect_packet(skb, ipv6_hdr(skb), PD_DST_OUTPUT);
 
-	return nf_hook(NFPROTO_IPV6, NF_INET_LOCAL_OUT, skb->sk, skb,
+	return nf_hook(NFPROTO_IPV6, NF_INET_LOCAL_OUT, sk, skb,
 		       NULL, skb_dst(skb)->dev, dst_output_sk);
 }
 
@@ -473,17 +526,17 @@ int new_ip6_rcv_finish(struct sock *sk, struct sk_buff *skb)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
 int new___ip6_local_out(struct net *net, struct sock *sk, struct sk_buff *skb)
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
-int new___ip6_local_out(struct sk_buff *skb)
+int new___ip6_local_out_sk(struct sock *sk, struct sk_buff *skb)
 #else
 #endif
 {
 	int ret;
 
 	atomic64_inc_return(&diag_nr_running);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)  //4.9.x 4.19.x
 	ret = diag___ip6_local_out(net, sk, skb);
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
-	ret = diag___ip6_local_out(skb);
+	ret = diag___ip6_local_out_sk(sk, skb);
 #else
 #endif
 	atomic64_dec_return(&diag_nr_running);
@@ -568,9 +621,8 @@ static int kprobe_napi_gro_receive_pre(struct kprobe *p, struct pt_regs *regs)
 	return 0;
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0)
 
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0)
 static struct list_head *orig_offload_base;
 DEFINE_ORIG_FUNC(int, napi_gro_complete, 1,
 	struct sk_buff *, skb);
@@ -625,7 +677,9 @@ static int new_napi_gro_complete(struct sk_buff *skb)
 
 	return ret;
 }
+
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
+
 static struct list_head *orig_offload_base;
 static int (*orig_netif_receive_skb_internal)(struct sk_buff *skb);
 DEFINE_ORIG_FUNC(int, napi_gro_complete, 1,
@@ -681,12 +735,19 @@ static int new_napi_gro_complete(struct sk_buff *skb)
 
 	return ret;
 }
+
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 20, 0)
+
+static struct list_head *orig_offload_base;
+static int (*orig_netif_receive_skb_internal)(struct sk_buff *skb);
+DEFINE_ORIG_FUNC(int, napi_gro_complete, 1,
+	struct sk_buff *, skb);
+
 static int diag_napi_gro_complete(struct sk_buff *skb)
 {
     struct packet_offload *ptype;
     __be16 type = skb->protocol;
-    struct list_head *head = &offload_base;
+    struct list_head *head = orig_offload_base;
     int err = -ENOENT;
 
     BUILD_BUG_ON(sizeof(struct napi_gro_cb) > sizeof(skb->cb));
@@ -719,7 +780,7 @@ static int diag_napi_gro_complete(struct sk_buff *skb)
     }
 
 out:
-    return netif_receive_skb_internal(skb);
+    return orig_netif_receive_skb_internal(skb);
 }
 
 static int new_napi_gro_complete(struct sk_buff *skb)
@@ -732,15 +793,15 @@ static int new_napi_gro_complete(struct sk_buff *skb)
 
 	return ret;
 }
+
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0)
 
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0)
 static int (*orig___netif_receive_skb_core)(struct sk_buff *skb, bool pfmemalloc);
 DEFINE_ORIG_FUNC(int, __netif_receive_skb, 1, struct sk_buff *, skb);
 
-static int diag__netif_receive_skb(struct sk_buff *skb)
+static int diag___netif_receive_skb(struct sk_buff *skb)
 {
 	int ret;
 
@@ -777,16 +838,18 @@ static int new___netif_receive_skb(struct sk_buff *skb)
 	int ret;
 
 	atomic64_inc_return(&diag_nr_running);
-	ret = diag__netif_receive_skb(skb);
+	ret = diag___netif_receive_skb(skb);
 	atomic64_dec_return(&diag_nr_running);
 
 	return ret;
 }
+
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
+
 static int (*orig___netif_receive_skb_core)(struct sk_buff *skb, bool pfmemalloc);
 DEFINE_ORIG_FUNC(int, __netif_receive_skb, 1, struct sk_buff *, skb);
 
-static int diag__netif_receive_skb(struct sk_buff *skb)
+static int diag___netif_receive_skb(struct sk_buff *skb)
 {
 	int ret;
 
@@ -823,16 +886,30 @@ static int new___netif_receive_skb(struct sk_buff *skb)
 	int ret;
 
 	atomic64_inc_return(&diag_nr_running);
-	ret = diag__netif_receive_skb(skb);
+	ret = diag___netif_receive_skb(skb);
 	atomic64_dec_return(&diag_nr_running);
 
 	return ret;
 }
+
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 20, 0)
+
 static int (*orig___netif_receive_skb_one_core)(struct sk_buff *skb, bool pfmemalloc);
 DEFINE_ORIG_FUNC(int, __netif_receive_skb, 1, struct sk_buff *, skb);
 
-static int diag__netif_receive_skb(struct sk_buff *skb)
+static inline unsigned int memalloc_noreclaim_save(void)
+{
+	unsigned int flags = current->flags & PF_MEMALLOC;
+	current->flags |= PF_MEMALLOC;
+	return flags;
+}
+
+static inline void memalloc_noreclaim_restore(unsigned int flags)
+{
+	current->flags = (current->flags & ~PF_MEMALLOC) | flags;
+}
+
+static int diag___netif_receive_skb(struct sk_buff *skb)
 {
 	int ret;
 
@@ -869,11 +946,12 @@ static int new___netif_receive_skb(struct sk_buff *skb)
 	int ret;
 
 	atomic64_inc_return(&diag_nr_running);
-	ret = diag__netif_receive_skb(skb);
+	ret = diag___netif_receive_skb(skb);
 	atomic64_dec_return(&diag_nr_running);
 
 	return ret;
 }
+
 #endif
 
 static int kprobe___netif_receive_skb_core_pre(struct kprobe *p, struct pt_regs *regs)
@@ -965,18 +1043,14 @@ static int __activate_ping_delay6(void)
 	ping_delay6_alloced = 1;
 
 	JUMP_CHECK(ip6_rcv_finish);
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0)
+	JUMP_CHECK(__ip6_local_out_sk);
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 20, 0)  //4.9.x 4.19.x
 	JUMP_CHECK(__ip6_local_out);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
-	JUMP_CHECK(napi_gro_complete);
-	JUMP_CHECK(netif_receive_skb);
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0)
-	JUMP_CHECK(napi_gro_complete);
-	JUMP_CHECK(__netif_receive_skb);
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
-	JUMP_CHECK(napi_gro_complete);
-	JUMP_CHECK(__netif_receive_skb);
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 20, 0)
 #endif
+	JUMP_CHECK(napi_gro_complete);
+	JUMP_CHECK(__netif_receive_skb);
 
 	clean_data();
 
@@ -1009,18 +1083,13 @@ static int __activate_ping_delay6(void)
 	get_online_cpus();
 	mutex_lock(orig_text_mutex);
 	JUMP_INSTALL(ip6_rcv_finish);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0)
+	JUMP_INSTALL(__ip6_local_out_sk);
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 20, 0)  //4.9.x 4.19.x
 	JUMP_INSTALL(__ip6_local_out);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
-	JUMP_INSTALL(napi_gro_complete);
-	JUMP_INSTALL(netif_receive_skb);
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0)
-	JUMP_INSTALL(napi_gro_complete);
-	JUMP_INSTALL(__netif_receive_skb);
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
-	JUMP_INSTALL(napi_gro_complete);
-	JUMP_INSTALL(__netif_receive_skb);
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 20, 0)
 #endif
+	JUMP_INSTALL(napi_gro_complete);
+	JUMP_INSTALL(__netif_receive_skb);
 	mutex_unlock(orig_text_mutex);
 	put_online_cpus();
 
@@ -1051,20 +1120,16 @@ static void __deactivate_ping_delay6(void)
 	unhook_tracepoint("softirq_exit", trace_softirq_exit_hit, NULL);
 
 	get_online_cpus();
+
 	mutex_lock(orig_text_mutex);
 	JUMP_REMOVE(ip6_rcv_finish);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0)
+	JUMP_REMOVE(__ip6_local_out_sk);
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 20, 0)  //4.9.x 4.19.x
 	JUMP_REMOVE(__ip6_local_out);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
-	JUMP_REMOVE(napi_gro_complete);
-	JUMP_REMOVE(netif_receive_skb);
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0)
-	JUMP_REMOVE(napi_gro_complete);
-	JUMP_REMOVE(__netif_receive_skb);
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
-	JUMP_REMOVE(napi_gro_complete);
-	JUMP_REMOVE(__netif_receive_skb);
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 20, 0)
 #endif
+	JUMP_REMOVE(napi_gro_complete);
+	JUMP_REMOVE(__netif_receive_skb);
 	mutex_unlock(orig_text_mutex);
 	put_online_cpus();
 
@@ -1097,30 +1162,20 @@ int deactivate_ping_delay6(void)
 static int lookup_syms(void)
 {
 	LOOKUP_SYMS(ip6_rcv_finish);
-	LOOKUP_SYMS(__ip6_local_out);
 	LOOKUP_SYMS(ip6_route_input);
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(2, 6, 32)
-	LOOKUP_SYMS(ip_options_rcv_srr);
-	LOOKUP_SYMS(ip_options_compile);
-	LOOKUP_SYMS(ptype_base);
-	LOOKUP_SYMS(napi_gro_complete);
-	LOOKUP_SYMS(get_rps_cpu);
-	LOOKUP_SYMS(__netif_receive_skb);
-	LOOKUP_SYMS(enqueue_to_backlog);
-	LOOKUP_SYMS(netif_receive_skb);
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0)
 	LOOKUP_SYMS(offload_base);
 	LOOKUP_SYMS(napi_gro_complete);
 	LOOKUP_SYMS(__netif_receive_skb);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0)
+	LOOKUP_SYMS(__ip6_local_out_sk);
 	LOOKUP_SYMS(__netif_receive_skb_core);
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
-	LOOKUP_SYMS(offload_base);
+	LOOKUP_SYMS(__ip6_local_out);
 	LOOKUP_SYMS(netif_receive_skb_internal);
-	LOOKUP_SYMS(napi_gro_complete);
-	LOOKUP_SYMS(__netif_receive_skb);
 	LOOKUP_SYMS(__netif_receive_skb_core);
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 20, 0)
-	LOOKUP_SYMS(__netif_receive_skb);
+	LOOKUP_SYMS(__ip6_local_out);
+	LOOKUP_SYMS(netif_receive_skb_internal);
 	LOOKUP_SYMS(__netif_receive_skb_one_core);
 #endif
 	LOOKUP_SYMS(softirq_vec);
@@ -1130,18 +1185,13 @@ static int lookup_syms(void)
 static void jump_init(void)
 {
 	JUMP_INIT(ip6_rcv_finish);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0)
+	JUMP_INIT(__ip6_local_out_sk);
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 20, 0)  //4.9.x 4.19.x
 	JUMP_INIT(__ip6_local_out);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
-	JUMP_INIT(napi_gro_complete);
-	JUMP_INIT(netif_receive_skb);
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0)
-	JUMP_INIT(napi_gro_complete);
-	JUMP_INIT(__netif_receive_skb);
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
-	JUMP_INIT(napi_gro_complete);
-	JUMP_INIT(__netif_receive_skb);
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 20, 0)
 #endif
+	JUMP_INIT(napi_gro_complete);
+	JUMP_INIT(__netif_receive_skb);
 }
 
 static ssize_t dump_data(void)
@@ -1301,7 +1351,9 @@ void diag_net_ping_delay6_exit(void)
 
 	return;
 }
-#else
+
+#else  //!(ALIOS_7U && < 5.10.0)
+
 int diag_net_ping_delay6_init(void)
 {
 	return 0;
@@ -1309,7 +1361,7 @@ int diag_net_ping_delay6_init(void)
 
 void diag_net_ping_delay6_exit(void)
 {
-	//
 }
+
 #endif
 
