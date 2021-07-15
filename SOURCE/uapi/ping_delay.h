@@ -32,7 +32,9 @@ enum ping_delay_packet_step
 	PD_LOCAL_DELIVER_FINISH,
 	PD_ICMP_RCV,
 	PD_RCV_STEP = PD_ICMP_RCV,
-	PD_SEND_SKB,
+	PD_IP_SEND,
+	PD_QUEUE_XMIT,
+	PD_DEV_XMIT,
 	PD_TRACK_COUNT,
 };
 
@@ -52,7 +54,9 @@ __maybe_unused static const char *ping_delay_packet_steps_str[PD_TRACK_COUNT] = 
 	"PD_LOCAL_DELIVER",
 	"PD_LOCAL_DELIVER_FINISH",
 	"PD_ICMP_RCV",
-	"PD_SEND_SKB",
+	"PD_IP_SEND",
+	"PD_QUEUE_XMIT",
+	"PD_DEV_XMIT",
 };
 
 enum {
