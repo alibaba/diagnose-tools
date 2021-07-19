@@ -35,7 +35,7 @@ int diag_init_symbol(void)
     diag_kallsyms_lookup_name = (void *)kprobe_kallsyms_lookup_name.addr;
     unregister_kprobe(&kprobe_kallsyms_lookup_name);
 
-	printk("xby-debug, diag_kallsyms_lookup_name is %p\n", diag_kallsyms_lookup_name.addr);
+	printk("xby-debug, diag_kallsyms_lookup_name is %p\n", diag_kallsyms_lookup_name);
 	
     if (!diag_kallsyms_lookup_name) {
         return -EINVAL;
