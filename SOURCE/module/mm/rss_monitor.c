@@ -302,7 +302,7 @@ static void do_dump(void)
 				raw_detail->et_type = et_rss_monitor_raw_detail;
 				raw_detail->addr = info->addr;
 				raw_detail->alloc_len = info->alloc_len;
-				raw_detail->delta_time = delta_time / (1000 * 1000 * 100); //s
+				raw_detail->delta_time = delta_time / (1000 * 1000 * 1000); //s
 				do_diag_gettimeofday(&raw_detail->tv);
 
 				raw_detail->task = info->task;
@@ -323,7 +323,7 @@ static void do_dump(void)
 				detail->et_type = et_rss_monitor_detail;
 				detail->addr = info->addr;
 				detail->alloc_len = info->alloc_len;
-				detail->delta_time = delta_time / (1000 * 1000 * 100); //s
+				detail->delta_time = delta_time / (1000 * 1000 * 1000); //s
 				do_diag_gettimeofday(&detail->tv);
 
 				detail->task = info->task;
