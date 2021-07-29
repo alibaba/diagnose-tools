@@ -48,7 +48,12 @@ int ali_mem_pool_putin(struct ali_mem_pool *mem_pool, unsigned long count)
 		return -EINVAL;
 	}
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0)
 	obj = __vmalloc(size * count, GFP_KERNEL | __GFP_ZERO, PAGE_KERNEL);
+#else
+	obj = __vmalloc(size * count, GFP_KERNEL | __GFP_ZERO);
+#endif
+
 	addr = (unsigned long)obj;
 	if (obj) {
 		spin_lock_irqsave(&mem_pool->mm_lock, flags);
