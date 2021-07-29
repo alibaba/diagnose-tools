@@ -522,6 +522,10 @@ struct diag_task_detail {
 	 * 0->user 1->sys 2->idle
 	 */
 	unsigned long sys_task;
+	/**
+	 * 1->user mode 0->sys mode -1->unknown
+	 */
+	unsigned long user_mode;
 	char comm[TASK_COMM_LEN];
 };
 

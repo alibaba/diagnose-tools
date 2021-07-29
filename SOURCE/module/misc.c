@@ -530,8 +530,9 @@ char *mac2str(const unsigned char *mac, char *mac_str, const unsigned int mac_st
 void diag_task_brief(struct task_struct *tsk, struct diag_task_detail *detail)
 {
 	struct pid_namespace *ns;
-	struct pt_regs *regs;
+	struct pt_regs *task_regs;
 	struct task_struct *leader;
+	struct pt_regs *irq_regs;
 
 	if (!detail)
 		return;
@@ -545,11 +546,26 @@ void diag_task_brief(struct task_struct *tsk, struct diag_task_detail *detail)
 		return;
 	}
 
-	if (tsk != current || !tsk->mm) {
+	if (tsk != current) {
+		detail->user_mode = -1;
+		detail->syscallno = -1;
+	} else if (!tsk->mm) {
+		detail->user_mode = 0;
 		detail->syscallno = -1;
 	} else {
-		regs = task_pt_regs(tsk);
-		detail->syscallno = syscall_get_nr(tsk, regs);
+		irq_regs = get_irq_regs();
+		task_regs = task_pt_regs(tsk);
+
+		if ((irq_regs && user_mode(irq_regs))
+		    || (task_regs && user_mode(task_regs))) {
+			detail->user_mode = 1;
+		} else {
+			detail->user_mode = 0;
+		}
+
+		if (task_regs) {
+			detail->syscallno = syscall_get_nr(tsk, task_regs);
+		}
 	}
 
 	if (tsk->sched_class == orig_idle_sched_class)
