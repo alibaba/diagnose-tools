@@ -36,6 +36,9 @@
 #endif
 #include <linux/bitmap.h>
 #include <linux/cpumask.h>
+
+#include <asm/irq_regs.h>
+
 #include "mm_tree.h"
 #include "internal.h"
 #include "pub/trace_file.h"
