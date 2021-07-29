@@ -156,6 +156,11 @@ int pupil_task_info(int argc, char *argv[])
 		};
 	int c;
 
+	if (argc <= 1) {
+		usage_pupil();
+		return 0;
+	}
+
 	while (1) {
 		int option_index = -1;
 
