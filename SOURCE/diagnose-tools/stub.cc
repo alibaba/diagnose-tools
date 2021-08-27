@@ -3,15 +3,16 @@
 #include <map>
 #include <stdio.h>
 
+#include "internal.h"
 #include "containers.h"
 
 using namespace std;
 
 map<string, struct diag_container> map_containers;
 
-int __attribute__((weak)) diag_container::load(std::string type, std::string id)
+void __attribute__((weak)) diag_container::load(Json::Value &json)
 {
-	return 1;
+	//
 }
 
 void __attribute__((weak)) diag_container::dump(void)

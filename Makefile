@@ -57,6 +57,8 @@ deps:
 	cd $(DEPS)/libunwind; ./autogen.sh; ./configure CFLAGS="-g -O2" --prefix=${DEPS}/; make install
 	cd $(DEPS)/xz; ./autogen.sh; ./configure CFLAGS="-g -O2" --prefix=${DEPS}/; make install
 	cd $(DEPS)/zlib; ./configure --prefix=${DEPS}/; make install
+	cd $(DEPS)/curl; xz -d -k curl-7.44.0.tar.lzma; tar xvf curl-7.44.0.tar
+	cd $(DEPS)/curl/curl-7.44.0; ./configure --disable-shared --enable-static --prefix=${DEPS}/ --disable-ldap --disable-sspi --without-librtmp --disable-ftp --disable-file --disable-dict --disable-telnet --disable-tftp --disable-rtsp --disable-pop3 --disable-imap --disable-smtp --disable-gopher --disable-smb --without-libidn --disable-ares; make && make install
 
 	cd SOURCE/diagnose-tools/java_agent; make
 	sh ./vender/deps.sh
