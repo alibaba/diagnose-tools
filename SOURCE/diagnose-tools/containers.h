@@ -4,36 +4,35 @@
 #include <string>
 #include <map>
 
-using namespace std;
-
 enum diag_container_type {
-        diag_docker,
-        diag_pouch,
+	diag_docker,
+	diag_pouch,
+	diag_null_engine,
 };
 
 struct diag_ns {
-        std::string ns;
-        std::string proc_ns;
-        int fd;
+	std::string ns;
+	std::string proc_ns;
+	int fd;
 };
 
 struct diag_container {
-        enum diag_container_type type;
-        std::string id;
-        int cores;
-        unsigned long memory;
-        unsigned long pid;
-        std::string proc_comm;
-        std::string comm;
-        std::map<std::string, struct diag_ns> map_ns;
+	enum diag_container_type type;
+	std::string id;
+	int cores;
+	unsigned long memory;
+	unsigned long pid;
+	std::string proc_comm;
+	std::string comm;
+	std::map<std::string, struct diag_ns> map_ns;
 
-        int load(std::string type, std::string id);
-        int enter(void);
+	void load(Json::Value &json);
+	int enter(void);
 
-        void dump(void);
+	void dump(void);
 };
 
-extern map<string, struct diag_container> map_containers;
+extern std::map<std::string, struct diag_container> map_containers;
 
 int refill_map_containers(void);
 int open_root_ns_fd(void);
