@@ -20,6 +20,9 @@
 struct mutex *orig_text_mutex;
 rwlock_t *orig_tasklist_lock;
 
+struct mutex *orig_tracepoint_module_list_mutex;
+struct list_head *orig_tracepoint_module_list;
+
 #if defined(DIAG_ARM64)
 void (*orig___flush_dcache_area)(void *addr, size_t len);
 int (*orig_aarch64_insn_patch_text)(void *addrs[], u32 insns[], int cnt);
@@ -193,6 +196,8 @@ int alidiagnose_symbols_init(void)
 
 	LOOKUP_SYMS(__show_regs);
 	LOOKUP_SYMS(ptype_all);
+	LOOKUP_SYMS(tracepoint_module_list_mutex);
+	LOOKUP_SYMS(tracepoint_module_list);
 
 	return 0;
 }
