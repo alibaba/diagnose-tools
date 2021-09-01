@@ -111,7 +111,7 @@ void diag_load_timer(struct diag_percpu_context *context)
 		rcu_read_lock();
 
 		do_each_thread(g, p) {
-			if (p->state & TASK_UNINTERRUPTIBLE)
+			if (task_contributes_to_load(p))
 				nr_uninterrupt++;
 		} while_each_thread(g, p);
 
@@ -174,7 +174,7 @@ void diag_load_timer(struct diag_percpu_context *context)
 		diag_variant_buffer_spin_unlock(&load_monitor_variant_buffer, flags);
 		do_each_thread(g, p) {
 			if ((p->state == TASK_RUNNING)
-				|| (p->state & TASK_UNINTERRUPTIBLE)) {
+				|| task_contributes_to_load(p)) {
 				tsk_info.et_type = et_load_monitor_task;
 				tsk_info.id = event_id;
 				tsk_info.tv = detail.tv;

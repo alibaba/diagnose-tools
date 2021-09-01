@@ -508,7 +508,7 @@ int load_monitor_main(int argc, char **argv)
 		case 0:
 			usage_load_monitor();
 			break;
-	  case 1:
+		case 1:
 			do_activate(optarg ? optarg : "");
 			break;
 		case 2:
