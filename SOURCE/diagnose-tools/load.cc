@@ -50,9 +50,9 @@ void usage_load_monitor(void)
 	printf("            style dump style: 0 - common, 1 - process chains\n");
 	printf("            mass dump all data if mass=1\n");
 	printf("            load threshold for load, default 1000\n");
-	printf("            load-r threshold for load.r, default 500\n");
-	printf("            load-d threshold for load.d, default 100\n");
-	printf("            task-d threshold for task.d\n");
+	printf("            load.r threshold for load.r, default 500\n");
+	printf("            load.d threshold for load.d, default 100\n");
+	printf("            task.d threshold for task.d\n");
 	printf("        --settings print settings.\n");
 	printf("        --deactivate\n");
 	printf("        --report dump log with text.\n");
@@ -68,9 +68,9 @@ static void do_activate(const char *arg)
 	memset(&settings, 0, sizeof(struct diag_load_monitor_settings));
 	
 	settings.threshold_load = parse.int_value("load", 1000);
-	settings.threshold_load_r = parse.int_value("load-r", 500);
-	settings.threshold_load_d = parse.int_value("load-d", 100);
-	settings.threshold_task_d = parse.int_value("task-d");
+	settings.threshold_load_r = parse.int_value("load.r", 500);
+	settings.threshold_load_d = parse.int_value("load.d", 100);
+	settings.threshold_task_d = parse.int_value("task.d");
 	settings.verbose = parse.int_value("verbose");
 	settings.style = parse.int_value("style");
 	settings.mass = parse.int_value("mass");
@@ -508,7 +508,7 @@ int load_monitor_main(int argc, char **argv)
 		case 0:
 			usage_load_monitor();
 			break;
-	  case 1:
+		case 1:
 			do_activate(optarg ? optarg : "");
 			break;
 		case 2:

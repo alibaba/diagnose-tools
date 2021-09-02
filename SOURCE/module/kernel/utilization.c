@@ -220,7 +220,9 @@ __maybe_unused static void trace_sched_process_exit_hit(struct task_struct *tsk)
 	if (!tsk)
 		return;
 
-	dump_task_info(tsk);
+	if (thread_group_leader(tsk)) {
+		dump_task_info(tsk);
+	}
 
 	if (utilization_settings.style == 1) {
 		diag_hook_process_exit_exec(tsk, &mm_tree);
