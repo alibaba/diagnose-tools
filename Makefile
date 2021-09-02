@@ -47,6 +47,11 @@ else
 	yum install -y rpm-build
 	yum install -y xz-libs
 	yum install -y xz-devel
+	yum install -y gettext*
+	yum install -y autoconf
+	yum install -y libtool
+	yum install -y flex
+	yum install -y bison
 endif
 	sh ./vender/devel.sh
 
