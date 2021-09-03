@@ -50,6 +50,7 @@ unsigned long vmsize_limit = 1;
 static int report_version(int argc, char **argv)
 {
 	printf(XBY_VERSION);
+	printf("\n");
 	exit(0);
 
 	return 0;
