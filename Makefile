@@ -43,7 +43,7 @@ else
 	yum install -y libunwind
 	yum install -y libunwind-devel
 	yum install -y elfutils-libelf-devel
-	yum install -y java-1.7.0-openjdk-devel
+	yum install -y java-1.8.0-openjdk-devel
 	yum install -y rpm-build
 	yum install -y xz-libs
 	yum install -y xz-devel
@@ -52,6 +52,7 @@ else
 	yum install -y libtool
 	yum install -y flex
 	yum install -y bison
+	yum install -y openssl-static
 endif
 	sh ./vender/devel.sh
 
@@ -62,6 +63,7 @@ deps:
 	cd $(DEPS)/libunwind; ./autogen.sh; ./configure CFLAGS="-g -O2" --prefix=${DEPS}/; make install
 	cd $(DEPS)/xz; ./autogen.sh; ./configure CFLAGS="-g -O2" --prefix=${DEPS}/; make install
 	cd $(DEPS)/zlib; ./configure --prefix=${DEPS}/; make install
+	cd $(DEPS)/libssh2; ./configure --prefix=${DEPS}/; make install
 	cd $(DEPS)/curl; xz -d -k curl-7.44.0.tar.lzma; tar xvf curl-7.44.0.tar
 	cd $(DEPS)/curl/curl-7.44.0; ./configure --disable-shared --enable-static --prefix=${DEPS}/ --disable-ldap --disable-sspi --without-librtmp --disable-ftp --disable-file --disable-dict --disable-telnet --disable-tftp --disable-rtsp --disable-pop3 --disable-imap --disable-smtp --disable-gopher --disable-smb --without-libidn --disable-ares; make && make install
 
