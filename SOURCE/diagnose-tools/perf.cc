@@ -158,7 +158,7 @@ static void do_settings(const char *arg)
 		{
 			printf("功能设置：\n");
 			printf("    是否激活：\t%s\n", settings.activated ? "√" : "×");
-			printf("    进程ID：\t%d\n", settings.pid);
+			printf("    进程ID：\t%d\n", settings.tgid);
 			printf("    线程ID：\t%d\n", settings.pid);
 			printf("    进程名称：\t%s\n", settings.comm);
 			printf("    CPUS：\t%s\n", settings.cpus);
@@ -171,8 +171,8 @@ static void do_settings(const char *arg)
 		else
 		{
 			root["activated"] = Json::Value(settings.activated);
+			root["tgid"] = Json::Value(settings.tgid);
 			root["pid"] = Json::Value(settings.pid);
-			root["tid"] = Json::Value(settings.pid);
 			root["comm"] = Json::Value(settings.comm);
 			root["cpus"] = Json::Value(settings.cpus);
 			root["idle"] = Json::Value(settings.idle);

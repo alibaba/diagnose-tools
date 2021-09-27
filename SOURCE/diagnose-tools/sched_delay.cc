@@ -146,8 +146,8 @@ static void do_settings(const char *arg)
 		else
 		{
 			root["activated"] = Json::Value(settings.activated);
+			root["tgid"] = Json::Value(settings.tgid);
 			root["pid"] = Json::Value(settings.pid);
-			root["tid"] = Json::Value(settings.pid);
 			root["comm"] = Json::Value(settings.comm);
 			root["threshold"] = Json::Value(settings.threshold_ms);
 			root["verbose"] = Json::Value(settings.verbose);
@@ -262,7 +262,7 @@ static int sls_extract(void *buf, unsigned int len, void *)
 	int *et_type;
 	struct sched_delay_dither *dither;
 	struct sched_delay_rq *rq;
-    symbol sym;
+	symbol sym;
 
 	Json::Value root;
 	Json::Value task;
