@@ -5,7 +5,7 @@ arch=$(shell uname -i)
 ifeq ($(arch),x86_64)
 LDFLAGS = $(VENDER_LDFLAGS) -static-libgcc -static-libstdc++ -lgcc_eh -lunwind-x86_64 -lunwind -lelf \
 	-L`pwd` -L/usr/lib64 -I./ `pwd`/../../deps/curl/curl-7.44.0/lib/.libs/libcurl.a -lz \
-	-Wl,-allow-multiple-definition
+	-lssh2 -lssl -lcrypto -ldl -lpthread -Wl,-allow-multiple-definition
 else
 LDFLAGS = $(VENDER_LDFLAGS) -static-libgcc -static-libstdc++ -L`pwd` -L/usr/lib64 -lunwind-aarch64 -lunwind -lelf -llzma -lz -lcurl
 endif
