@@ -26,14 +26,10 @@
 #include <stdio_ext.h>
 #include <set>
 
-#include <iostream>
-
 #include "internal.h"
 #include "symbol.h"
 
 #include "uapi/pupil.h"
-#include "xby_debug.h"
-#include "containers.h"
 
 typedef int (*diagnose_fp)(int argc, char **argv);
 
@@ -82,12 +78,10 @@ static int usage(int argc, char **argv)
 {
 	printf("diagnose-tools usage:\n");
 	printf("    -v, -V, --version: report version\n");
-	printf("    --debug: debug mode\n");
 	printf("    --help: print this text\n");
 	printf("    install: install module into system\n");
 	printf("    uninstall: remove module from system\n");
 	printf("    task-info $pid dump task-info\n");
-	printf("    xby-debug: for debug\n");
 	printf("    jmaps\n");
 	usage_flame();
 	usage_run_trace();
@@ -251,7 +245,6 @@ static struct diagnose_func all_funcs[] {
 	{"rw-sem", rw_sem_main, 0},
 	{"rss-monitor", rss_monitor_main, 0},
 	{"test", testcase_main, 0},
-	{"xby-debug", do_xby_debug, 0}
 };
 
 #define BUF_LEN 4096
