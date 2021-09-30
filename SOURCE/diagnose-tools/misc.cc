@@ -1,4 +1,4 @@
-/*
+:/*
  * Linux内核诊断工具--用户态杂项函数
  *
  * Copyright (C) 2020 Alibaba Ltd.
@@ -795,69 +795,3 @@ void load_str_from_proc(string &file, string &res)
     fclose(fp);
 }
 
-static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp)
-{
-    ((std::string*)userp)->append((char*)contents, size * nmemb);
-    if (debug_mode) {
-        cout << "xby-debug in WriteCallback, response：" << (std::string*) userp << endl;
-    }
-
-    return size * nmemb;
-}
-
-int get_http_response(string url, string unix_sock, std::map<std::string, std::string> &params, std::string &response)
-{
-    CURL *curl;
-    CURLcode code;
-    std::string readbufer;
-    std::map<std::string, std::string>::iterator it;
-    std::string full_url = url;
-    std::string param = "";
-    int ret = 0;
-
-    curl = curl_easy_init();
-    if(curl) {
-        if (debug_mode) {
-            cout << "调用web service：" << url << endl;
-            for(it = params.begin(); it != params.end(); ++it) {
-                std::string key = it->first;
-                std::string value = it->second;
-                cout << "        " << key << ":" << value << endl;
-            }
-        }
-
-        for(it = params.begin(); it != params.end(); ++it) {
-            std::string key = it->first;
-            std::string value = it->second;
-
-            if (it == params.begin()) {
-                param += key + "=" + value;
-            } else {
-                param += "&" + key + "=" + value;
-            }
-        }
-        if (param != "") {
-            full_url += "?" + param;
-        }
-
-                if (unix_sock != "") {
-                        curl_easy_setopt(curl, CURLOPT_UNIX_SOCKET_PATH, unix_sock.c_str());
-                }
-        curl_easy_setopt(curl, CURLOPT_URL, full_url.c_str());
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readbufer);
-        code = curl_easy_perform(curl);
-                if (code != CURLE_OK) {
-                        fprintf(stderr, "failed to curl %s: %s\n", url.c_str(), curl_easy_strerror(code));
-                        ret = -1;
-                }
-    } else {
-        ret = -1;
-        goto out;
-    }
-
-    response = readbufer;
-    curl_easy_cleanup(curl);
-out:
-    return ret;
-}
