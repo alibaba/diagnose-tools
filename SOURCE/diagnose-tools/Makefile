@@ -7,11 +7,10 @@ LDFLAGS = $(VENDER_LDFLAGS) -static-libgcc -static-libstdc++ -lgcc_eh -lunwind-x
 	-L`pwd` -L/usr/lib64 -I./ -lz \
 	-lssh2 -ldl -lpthread -Wl,-allow-multiple-definition
 else
-LDFLAGS = $(VENDER_LDFLAGS) -static-libgcc -static-libstdc++ -L`pwd` -L/usr/lib64 -lunwind-aarch64 -lunwind -lelf -llzma -lz -lcurl
+LDFLAGS = $(VENDER_LDFLAGS) -static-libgcc -static-libstdc++ -L`pwd` -L/usr/lib64 -lunwind-aarch64 -lunwind -lelf -llzma -lz
 endif
 
-CXXFLAGS = -std=gnu++11 -c -O2 -I.. -I`pwd`/include -I`pwd`/../../deps/curl/curl-7.44.0/include/ \
-	-Wall -g -fno-omit-frame-pointer -Wno-unused-result
+CXXFLAGS = -std=gnu++11 -c -O2 -I.. -I`pwd`/include -Wall -g -fno-omit-frame-pointer -Wno-unused-result
 ifeq ($(arch),aarch64)
 	CXXFLAGS += -DDIAG_ARM64
 endif
@@ -34,15 +33,12 @@ deps:
 	cd libunwind; ./autogen.sh; ./configure CFLAGS="-g -O2" --prefix=$(PWD)/deps; make install
 	cd xz; ./autogen.sh; ./configure CFLAGS="-g -O2" --prefix=$(PWD)/deps; make install
 	cd zlib; ./configure --prefix=$(PWD)/deps; make install
-	cd curl; xz -d -k curl-7.44.0.tar.lzma; tar xvf curl-7.44.0.tar
-	cd curl/curl-7.44.0; ./configure --disable-shared --enable-static --prefix=$(PWD)/deps --disable-ldap --disable-sspi --without-librtmp --disable-ftp --disable-file --disable-dict --disable-telnet --disable-tftp --disable-rtsp --disable-pop3 --disable-imap --disable-smtp --disable-gopher --disable-smb --without-libidn --disable-ares; make && make install
 
 .PHONY: deps
 
 clean:
 	rm -f $(TARGET) *.o libperfmap.so
 	rm -f testcase/pi/*.o testcase/memcpy/*.o testcase/md5/*.o testcase/run_trace/*.o
-	rm -rf json/*.o
 
 distclean:
 	rm -f $(TARGET) *.o libperfmap.so

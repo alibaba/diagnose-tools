@@ -1,4 +1,4 @@
-:/*
+/*
  * Linux内核诊断工具--用户态杂项函数
  *
  * Copyright (C) 2020 Alibaba Ltd.
@@ -31,8 +31,6 @@
 #include <sys/utsname.h>
 
 #include "unwind.h"
-
-#include "curl/curl.h"
 
 using namespace std;
 
@@ -775,23 +773,3 @@ void diag_gettimeofday(struct diag_timespec *tv, struct timezone *tz)
 	tv->tv_usec = ts.tv_usec;
 }
 }
-
-void load_str_from_proc(string &file, string &res)
-{
-    FILE *fp;
-    char buf[256];
-
-    res = "";
-    fp = fopen(file.c_str(), "r");
-    if (!fp) {
-        perror("打开文件失败");
-        return;
-    }
-
-    while (fgets(buf, sizeof(buf), fp)) {
-        res += buf;
-    }
-
-    fclose(fp);
-}
-

@@ -178,21 +178,3 @@ struct timezone;
 extern "C" {
 void diag_gettimeofday(struct diag_timespec *tv, struct timezone *tz);
 }
-
-void load_str_from_proc(std::string &file, std::string &res);
-
-extern int get_http_response(std::string url, std::string unix_sock,
-    std::map<std::string, std::string> &params,
-    std::string &response);
-
-static inline bool file_exists(const std::string& name) {
-    return (access(name.c_str(), F_OK ) != -1);
-}
-
-static inline void load_json_from_string(const std::string& str, Json::Value &root) {
-    Json::CharReaderBuilder builder;
-    std::unique_ptr<Json::CharReader> const reader(builder.newCharReader());
-
-    reader->parse(str.c_str(), str.c_str() + str.length(), &root, NULL);
-}
-
