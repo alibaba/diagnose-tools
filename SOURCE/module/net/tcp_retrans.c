@@ -215,7 +215,7 @@ __maybe_unused static void trace_retransmit_synack(struct sock *sk, struct reque
 		tmp.src_addr = sock->saddr;
 		tmp.dest_addr = sock->daddr;
 #else
-		tmp.src_port = be16_to_cpu(sock->inet_num);
+		tmp.src_port = sock->inet_num;
 		tmp.dest_port = be16_to_cpu(sock->inet_dport);
 		tmp.src_addr = sock->inet_rcv_saddr;
 		tmp.dest_addr = sock->inet_daddr;
@@ -267,7 +267,7 @@ __maybe_unused static void trace_retransmit_skb(struct sock *sk, struct sk_buff 
 		tmp.src_addr = sock->saddr;
 		tmp.dest_addr = sock->daddr;
 #else
-		tmp.src_port = be16_to_cpu(sock->inet_num);
+		tmp.src_port = sock->inet_num;
 		tmp.dest_port = be16_to_cpu(sock->inet_dport);
 		tmp.src_addr = sock->inet_rcv_saddr;
 		tmp.dest_addr = sock->inet_daddr;
