@@ -491,44 +491,64 @@ static int __init diagnosis_init(void)
 	}
 
 	ret = diag_linux_proc_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_linux_proc_init failed.\n");
 		goto out_proc;
+	}
 
 	ret = diag_kernel_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_kernel_init failed.\n");
 		goto out_kern;
+	}
 
 	ret = diag_net_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_net_init failed.\n");
 		goto out_net;
+	}
 
 	ret = diag_io_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_io_init failed.\n");
 		goto out_io;
+	}
 
 	ret = diag_stack_trace_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_stack_trace_init failed.\n");
 		goto out_stack_trace;
+	}
 
 	ret = diag_mm_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_mm_init failed.\n");
 		goto out_mm;
+	}
 
 	ret = diag_pupil_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_pupil_init failed.\n");
 		goto out_pupil;
+	}
 
 	ret = diag_fs_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_fs_init failed.\n");
 		goto out_fs;
+	}
 
 	ret = diag_xby_test_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_xhy_test_init failed.\n");
 		goto out_xby_test;
+	}
 
 	ret = diag_dev_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_dev_init failed.\n");
 		goto out_dev;
+	}
 
 	if (orig_kptr_restrict) {
 		*orig_kptr_restrict = 0;
