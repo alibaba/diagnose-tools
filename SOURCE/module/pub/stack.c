@@ -44,6 +44,12 @@
 #include "pub/trace_file.h"
 #include "pub/stack.h"
 
+#include <asm/msr.h>
+
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 33)
+#include "pub/perf_event.h"
+#endif
+
 extern struct mm_struct *get_task_mm(struct task_struct *task);
 extern void mmput(struct mm_struct *);
 
@@ -63,6 +69,50 @@ static inline struct page *diag_follow_page(struct vm_area_struct *vma,
 
 	return orig_follow_page_mask(vma, address, foll_flags, &unused_page_mask);
 }
+#endif
+
+#define INGORE_LBR
+#if !defined(INGORE_LBR)
+static inline u64 intel_pmu_lbr_tos(void)
+{
+    u64 tos;
+
+    rdmsrl(orig_x86_pmu->lbr_tos, tos);
+
+    return tos;
+}
+
+static inline u64 rdlbr_to(unsigned int idx)
+{
+    u64 val;
+
+    rdmsrl(orig_x86_pmu->lbr_to + idx, val);
+
+    return val;
+}
+
+static int read_lbr_current(unsigned long stack[], int count)
+{
+    u64 tos;
+    unsigned lbr_idx, mask;
+    int i;
+
+	if (!orig_x86_pmu || orig_x86_pmu->lbr_nr == 0)
+		return -ENOSYS;
+
+    memset(stack, 0, count * sizeof(unsigned long));
+    mask = orig_x86_pmu->lbr_nr - 1;
+    tos = intel_pmu_lbr_tos();
+    tos = (tos < count)? tos : count;
+    for (i = 0; i < tos; i++) {
+        lbr_idx = (tos - i) & mask;
+        stack[i] = rdlbr_to(lbr_idx);
+    }
+
+    return 0;
+}
+#else
+#define read_lbr_current(stack, count) (-ENOSYS)
 #endif
 
 #if defined(DIAG_ARM64)
@@ -246,7 +296,7 @@ static void __diagnose_print_stack_trace(int pre, enum diag_printk_type type, vo
 {
 #if KERNEL_VERSION(5, 0, 0) <= LINUX_VERSION_CODE
 	int i;
-	
+
 	orig_stack_trace_save_tsk(p, backtrace, BACKTRACE_DEPTH, 0);
 #else
 	struct stack_trace trace;
@@ -301,7 +351,7 @@ static void __diagnose_print_stack_trace_user(int pre, enum diag_printk_type typ
 {
 #if KERNEL_VERSION(5, 0, 0) <= LINUX_VERSION_CODE
 	int i;
-	
+
 	orig_stack_trace_save_user(backtrace, BACKTRACE_DEPTH);
 #else
 	struct stack_trace trace;
@@ -356,7 +406,7 @@ static void __diagnose_print_stack_trace_unfold(int pre, enum diag_printk_type t
 {
 #if KERNEL_VERSION(5, 0, 0) <= LINUX_VERSION_CODE
 	int i;
-	
+
 	orig_stack_trace_save_tsk(p, backtrace, BACKTRACE_DEPTH, 0);
 #else
 	struct stack_trace trace;
@@ -413,7 +463,7 @@ static void __diagnose_print_stack_trace_unfold_user(int pre, enum diag_printk_t
 {
 #if KERNEL_VERSION(5, 0, 0) <= LINUX_VERSION_CODE
 	int i;
-	
+
 	orig_stack_trace_save_user(backtrace, BACKTRACE_DEPTH);
 #else
 	struct stack_trace trace;
@@ -602,7 +652,7 @@ static inline void save_stack_trace_user_remote(struct task_struct *tsk,
 
 		frame.next_fp = NULL;
 		frame.ret_addr = 0;
-	
+
 		if (!copy_stack_frame_remote(tsk, fp, &frame)) {
 			break;
 		}
@@ -685,7 +735,20 @@ void diag_task_user_stack(struct task_struct *tsk, struct diag_user_stack_detail
 {
 	struct pt_regs *regs;
 	unsigned long sp, ip, bp;
-	
+	struct task_struct *leader;
+
+	if (!detail)
+		return;
+
+	detail->stack[0] = 0;
+	if (!tsk || !tsk->mm)
+		return;
+
+	leader = tsk->group_leader;
+	if (!leader || !leader->mm || leader->exit_state == EXIT_ZOMBIE){
+		return;
+	}
+
 	sp = 0;
 	ip = 0;
 	bp = 0;

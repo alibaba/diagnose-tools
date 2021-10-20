@@ -21,6 +21,8 @@
 #include <string.h>
 #include <stdio.h>     /* for printf */
 #include <stdlib.h>    /* for exit */
+#include <iostream>
+#include <fstream>
 
 #include "internal.h"
 #include "symbol.h"
@@ -31,6 +33,10 @@ using namespace std;
 
 static char sls_file[256];
 static int syslog_enabled;
+static int out_json = 0;
+static int out_flame = 1;
+
+static Json::FastWriter fast_writer;
 
 void usage_rw_top(void)
 {
@@ -42,8 +48,14 @@ void usage_rw_top(void)
 	printf("          shm set 1 if want dump shm\n");
 	printf("          perf set 1 if want perf detail\n");
 	printf("          raw-stack output raw stack\n");
+	printf("          device the device which you are insterested in\n");
 	printf("        --deactivate\n");
 	printf("        --report dump log with text.\n");
+	printf("          out output raw stack into special file.\n");
+	printf("          in input one raw-stack file to extract.\n");
+	printf("          inlist input filename including raw-stack file list to extract .\n");
+	printf("          input filename including raw-stack file list to extract .\n");
+	printf("          console get raw-stack file list from console to extract .\n");
 	printf("        --log\n");
 	printf("          sls=/tmp/1.log store in file\n");
 	printf("          syslog=1 store in syslog\n");
@@ -54,6 +66,7 @@ static void do_activate(const char *arg)
 	int ret = 0;
 	struct params_parser parse(arg);
 	struct diag_rw_top_settings settings;
+	string str;
 
 	memset(&settings, 0, sizeof(struct diag_rw_top_settings));
 	
@@ -62,6 +75,12 @@ static void do_activate(const char *arg)
 	settings.top = parse.int_value("top");
 	settings.perf = parse.int_value("perf");
 	settings.raw_stack = parse.int_value("raw-stack");
+	
+	str = parse.string_value("device");
+	if (str.length() > 0) {
+		strncpy(settings.device_name, str.c_str(), DIAG_DEVICE_LEN);
+		settings.device_name[DIAG_DEVICE_LEN - 1] = 0;
+	}
 	if (settings.top == 0)
 		settings.top = 100;	
 
@@ -77,6 +96,7 @@ static void do_activate(const char *arg)
 	printf("    SHM：%d\n", settings.shm);
 	printf("    PERF：%d\n", settings.perf);
 	printf("    输出级别：%d\n", settings.verbose);
+	printf("    DEVICE: %s\n", settings.device_name);
 
 	if (ret)
 		return;
@@ -149,6 +169,7 @@ static void do_settings(const char *arg)
 		printf("    PERF：%d\n", settings.perf);
 		printf("    输出级别：%d\n", settings.verbose);
 		printf("    RAW-STACK：%lu\n", settings.raw_stack);
+		printf("    DEVICE: %s\n", settings.device_name);
 	} else {
 		printf("获取rw-top设置失败，请确保正确安装了diagnose-tools工具\n");
 	}
@@ -171,7 +192,7 @@ static int rw_top_extract(void *buf, unsigned int len, void *)
 			break;
 		detail = (struct rw_top_detail *)buf;
 
-		printf("%5d%18lu%18lu%18lu%18lu%8lu%16s        %-100s\n",
+		printf("%5d%18lu%18lu%18lu%18lu%8lu%16s%32s        %-100s\n",
 			detail->seq,
 			detail->r_size,
 			detail->w_size,
@@ -179,6 +200,7 @@ static int rw_top_extract(void *buf, unsigned int len, void *)
 			detail->rw_size,
 			detail->pid,
 			detail->comm,
+			detail->device_name,
 			detail->path_name);
 
 		break;
@@ -191,8 +213,8 @@ static int rw_top_extract(void *buf, unsigned int len, void *)
 				perf->task.cgroup_buf,
 				perf->task.pid,
 				0);
-		printf("#*        0xffffffffffffff %s (UNKNOWN)\n",
-				perf->path_name);
+		printf("#*        0xffffffffffffff %s    %s (UNKNOWN)\n",
+				perf->path_name, perf->device_name);
 		diag_printf_kern_stack(&perf->kern_stack);
 		diag_printf_user_stack(perf->task.tgid,
 				perf->task.container_tgid,
@@ -212,10 +234,10 @@ static int rw_top_extract(void *buf, unsigned int len, void *)
 				raw_perf->task.cgroup_buf,
 				raw_perf->task.pid,
 				0);
-		printf("#*        0xffffffffffffff %s (UNKNOWN)\n",
-				raw_perf->path_name);
+		printf("#*        0xffffffffffffff %s    %s (UNKNOWN)\n",
+				raw_perf->path_name, raw_perf->device_name);
 		diag_printf_kern_stack(&raw_perf->kern_stack);
-		diag_printf_raw_stack(raw_perf->task.tgid,
+		diag_printf_raw_stack(run_in_host ? raw_perf->task.tgid : raw_perf->task.container_tgid,
 			raw_perf->task.container_tgid,
 			raw_perf->task.comm,
 			&raw_perf->raw_stack);
@@ -236,7 +258,7 @@ static int sls_extract(void *buf, unsigned int len, void *)
 	int *et_type;
 	struct rw_top_detail *detail;
 	Json::Value root;
-	struct timeval tv;
+	struct diag_timespec tv;
 
 	if (len == 0)
 		return 0;
@@ -256,7 +278,7 @@ static int sls_extract(void *buf, unsigned int len, void *)
 		root["comm"] = Json::Value(detail->comm);
 		root["path_name"] = Json::Value(detail->path_name);
 
-		gettimeofday(&tv, NULL);
+		diag_gettimeofday(&tv, NULL);
 		write_file(sls_file, "rw-top", &tv, detail->id, detail->seq, root);
 		write_syslog(syslog_enabled, "rw-top", &tv, detail->id, detail->seq, root);
 
@@ -268,33 +290,167 @@ static int sls_extract(void *buf, unsigned int len, void *)
 	return 0;
 }
 
-static void do_extract(char *buf, int len)
+static int json_extract(void *buf, unsigned int len, void *)
 {
-	extract_variant_buffer(buf, len, rw_top_extract, NULL);
+	int *et_type;
+	struct rw_top_detail *detail;
+	struct rw_top_perf *perf;
+	//struct rw_top_raw_perf *raw_perf;
+	Json::Value root;
+	Json::Value task;
+	if (len == 0)
+		return 0;
+
+	et_type = (int *)buf;
+	switch (*et_type) {
+	case et_rw_top_detail:
+		if (len < sizeof(struct rw_top_detail))
+			break;
+		detail = (struct rw_top_detail *)buf;
+		root["type"] = Json::Value("rw-top");
+		root["seq"] = Json::Value(detail->seq);
+		root["r_size"] = Json::Value(detail->r_size);
+		root["w_size"] = Json::Value(detail->w_size);
+		root["map_size"] = Json::Value(detail->map_size);
+		root["rw_size"] = Json::Value(detail->rw_size);
+		root["pid"] = Json::Value(detail->pid);
+		root["comm"] = Json::Value(detail->comm);
+		root["device_name"] = Json::Value(detail->device_name);
+		root["path_name"] = Json::Value(detail->path_name);
+
+		std::cout << "#$" << fast_writer.write(root);
+		break;
+	case et_rw_top_perf:
+		if (len < sizeof(struct rw_top_perf))
+			break;
+		perf = (struct rw_top_perf *)buf;
+
+		root["type"] = Json::Value("rw-top");
+		root["path_name"] = Json::Value(perf->path_name);
+		root["device_name"] = Json::Value(perf->device_name);
+
+		diag_sls_task(&perf->task, task);
+		diag_sls_kern_stack(&perf->kern_stack, task);
+		diag_sls_user_stack(perf->task.tgid,
+				perf->task.container_tgid,
+				perf->task.comm,
+				&perf->user_stack, task, 0);
+		diag_sls_proc_chains(&perf->proc_chains, task);
+
+		root["task"] = task;
+		root["tv_sec"] = Json::Value(perf->tv.tv_sec);
+		root["tv_usec"] = Json::Value(perf->tv.tv_usec);
+
+		std::cout << "#$" << fast_writer.write(root);
+		break;
+	case et_rw_top_raw_perf:
+		//to be done
+		break;
+	default:
+		break;
+	}
+
+	return 0;
 }
 
-static void do_dump(void)
+static void do_extract(char *buf, int len)
+{
+	if (out_json) {
+		extract_variant_buffer(buf, len, json_extract, NULL);
+	}
+
+	if (out_flame) {
+		extract_variant_buffer(buf, len, rw_top_extract, NULL);
+	}
+}
+
+static void do_dump(const char *arg)
 {
 	static char variant_buf[50 * 1024 * 1024];
 	int len;
 	int ret = 0;
+	int console=0;
+	struct params_parser parse(arg);
 	struct diag_ioctl_dump_param dump_param = {
 		.user_ptr_len = &len,
 		.user_buf_len = 50 * 1024 * 1024,
 		.user_buf = variant_buf,
 	};
 
-	if (run_in_host) {
-		ret = diag_call_ioctl(DIAG_IOCTL_RW_TOP_DUMP, (long)&dump_param);
-	} else {
-		ret = -ENOSYS;
-		syscall(DIAG_RW_TOP_DUMP, &ret, &len, variant_buf, 50 * 1024 * 1024);
+	string in_file;
+	string out_file;
+	string inlist_file;
+	string line = "";
+	string input_line;
+
+	console = parse.int_value("console");
+	in_file = parse.string_value("in");
+	out_file = parse.string_value("out");
+	inlist_file = parse.string_value("inlist");
+
+	memset(variant_buf, 0, 50 * 1024 * 1024);
+	if (console) {
+                while (cin) {
+                        getline(cin, input_line);
+                        if (!cin.eof()){
+                                ifstream fin(input_line, ios::binary);
+                                fin.read(variant_buf, 50 * 1024 * 1024);
+                                len = fin.gcount();
+                                if (len > 0) {
+                                        do_extract(variant_buf, len);
+                                        memset(variant_buf, 0, 50 * 1024 * 1024);
+                                }
+                                fin.close();
+                         }
+                }
+        } else if (in_file.length() > 0) {
+                ifstream fin(in_file, ios::binary);
+                fin.read(variant_buf, 50 * 1024 * 1024);
+                len = fin.gcount();
+                if (len > 0) {
+                        do_extract(variant_buf, len);
+                        fin.close();
+                }
+       } else if (inlist_file.length() > 0) {
+               ifstream in(inlist_file);
+               if(in) {
+                       while (getline(in, line)){
+                               ifstream fin(line.c_str());
+                               fin.read(variant_buf, 50 * 1024 * 1024);
+                               len = fin.gcount();
+                               if (len > 0) {
+                                       do_extract(variant_buf, len);
+                                       memset(variant_buf, 0, 50 * 1024 * 1024);
+                               }
+                               fin.close();
+                       }
+               in.close();
+               }
+       } else {
+
+		out_json = parse.int_value("json", 0);
+		out_flame = parse.int_value("flame", 1);
+		if (run_in_host) {
+			ret = diag_call_ioctl(DIAG_IOCTL_RW_TOP_DUMP, (long)&dump_param);
+		} else {
+			ret = -ENOSYS;
+			syscall(DIAG_RW_TOP_DUMP, &ret, &len, variant_buf, 50 * 1024 * 1024);
+		}
+		
+		if (out_file.length() > 0) {
+			if (ret == 0 && len > 0) {
+				ofstream fout(out_file);
+				fout.write(variant_buf, len);
+				fout.close();
+			}
+		} else {
+			if (ret == 0 && len > 0) {
+				printf("  序号           R-SIZE            W-SIZE          MAP-SIZE           RW-SIZE     PID          进程名                            设备        文件名\n");
+				do_extract(variant_buf, len);
+			}
+		}
 	}
 
-	if (ret == 0) {
-		printf("  序号           R-SIZE            W-SIZE          MAP-SIZE           RW-SIZE     PID          进程名        文件名\n");
-		do_extract(variant_buf, len);
-	}
 }
 
 static void do_sls(char *arg)
@@ -335,7 +491,7 @@ int rw_top_main(int argc, char **argv)
 			{"activate",     optional_argument, 0,  0 },
 			{"deactivate", no_argument,       0,  0 },
 			{"settings",     optional_argument, 0,  0 },
-			{"report",     no_argument, 0,  0 },
+			{"report",     optional_argument, 0,  0 },
 			{"log",     required_argument, 0,  0 },
 			{0,         0,                 0,  0 }
 		};
@@ -365,7 +521,7 @@ int rw_top_main(int argc, char **argv)
 			do_settings(optarg ? optarg : "");
 			break;
 		case 4:
-			do_dump();
+			do_dump(optarg ? optarg : "");
 			break;
 		case 5:
 			do_sls(optarg);

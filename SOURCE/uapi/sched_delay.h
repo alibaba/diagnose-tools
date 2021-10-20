@@ -34,7 +34,7 @@ struct sched_delay_rq {
 	int et_type;
 	unsigned long id;
 	unsigned long seq;
-	struct timeval tv;
+	struct diag_timespec tv;
 	int cpu;
 	int nr_running;
 };
@@ -43,7 +43,7 @@ struct sched_delay_dither {
 	int et_type;
 	unsigned long id;
 	unsigned long seq;
-	struct timeval tv;
+	struct diag_timespec tv;
 	unsigned long delay_ms;
 	unsigned long now, queued;
 	struct diag_task_detail task;

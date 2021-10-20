@@ -33,7 +33,7 @@ struct high_order_detail {
 	int et_type;
 	unsigned long id;
 	unsigned long seq;
-	struct timeval tv;
+	struct diag_timespec tv;
 	int order;
 	struct diag_proc_chains_detail proc_chains;
 	struct diag_task_detail task;

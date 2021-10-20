@@ -30,7 +30,7 @@ struct diag_exec_monitor_settings {
 
 struct exec_monitor_detail {
 	int et_type;
-	struct timeval tv;
+	struct diag_timespec tv;
 	char filename[256];
 	struct diag_proc_chains_detail proc_chains;
 	struct diag_task_detail task;
@@ -40,7 +40,7 @@ struct exec_monitor_perf {
 	int et_type;
 	unsigned long id;
 	unsigned long seq;
-	struct timeval tv;
+	struct diag_timespec tv;
 	struct diag_proc_chains_detail proc_chains;
 	struct diag_task_detail task;
 	struct diag_kern_stack_detail kern_stack;

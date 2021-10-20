@@ -178,7 +178,7 @@ static int sls_extract(void *buf, unsigned int len, void *)
 	int *et_type;
 	struct fs_cache_detail *detail;
 	Json::Value root;
-	struct timeval tv;
+	struct diag_timespec tv;
 	char inode_buf[255];
 
 	if (len == 0)
@@ -198,7 +198,7 @@ static int sls_extract(void *buf, unsigned int len, void *)
 		root["f_inode"] = Json::Value(inode_buf);
 		root["path_name"] = Json::Value(detail->path_name);
 
-		gettimeofday(&tv, NULL);
+		diag_gettimeofday(&tv, NULL);
 		write_file(sls_file, "fs-cache", &tv, detail->id, detail->seq, root);
 		write_syslog(syslog_enabled, "fs-cache", &tv, detail->id, detail->seq, root);
 

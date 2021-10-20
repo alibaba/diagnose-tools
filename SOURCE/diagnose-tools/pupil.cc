@@ -29,6 +29,7 @@
 #include <syslog.h>
 
 static int report_reverse;
+static int report_raw_stack;
 
 void usage_pupil(void)
 {
@@ -88,10 +89,17 @@ static int task_info_extract(void *buf, unsigned int len, void *)
 				detail->task.pid,
 				seq);
 		diag_printf_kern_stack(&detail->kern_stack);
-		diag_printf_raw_stack(detail->task.tgid,
+		if (report_raw_stack) {
+			diag_printf_raw_stack(run_in_host ? detail->task.tgid : detail->task.container_tgid,
 				detail->task.container_tgid,
 				detail->task.comm,
 				&detail->raw_stack);
+		} else {
+			diag_printf_user_stack(run_in_host ? detail->task.tgid : detail->task.container_tgid,
+					detail->task.container_tgid,
+					detail->task.comm,
+					&detail->user_stack, 0, report_reverse);
+		}
 		printf("#*        0xffffffffffffff %s (UNKNOWN)\n",
 				detail->task.comm);
 		diag_printf_proc_chains(&detail->proc_chains);
@@ -123,6 +131,7 @@ static void do_dump(const char *arg)
 	};
 
 	report_reverse = parse.int_value("reverse");
+	report_raw_stack = parse.int_value("raw-stack");
 
 	memset(variant_buf, 0, 5 * 1024 * 1024);
 	if (run_in_host) {
@@ -146,6 +155,11 @@ int pupil_task_info(int argc, char *argv[])
 			{0,         0,                 0,  0 }
 		};
 	int c;
+
+	if (argc <= 1) {
+		usage_pupil();
+		return 0;
+	}
 
 	while (1) {
 		int option_index = -1;

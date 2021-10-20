@@ -32,7 +32,7 @@ struct diag_sys_cost_settings {
 
 struct sys_cost_detail {
 	int et_type;
-	struct timeval tv;
+	struct diag_timespec tv;
 	unsigned long cpu;
 	unsigned long count[USER_NR_syscalls_virt];
 	unsigned long cost[USER_NR_syscalls_virt];

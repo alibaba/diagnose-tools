@@ -32,7 +32,7 @@ struct perf_detail {
 	int et_type;
 	unsigned long id;
 	unsigned long seq;
-	struct timeval tv;
+	struct diag_timespec tv;
 	struct diag_proc_chains_detail proc_chains;
 	struct diag_task_detail task;
 	struct diag_kern_stack_detail kern_stack;
@@ -43,7 +43,7 @@ struct perf_raw_detail {
 	int et_type;
 	unsigned long id;
 	unsigned long seq;
-	struct timeval tv;
+	struct diag_timespec tv;
 	struct diag_proc_chains_detail proc_chains;
 	struct diag_task_detail task;
 	struct diag_kern_stack_detail kern_stack;

@@ -30,7 +30,7 @@ struct diag_irq_trace_settings {
 
 struct irq_trace_detail {
 	int et_type;
-	struct timeval tv;
+	struct diag_timespec tv;
 	int cpu;
 	int source;
 	void *func;
@@ -39,7 +39,7 @@ struct irq_trace_detail {
 
 struct irq_trace_sum {
 	int et_type;
-	struct timeval tv;
+	struct diag_timespec tv;
 	unsigned long irq_count;
 	unsigned long irq_runs;
 	unsigned long sirq_count[DIAG_NR_SOFTIRQS];

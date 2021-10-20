@@ -19,7 +19,6 @@
 #include <linux/delay.h>
 
 #include "pub/fs_utils.h"
-#include "ext4.h"
 #include "internal.h"
 #include "mm_tree.h"
 
@@ -36,6 +35,8 @@
 		&& KERNEL_VERSION(4, 10, 0) > LINUX_VERSION_CODE) \
 	|| (KERNEL_VERSION(4, 19, 0) <= LINUX_VERSION_CODE\
 		&& KERNEL_VERSION(4, 20, 0) > LINUX_VERSION_CODE)
+
+#include "ext4.h"
 
 #if !defined(EXT4_SUPER_MAGIC)
 #define EXT4_SUPER_MAGIC	0xEF53
@@ -170,7 +171,7 @@ static int fs_orphan_show(void)
 	int retval = 0;
 	struct super_block *super = NULL;
 
-	sym_super_blocks = (struct list_head *)__kallsyms_lookup_name("super_blocks");
+	sym_super_blocks = (struct list_head *)diag_kallsyms_lookup_name("super_blocks");
 	if (sym_super_blocks == NULL) {
 		printk(KERN_WARNING "Failed to lookup super_blocks,"
 			        " check configuration CONFIG_KALLSYMS_ALL\n");
@@ -178,7 +179,7 @@ static int fs_orphan_show(void)
 		goto out;
 	}
 
-	sym_sb_lock = (spinlock_t *)__kallsyms_lookup_name("sb_lock");
+	sym_sb_lock = (spinlock_t *)diag_kallsyms_lookup_name("sb_lock");
 	if (sym_sb_lock == NULL) {
 		printk(KERN_WARNING "Failed to lookup sb_lock.\n");
 		retval = -ENOENT;

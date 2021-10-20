@@ -72,6 +72,10 @@ endif
 ifneq ($(findstring alios7.x86_64,$(KERNEL_BUILD_PATH)),)
 	DIAG_EXTRA_CFLAGS += -DALIOS_7U
 
+	ifneq ($(findstring ali2016,$(KERNEL_BUILD_PATH)),)
+		DIAG_EXTRA_CFLAGS += -DALIOS_2016
+	endif
+
 	ifneq ($(findstring ali3000,$(KERNEL_BUILD_PATH)),)
 		DIAG_EXTRA_CFLAGS += -DALIOS_3000
 
@@ -122,6 +126,13 @@ ifneq ($(findstring alios7.x86_64,$(KERNEL_BUILD_PATH)),)
 
 	ifneq ($(findstring ali4000,$(KERNEL_BUILD_PATH)),)
 		DIAG_EXTRA_CFLAGS += -DALIOS_4000
+
+		ifneq ($(findstring -007,$(KERNEL_BUILD_PATH)),)
+			DIAG_EXTRA_CFLAGS += -DALIOS_4000_007
+		endif
+		ifneq ($(findstring -009,$(KERNEL_BUILD_PATH)),)
+			DIAG_EXTRA_CFLAGS += -DALIOS_4000_009
+		endif
 	endif
 endif
 
@@ -186,8 +197,8 @@ ifneq ($(KERNELRELEASE),)
 
 	ccflags-y += -I$(PWD) -I$(PWD)/../ -Wuninitialized
 
-	$(TARGET)-objs = pub/trace_buffer.o pub/trace_file.o pub/variant_buffer.o pub/trace_point.o \
-			pub/kprobe.o pub/stack.o pub/cgroup.o pub/fs_utils.o pub/uprobe.o
+	$(TARGET)-objs = pub/mem_pool.o pub/trace_buffer.o pub/trace_file.o pub/variant_buffer.o pub/trace_point.o \
+			pub/kprobe.o pub/stack.o pub/cgroup.o pub/fs_utils.o pub/uprobe.o pub/symbol.o
 	ifeq ($(EXPERIENTIAL),1)
 		$(TARGET)-objs += pub/remote_stack.o
 	endif
@@ -197,33 +208,36 @@ ifneq ($(KERNELRELEASE),)
 			kernel/irq_stats.o kernel/irq_delay.o kernel/sys_delay.o \
 			kernel/exec.o kernel/perf.o kernel/run_trace.o kernel/irq_trace.o \
 			kernel/kprobe.o kernel/utilization.o kernel/sched_delay.o kernel/reboot.o \
-			kernel/uprobe.o kernel/sys_cost.o kernel/sig_info.o
+			kernel/uprobe.o kernel/sys_cost.o kernel/sig_info.o kernel/task_monitor.o \
+			kernel/rw_sem.o
 
-	$(TARGET)-objs += mm/mm_entry.o mm/alloc_page.o mm/alloc_top.o mm/high_order.o
+	$(TARGET)-objs += mm/mm_entry.o mm/alloc_page.o mm/alloc_top.o mm/high_order.o mm/rss_monitor.o
 	$(TARGET)-objs += io/io_entry.o
 	$(TARGET)-objs += fs/fs_entry.o fs/orphan.o fs/shm.o fs/rw_top.o
-	$(TARGET)-objs += net/net_entry.o net/tcp_retrans.o net/drop_packet.o net/ping_delay.o net/net_bandwidth.o
+	$(TARGET)-objs += net/net_entry.o net/tcp_retrans.o net/drop_packet.o net/ping_delay.o net/ping_delay6.o \
+			net/net_bandwidth.o
 
 	ifeq ($(EXPERIENTIAL),1)
 		$(TARGET)-objs += test/test.o
 	endif
 
-	ifeq ($(EXPERIENTIAL),1)
-		$(TARGET)-objs += mm/memory_leak.o
-	endif
+	$(TARGET)-objs += mm/memory_leak.o
 
 	ifeq ($(EXPERIENTIAL),1)
 		$(TARGET)-objs += fs/cache.o
 	endif
 else
+    DIAG_STRIP := 1
     include ${shell pwd}/../../vender/module.mk
     ifeq ($(KERNEL_BUILD_PATH),)
         KERNEL_BUILD_PATH=/lib/modules/$(shell uname -r)/build
     endif
     MOD_PATH := $(shell pwd)
     default:
-	    $(MAKE) CFLAGS_MODULE="$(DIAG_EXTRA_CFLAGS)" -C $(KERNEL_BUILD_PATH) M=$(MOD_PATH) modules
+	$(MAKE) CFLAGS_MODULE="$(DIAG_EXTRA_CFLAGS)" -C $(KERNEL_BUILD_PATH) M=$(MOD_PATH) modules
+        ifeq ($(DIAG_STRIP),1)
 	    strip --strip-debug diagnose.ko
+        endif
 
     clean:
 	    rm -rf *.o *.mod.c *.mod.o *.ko* Module.symvers modules.order .*.cmd

@@ -17,7 +17,7 @@
 struct pupil_task_info {
 	int et_type;
 	int pid;
-	struct timeval tv;
+	struct diag_timespec tv;
 };
 
 int pupil_syscall(struct pt_regs *regs, long id);
@@ -27,7 +27,7 @@ int pupil_syscall(struct pt_regs *regs, long id);
 
 struct pupil_task_detail {
 	int et_type;
-	struct timeval tv;
+	struct diag_timespec tv;
 	unsigned long pid;
 	struct diag_proc_chains_detail proc_chains;
 	struct diag_task_detail task;

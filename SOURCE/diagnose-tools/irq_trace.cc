@@ -218,7 +218,7 @@ static int sls_extract(void *buf, unsigned int len, void *)
 	Json::Value raw;
 	Json::Value sirq;
 	stringstream ss;
-	struct timeval tv;
+	struct diag_timespec tv;
 
 	if (len == 0)
 		return 0;
@@ -281,7 +281,7 @@ static int sls_extract(void *buf, unsigned int len, void *)
 		}
 		root["sirq"] = sirq;
 
-		gettimeofday(&tv, NULL);
+		diag_gettimeofday(&tv, NULL);
 		write_file(sls_file, "irq-trace-sum",  &tv, 0, 0, root);
 		write_syslog(syslog_enabled, "irq-trace-sum",  &tv, 0, 0, root);
 

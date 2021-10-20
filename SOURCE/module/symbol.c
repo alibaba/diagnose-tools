@@ -13,8 +13,15 @@
 
 #include "internal.h"
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 33)
+#include "pub/perf_event.h"
+#endif
+
 struct mutex *orig_text_mutex;
 rwlock_t *orig_tasklist_lock;
+
+struct mutex *orig_tracepoint_module_list_mutex;
+struct list_head *orig_tracepoint_module_list;
 
 #if defined(DIAG_ARM64)
 void (*orig___flush_dcache_area)(void *addr, size_t len);
@@ -38,6 +45,8 @@ unsigned int (*orig_stack_trace_save_user)(unsigned long *store, unsigned int si
 void (*orig_save_stack_trace_user)(struct stack_trace *trace);
 void (*orig_save_stack_trace_tsk)(struct task_struct *tsk, struct stack_trace *trace);
 #endif
+#else  /*DIAG_ARM64*/
+void (*orig_save_stack_trace_tsk)(struct task_struct *tsk, struct stack_trace *trace);
 #endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
 void (*orig___do_page_fault)(struct pt_regs *regs,
@@ -52,7 +61,7 @@ void (*orig___do_page_fault)(struct pt_regs *regs, unsigned long error_code,
                 unsigned long address);
 #endif
 
-struct class *orig_block_class; 
+struct class *orig_block_class;
 struct device_type *orig_disk_type;
 char *(*orig_disk_name)(struct gendisk *hd, int partno, char *buf);
 struct task_struct *(*orig_find_task_by_vpid)(pid_t nr);
@@ -99,6 +108,7 @@ struct dentry * (*orig_d_find_any_alias)(struct inode *inode);
 int (*orig_task_statm)(struct mm_struct *mm,
 			 unsigned long *shared, unsigned long *text,
 			 unsigned long *data, unsigned long *resident);
+struct sched_class *orig_idle_sched_class;
 
 atomic64_t xby_debug_counter1;
 atomic64_t xby_debug_counter2;
@@ -107,7 +117,7 @@ atomic64_t xby_debug_counter4;
 atomic64_t xby_debug_counter5;
 
 int *orig_kptr_restrict;
-
+struct x86_pmu *orig_x86_pmu;
 
 static int lookup_syms(void)
 {
@@ -116,6 +126,7 @@ static int lookup_syms(void)
 #if defined(DIAG_ARM64)
 	LOOKUP_SYMS(__flush_dcache_area);
 	LOOKUP_SYMS(aarch64_insn_patch_text);
+	LOOKUP_SYMS(save_stack_trace_tsk);
 #else
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,12,0)
 	LOOKUP_SYMS(text_poke_smp);
@@ -132,7 +143,7 @@ static int lookup_syms(void)
 #endif /* DIAG_ARM64 */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
-	orig_runqueues = (void *)__kallsyms_lookup_name("per_cpu__runqueues");
+	orig_runqueues = (void *)diag_kallsyms_lookup_name("per_cpu__runqueues");
 	if (orig_runqueues == NULL) {
 		return -EINVAL;
 	}
@@ -160,7 +171,7 @@ static int lookup_syms(void)
 #endif
 	LOOKUP_SYMS(task_statm);
 	LOOKUP_SYMS(kptr_restrict);
-
+	LOOKUP_SYMS(idle_sched_class);
 	LOOKUP_SYMS_NORET(d_find_any_alias);
 	LOOKUP_SYMS_NORET(find_task_by_vpid);
 	LOOKUP_SYMS_NORET(find_task_by_pid_ns);
@@ -170,37 +181,9 @@ static int lookup_syms(void)
 	LOOKUP_SYMS_NORET(css_next_descendant_pre);
 	LOOKUP_SYMS_NORET(cpuacct_subsys);
 	LOOKUP_SYMS_NORET(css_get_next);
+	LOOKUP_SYMS_NORET(x86_pmu);
 
 	return 0;
-}
-
-struct diag_symbol_info {
-    char *symbol;
-    int count;
-};
-
-static inline int get_symbol_count_callback(void *data, const char *name,
-            struct module *mod, unsigned long addr)
-{
-    struct diag_symbol_info *info = data;
-
-    if (strcmp(name, info->symbol) == 0) {
-        info->count++;
-        return 0;
-    }
-
-    return 0;
-}
-
-int diag_get_symbol_count(char *symbol)
-{
-	struct diag_symbol_info info;
-
-	info.symbol = symbol;
-	info.count = 0;  
-	kallsyms_on_each_symbol(get_symbol_count_callback, &info);
-
-	return info.count;
 }
 
 int alidiagnose_symbols_init(void)
@@ -213,6 +196,8 @@ int alidiagnose_symbols_init(void)
 
 	LOOKUP_SYMS(__show_regs);
 	LOOKUP_SYMS(ptype_all);
+	LOOKUP_SYMS(tracepoint_module_list_mutex);
+	LOOKUP_SYMS(tracepoint_module_list);
 
 	return 0;
 }

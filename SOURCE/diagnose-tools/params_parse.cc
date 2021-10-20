@@ -63,8 +63,8 @@ params_parser::params_parser(string str)
 		//cout << " key: " << key << endl;
 		//cout << " value: " << value << endl;
 
-        trim(key);
-        trim(value);
+		trim(key);
+		trim(value);
 		map.insert(std::make_pair(key, value));
 	}
 }
@@ -74,26 +74,44 @@ string & params_parser::string_value(string key)
 	return map[key];
 }
 
-unsigned long params_parser::int_value(string key)
+unsigned long params_parser::int_value(std::string key, unsigned long def)
 {
 	string value = map[key];
 	
 	if (value.length() <= 0)
-		return 0;
+		return def;
 	else {
 		try {
 			return std::stoul(value);
 		} catch (...) {
-			return 0;
+			return def;
+		}
+	}
+}
+
+unsigned long params_parser::int_value(string key)
+{
+	return int_value(key, 0);
+}
+
+bool params_parser::bool_value(string key, bool def)
+{
+	string value = map[key];
+
+	if (value.length() <= 0)
+		return def;
+	else {
+		try {
+			return std::stoul(value);
+		} catch (...) {
+			return def;
 		}
 	}
 }
 
 bool params_parser::bool_value(string key)
 {
-	string value = map[key];
-	
-	return value == "1";
+	return bool_value(key, false);
 }
 
 int xby_test(void)

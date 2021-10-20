@@ -50,17 +50,50 @@
 	LINUX_VERSION_CODE <= KERNEL_VERSION(4, 20, 0) \
 	&& !defined(UBUNTU_1604)
 
-#if  defined(CENTOS_8U)
-#define diag_last_queued rh_reserved3
+#if defined(ALIOS_4000_009)
+static unsigned long *get_last_queued_addr(struct task_struct *p)
+{
+	/**
+	 * task_stack_page, but not end_of_stack !!
+	 */
+	return task_stack_page(p) + sizeof(struct thread_info) + 32;
+}
 #else
-#if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
+#if  defined(CENTOS_8U)
+#define diag_last_queued rh_reserved2
+#elif KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
 #define diag_last_queued ali_reserved3
 #elif KERNEL_VERSION(3, 10, 0) <= LINUX_VERSION_CODE
 #define diag_last_queued rh_reserved3
 #else
 #define diag_last_queued rh_reserved[0]
 #endif
+
+static unsigned long *get_last_queued_addr(struct task_struct *p)
+{
+	return &p->diag_last_queued;
+}
 #endif
+
+static unsigned long read_last_queued(struct task_struct *p)
+{
+	unsigned long *ptr = get_last_queued_addr(p);
+
+	if (ptr) {
+		return *ptr;
+	} else {
+		return 0;
+	}
+}
+
+static void update_last_queued(struct task_struct *p, unsigned long stamp)
+{
+	unsigned long *ptr = get_last_queued_addr(p);
+
+	if (ptr) {
+		*ptr = stamp;
+	}
+}
 
 __maybe_unused static atomic64_t diag_nr_running = ATOMIC64_INIT(0);
 struct diag_sched_delay_settings sched_delay_settings = {
@@ -81,7 +114,7 @@ static void trace_sched_wakeup_hit(void *__data, struct task_struct *p, bool unu
 static void trace_sched_wakeup_hit(struct rq *rq, struct task_struct *p, bool unused)
 #endif
 {
-	p->diag_last_queued = ktime_to_ms(ktime_get());
+	update_last_queued(p, ktime_to_ms(ktime_get()));
 }
 
 #if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
@@ -118,8 +151,8 @@ static void trace_sched_switch_hit(struct rq *rq, struct task_struct *prev,
 		return;
 	}
 
-	t_queued = next->diag_last_queued;
-	next->diag_last_queued = 0;
+	t_queued = read_last_queued(next);
+	update_last_queued(next, 0);
 	if (t_queued <= 0)
 		return;
 
@@ -136,7 +169,7 @@ static void trace_sched_switch_hit(struct rq *rq, struct task_struct *prev,
 		dither = &diag_percpu_context[smp_processor_id()]->sched_delay_dither;
 		dither->et_type = et_sched_delay_dither;
 		dither->id = diag_sched_delay_id;
-		do_gettimeofday(&dither->tv);
+		do_diag_gettimeofday(&dither->tv);
 		dither->seq = sched_delay_seq;
 		sched_delay_seq++;
 		dither->now	= now;
@@ -151,7 +184,7 @@ static void trace_sched_switch_hit(struct rq *rq, struct task_struct *prev,
 		diag_variant_buffer_reserve(&sched_delay_variant_buffer, sizeof(struct sched_delay_dither));
 		diag_variant_buffer_write_nolock(&sched_delay_variant_buffer, dither, sizeof(struct sched_delay_dither));
 		diag_variant_buffer_seal(&sched_delay_variant_buffer);
-		diag_variant_buffer_spin_unlock(&sched_delay_variant_buffer, flags);	
+		diag_variant_buffer_spin_unlock(&sched_delay_variant_buffer, flags);
 	}
 }
 
@@ -218,7 +251,7 @@ static void dump_data(void)
 
 	rq.et_type = et_sched_delay_rq;
 	rq.id = diag_sched_delay_id;
-	do_gettimeofday(&rq.tv);
+	do_diag_gettimeofday(&rq.tv);
 
 	for_each_online_cpu(cpu)
 	{
