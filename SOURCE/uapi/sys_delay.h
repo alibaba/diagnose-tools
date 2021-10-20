@@ -32,7 +32,7 @@ struct diag_sys_delay_settings {
 
 struct sys_delay_detail {
 	int et_type;
-	struct timeval tv;
+	struct diag_timespec tv;
 	unsigned long delay_ns;
 	struct diag_task_detail task;
 	struct diag_kern_stack_detail kern_stack;

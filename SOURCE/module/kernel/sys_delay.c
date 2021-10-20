@@ -209,7 +209,7 @@ void syscall_timer(struct diag_percpu_context *context)
 
 				detail = &diag_percpu_context[smp_processor_id()]->sys_delay_detail;
 				detail->et_type = et_sys_delay_detail;
-				do_gettimeofday(&detail->tv);
+				do_diag_gettimeofday(&detail->tv);
 				detail->delay_ns = delay_ns;
 				diag_task_brief(current, &detail->task);
 				diag_task_kern_stack(current, &detail->kern_stack);

@@ -80,7 +80,7 @@ static void hook_exec(const char * filename, struct mm_struct *mm)
 		perf->et_type = et_exec_monitor_perf;
 		perf->id = 0;
 		perf->seq = 0;
-		do_gettimeofday(&perf->tv);
+		do_diag_gettimeofday(&perf->tv);
 		diag_task_brief(current, &perf->task);
 		diag_task_kern_stack(current, &perf->kern_stack);
 		diag_task_user_stack(current, &perf->user_stack);
@@ -99,7 +99,7 @@ static void hook_exec(const char * filename, struct mm_struct *mm)
 	detail = kmalloc(sizeof(struct exec_monitor_detail), GFP_KERNEL);
 	if (detail) {
 		detail->et_type = et_exec_monitor_detail;
-		do_gettimeofday(&detail->tv);
+		do_diag_gettimeofday(&detail->tv);
 		diag_task_brief(current, &detail->task);
 		strncpy(detail->filename, filename, 255);
 		dump_proc_chains_argv(1, &mm_tree, current, &detail->proc_chains);

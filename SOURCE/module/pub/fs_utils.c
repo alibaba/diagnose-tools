@@ -172,8 +172,11 @@ void *for_each_files_task(struct task_struct *tsk,
 
 	mm = get_task_mm(tsk);
 	if (mm) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
+		down_read(&mm->mmap_lock);
+#else
 		down_read(&mm->mmap_sem);
-
+#endif
 		for (vma = mm->mmap; vma; vma = vma->vm_next) {
 			if (vma->vm_file) {
 				retval = cb(tsk, vma->vm_file, data);
@@ -182,7 +185,11 @@ void *for_each_files_task(struct task_struct *tsk,
 			}
 		}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
+		up_read(&mm->mmap_lock);
+#else
 		up_read(&mm->mmap_sem);
+#endif
 
 		mmput(mm);
 	}

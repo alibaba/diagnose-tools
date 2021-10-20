@@ -171,6 +171,7 @@ void dump_proc_chains_argv(int style, struct mm_tree *mm_tree,
 	struct mm_info *mm_info;
 	int cnt = 0;
 	int i = 0;
+	struct task_struct *leader;
 
 	for (i = 0; i < PROCESS_CHAINS_COUNT; i++) {
 		detail->chains[i][0] = 0;
@@ -178,6 +179,14 @@ void dump_proc_chains_argv(int style, struct mm_tree *mm_tree,
 	}
 	if (style == 0)
 		return;
+
+	if (!tsk || !tsk->mm)
+		return;
+
+	leader = tsk->group_leader;
+	if (!leader || !leader->mm || leader->exit_state == EXIT_ZOMBIE){
+		return;
+	}
 
 	rcu_read_lock();
 	walker = tsk;
@@ -308,6 +317,20 @@ void dump_proc_chains_simple(struct task_struct *tsk,
 	struct task_struct *walker;
 	int cnt = 0;
 	int i = 0;
+	struct task_struct *leader;
+
+	for (i = 0; i < PROCESS_CHAINS_COUNT; i++) {
+		detail->chains[i][0] = 0;
+		detail->tgid[i] = 0;
+	}
+
+	if (!tsk || !tsk->mm)
+		return;
+
+	leader = tsk->group_leader;
+	if (!leader || !leader->mm || leader->exit_state == EXIT_ZOMBIE){
+		return;
+	}
 
 	rcu_read_lock();
 	walker = tsk;
@@ -422,10 +445,18 @@ ssize_t dump_pid_cmdline(int pre, enum diag_printk_type type, void *obj,
 		goto out_mmput;
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
+	down_read(&mm->mmap_lock);
+#else
 	down_read(&mm->mmap_sem);
+#endif
 	arg_start = mm->arg_start;
 	arg_end = mm->arg_end;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
+	up_read(&mm->mmap_lock);
+#else
 	up_read(&mm->mmap_sem);
+#endif
 
 	if (arg_start > arg_end) {
 		return -EFAULT;

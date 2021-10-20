@@ -171,7 +171,7 @@ static int sls_extract(void *buf, unsigned int len, void *)
 	int *et_type;
 	struct alloc_top_detail *detail;
 	Json::Value root;
-	struct timeval tv;
+	struct diag_timespec tv;
 
 	if (len == 0)
 		return 0;
@@ -188,7 +188,7 @@ static int sls_extract(void *buf, unsigned int len, void *)
 		root["page_count"] = Json::Value(detail->page_count);
 		root["cgroup_name"] = Json::Value(detail->cgroup_name);
 
-		gettimeofday(&tv, NULL);
+		diag_gettimeofday(&tv, NULL);
 		write_file(sls_file, "alloc-top", &tv, detail->id, detail->seq, root);
 		write_syslog(syslog_enabled, "alloc-top", &tv, detail->id, detail->seq, root);
 		break;

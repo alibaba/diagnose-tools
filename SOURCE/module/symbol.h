@@ -12,13 +12,15 @@
 #ifndef __DIAG_SYMBOL_H
 #define __DIAG_SYMBOL_H
 
+#include "pub/symbol.h"
+
 struct mutex;
 struct stack_trace;
 struct pid_namespace;
 extern struct mutex *orig_text_mutex;
 extern rwlock_t *orig_tasklist_lock;
 
-extern unsigned long (*__kallsyms_lookup_name)(const char *name);
+extern unsigned long (*diag_kallsyms_lookup_name)(const char *name);
 
 #if defined(DIAG_ARM64)
 extern void (*orig___flush_dcache_area)(void *addr, size_t len);
@@ -117,6 +119,9 @@ extern unsigned int (*orig_stack_trace_save_tsk)(struct task_struct *task,
 extern unsigned int (*orig_stack_trace_save_user)(unsigned long *store, unsigned int size);
 
 extern int *orig_kptr_restrict;
+struct sched_class;
+extern struct sched_class *orig_idle_sched_class;
+extern struct x86_pmu *orig_x86_pmu;
 int alidiagnose_symbols_init(void);
 void alidiagnose_symbols_exit(void);
 

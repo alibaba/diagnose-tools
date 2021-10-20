@@ -36,6 +36,7 @@
 #include "mm_tree.h"
 #include "pub/trace_file.h"
 #include "pub/uprobe.h"
+#include "symbol.h"
 
 #include "uapi/uprobe.h"
 
@@ -211,7 +212,7 @@ static int kern_uprobe_handler(struct uprobe_consumer *self, struct pt_regs *reg
 		if (sample) {
 			raw_detail = &diag_percpu_context[smp_processor_id()]->uprobe.uprobe_raw_stack_detail;
 			raw_detail->et_type = et_uprobe_raw_detail;
-			do_gettimeofday(&raw_detail->tv);
+			do_diag_gettimeofday(&raw_detail->tv);
 			raw_detail->proc_chains.chains[0][0] = 0;
 			dump_proc_chains_simple(current, &raw_detail->proc_chains);
 			diag_task_brief(current, &raw_detail->task);
@@ -231,7 +232,7 @@ static int kern_uprobe_handler(struct uprobe_consumer *self, struct pt_regs *reg
 		if (sample) {
 			detail = &diag_percpu_context[smp_processor_id()]->uprobe.uprobe_detail;
 			detail->et_type = et_uprobe_detail;
-			do_gettimeofday(&detail->tv);
+			do_diag_gettimeofday(&detail->tv);
 			detail->proc_chains.chains[0][0] = 0;
 			dump_proc_chains_simple(current, &detail->proc_chains);
 			diag_task_brief(current, &detail->task);

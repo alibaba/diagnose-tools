@@ -51,6 +51,8 @@ unsigned long *orig_avenrun;
 
 static struct diag_variant_buffer load_monitor_variant_buffer;
 
+static ktime_t last_dump;
+
 static void __maybe_unused clean_data(void)
 {
 	cleanup_mm_tree(&mm_tree);
@@ -77,7 +79,6 @@ void diag_load_timer(struct diag_percpu_context *context)
 #else
 void diag_load_timer(struct diag_percpu_context *context)
 {
-	static ktime_t last;
 	u64 ms;
 	bool scare = false;
 	unsigned long load_d;
@@ -110,7 +111,7 @@ void diag_load_timer(struct diag_percpu_context *context)
 		rcu_read_lock();
 
 		do_each_thread(g, p) {
-			if (p->state & TASK_UNINTERRUPTIBLE)
+			if (task_contributes_to_load(p))
 				nr_uninterrupt++;
 		} while_each_thread(g, p);
 
@@ -126,11 +127,11 @@ void diag_load_timer(struct diag_percpu_context *context)
 		static struct load_monitor_task tsk_info;
 		unsigned long event_id;
 
-		ms = ktime_to_ms(ktime_sub(ktime_get(), last));
-		if (ms < 10 * 1000)
+		ms = ktime_to_ms(ktime_sub(ktime_get(), last_dump));
+		if (!load_monitor_settings.mass && ms < 10 * 1000)
 			return;
 
-		last = ktime_get();
+		last_dump = ktime_get();
 		
 		if (orig_avenrun) {
 			detail.load_1_1 = LOAD_INT(orig_avenrun[0]);
@@ -163,7 +164,7 @@ void diag_load_timer(struct diag_percpu_context *context)
 		event_id = get_cycles();
 		detail.id = event_id;
 		detail.et_type = et_load_monitor_detail;
-		do_gettimeofday(&detail.tv);
+		do_diag_gettimeofday(&detail.tv);
 
 		rcu_read_lock();
 		diag_variant_buffer_spin_lock(&load_monitor_variant_buffer, flags);
@@ -173,7 +174,7 @@ void diag_load_timer(struct diag_percpu_context *context)
 		diag_variant_buffer_spin_unlock(&load_monitor_variant_buffer, flags);
 		do_each_thread(g, p) {
 			if ((p->state == TASK_RUNNING)
-				|| (p->state & TASK_UNINTERRUPTIBLE)) {
+				|| task_contributes_to_load(p)) {
 				tsk_info.et_type = et_load_monitor_task;
 				tsk_info.id = event_id;
 				tsk_info.tv = detail.tv;
@@ -277,6 +278,7 @@ static void __deactivate_load_monitor(void)
 	load_monitor_settings.threshold_load_r = 0;
 	load_monitor_settings.threshold_load_d = 0;
 	load_monitor_settings.threshold_task_d = 0;
+	last_dump = ktime_set(0, 0);
 }
 
 int deactivate_load_monitor(void)
@@ -389,7 +391,7 @@ int diag_load_init(void)
 	LOOKUP_SYMS_NORET(avenrun);
 
 	init_mm_tree(&mm_tree);
-	init_diag_variant_buffer(&load_monitor_variant_buffer, 1 * 1024 * 1024);
+	init_diag_variant_buffer(&load_monitor_variant_buffer, 50 * 1024 * 1024);
 	if (load_monitor_settings.activated)
 		load_monitor_settings.activated = __activate_load_monitor();
 

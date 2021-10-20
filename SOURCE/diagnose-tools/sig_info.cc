@@ -203,7 +203,7 @@ static int sls_extract(void *buf, unsigned int len, void *)
 {
 	int *et_type;
 	struct sig_info_detail *detail;
-	struct timeval tv;
+	struct diag_timespec tv;
 	Json::Value root;
 
 	if (len == 0)
@@ -219,7 +219,7 @@ static int sls_extract(void *buf, unsigned int len, void *)
 		root["signum"] = Json::Value(detail->sig);
 
 		/* to-do */
-		gettimeofday(&tv, NULL);
+		diag_gettimeofday(&tv, NULL);
 		write_file(sls_file, "sig-info", &tv, 0, 0, root);
 		write_syslog(syslog_enabled, "sig-info", &tv, 0, 0, root);
 		break;

@@ -455,6 +455,16 @@ void __weak diag_net_ping_delay_exit(void)
 	//
 }
 
+int __weak diag_net_ping_delay6_init(void)
+{
+	return 0;
+}
+
+void __weak diag_net_ping_delay6_exit(void)
+{
+	//
+}
+
 int __weak diag_sys_broken_init(void)
 {
 	return 0;
@@ -878,6 +888,30 @@ void __weak diag_ping_delay_exit(void)
 {
 }
 
+int __weak ping_delay6_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
+}
+
+int __weak activate_ping_delay6(void)
+{
+	return -EINVAL;
+}
+
+int __weak deactivate_ping_delay6(void)
+{
+	return -EINVAL;
+}
+
+int __weak diag_ping_delay6_init(void)
+{
+	return 0;
+}
+
+void __weak diag_ping_delay6_exit(void)
+{
+}
+
 int __weak activate_uprobe(void)
 {
 	return -EINVAL;
@@ -1045,6 +1079,11 @@ long __weak diag_ioctl_ping_delay(unsigned int cmd, unsigned long arg)
 	return -EINVAL;
 }
 
+long __weak diag_ioctl_ping_delay6(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
 long __weak diag_ioctl_rw_top(unsigned int cmd, unsigned long arg)
 {
 	return -EINVAL;
@@ -1093,5 +1132,90 @@ int __weak deactivate_net_bandwidth(void)
 int __weak activate_net_bandwidth(void)
 {
 	return -EINVAL;
+}
+
+
+int __weak diag_task_monitor_init(void)
+{
+	return 0;
+}
+
+void __weak diag_task_monitor_exit(void)
+{
+	//
+}
+
+long __weak diag_ioctl_task_monitor(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+int __weak task_monitor_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
+}
+
+int __weak deactivate_task_monitor(void)
+{
+	return -EINVAL;
+}
+
+int __weak activate_task_monitor(void)
+{
+	return -EINVAL;
+}
+
+void __weak task_monitor_timer(struct diag_percpu_context *context)
+{
+        return;
+}
+
+int __weak diag_rw_sem_init(void)
+{
+        return 0;
+}
+
+void __weak diag_rw_sem_exit(void)
+{
+}
+
+long __weak diag_ioctl_rw_sem(unsigned int cmd, unsigned long arg)
+{
+        return -EINVAL;
+}
+
+int __weak rw_sem_syscall(struct pt_regs *regs, long id)
+{
+        return -ENOSYS;
+}
+
+int __weak deactivate_rw_sem(void)
+{
+        return -EINVAL;
+}
+
+int __weak activate_rw_sem(void)
+{
+        return -EINVAL;
+}
+
+int __weak diag_rss_monitor_init(void)
+{
+	return 0;
+}
+
+void __weak diag_rss_monitor_exit(void)
+{
+	//
+}
+
+long __weak diag_ioctl_rss_monitor(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+int __weak rss_monitor_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
 }
 

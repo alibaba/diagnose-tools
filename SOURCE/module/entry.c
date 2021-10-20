@@ -55,6 +55,9 @@
 #include "uapi/sched_delay.h"
 #include "uapi/reboot.h"
 #include "uapi/net_bandwidth.h"
+#include "uapi/task_monitor.h"
+#include "uapi/rw_sem.h"
+#include "uapi/rss_monitor.h"
 
 unsigned long diag_timer_period = 10;
 
@@ -152,6 +155,8 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 			activate_fs_orphan();
 		} else if (strcmp(func, "ping-delay") == 0) {
 			activate_ping_delay();
+		} else if (strcmp(func, "ping-delay6") == 0) {
+			activate_ping_delay6();
 		} else if (strcmp(func, "uprobe") == 0) {
 			activate_uprobe();
 		} else if (strcmp(func, "sys-cost") == 0) {
@@ -164,7 +169,14 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 			activate_net_bandwidth();
 		} else if (strcmp(func, "sig-info") == 0) {
 			activate_sig_info();
+		} else if (strcmp(func, "task-monitor") == 0) {
+			activate_task_monitor();
+		} else if (strcmp(func, "rw-sem") == 0) {
+			activate_rw_sem();
+		} else if (strcmp(func, "rss-monitor") == 0) {
+			activate_rss_monitor();
 		}
+
 		up(&controller_sem);
 		printk("diagnose-tools %s %s\n", cmd, func);
 	} else if (strcmp(cmd, "deactivate") == 0) {
@@ -218,6 +230,8 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 			deactivate_fs_orphan();
 		} else if (strcmp(func, "ping-delay") == 0) {
 			deactivate_ping_delay();
+		} else if (strcmp(func, "ping-delay6") == 0) {
+			deactivate_ping_delay6();
 		} else if (strcmp(func, "uprobe") == 0) {
 			deactivate_uprobe();
 		} else if (strcmp(func, "sys-cost") == 0) {
@@ -230,6 +244,12 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 			deactivate_net_bandwidth();
 		} else if (strcmp(func, "sig-info") == 0) {
 			deactivate_sig_info();
+		} else if (strcmp(func, "task-monitor") == 0) {
+			deactivate_task_monitor();
+		} else if ( strcmp(func, "rw-sem") == 0) {
+			deactivate_rw_sem();
+		} else if (strcmp(func, "rss-monitor") == 0) {
+			deactivate_rss_monitor();
 		}
 
 		up(&controller_sem);
@@ -285,18 +305,6 @@ void diag_linux_proc_exit(void)
 	destroy_diag_trace_file(&controller_file);
 }
 
-unsigned long (*__kallsyms_lookup_name)(const char *name);
-static int symbol_walk_callback(void *data, const char *name,
-	struct module *mod, unsigned long addr)
-{
-	if (strcmp(name, "kallsyms_lookup_name") == 0) {
-		__kallsyms_lookup_name = (void *)addr;
-		return addr;
-	}
-
-	return 0;
-}
-
 static void diag_cb_sys_enter(void *data, struct pt_regs *regs, long id)
 {
 	if (id >= DIAG_BASE_SYSCALL) {
@@ -305,6 +313,7 @@ static void diag_cb_sys_enter(void *data, struct pt_regs *regs, long id)
 		atomic64_inc_return(&diag_nr_running);
 	
 		down(&controller_sem);
+
 		if (id == DIAG_VERSION) {
 			ret = DIAG_VERSION;
 		} else if (id >= DIAG_BASE_SYSCALL_PUPIL
@@ -376,6 +385,9 @@ static void diag_cb_sys_enter(void *data, struct pt_regs *regs, long id)
 		} else if (id >= DIAG_BASE_SYSCALL_PING_DELAY
 		   && id < DIAG_BASE_SYSCALL_PING_DELAY + DIAG_SYSCALL_INTERVAL) {
 			ret = ping_delay_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_PING_DELAY6
+		   && id < DIAG_BASE_SYSCALL_PING_DELAY6 + DIAG_SYSCALL_INTERVAL) {
+			ret = ping_delay6_syscall(regs, id);
 		} else if (id >= DIAG_BASE_SYSCALL_UPROBE
 		   && id < DIAG_BASE_SYSCALL_UPROBE + DIAG_SYSCALL_INTERVAL) {
 			ret = uprobe_syscall(regs, id);
@@ -394,9 +406,19 @@ static void diag_cb_sys_enter(void *data, struct pt_regs *regs, long id)
 		} else if (id >= DIAG_BASE_SYSCALL_SIG_INFO
 		   && id < DIAG_BASE_SYSCALL_SIG_INFO + DIAG_SYSCALL_INTERVAL) {
 			ret = sig_info_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_TASK_MONITOR
+		   && id < DIAG_BASE_SYSCALL_TASK_MONITOR + DIAG_SYSCALL_INTERVAL) {
+			ret = task_monitor_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_RW_SEM
+                   && id < DIAG_BASE_SYSCALL_RW_SEM + DIAG_SYSCALL_INTERVAL) {
+                        ret = rw_sem_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_RSS_MONITOR
+		   && id < DIAG_BASE_SYSCALL_RSS_MONITOR + DIAG_SYSCALL_INTERVAL) {
+			ret = rss_monitor_syscall(regs, id);
 		}
 
 		up(&controller_sem);
+
 		if (ret != -ENOSYS) {
 			__user int *ret_ptr = (void *)ORIG_PARAM1(regs);
 
@@ -444,11 +466,9 @@ static int __init diagnosis_init(void)
 	char cgroup_buf[256];
 	int i;
 
-	ret = kallsyms_on_each_symbol(symbol_walk_callback, NULL);
-	if (!ret || !__kallsyms_lookup_name) {
-		ret = -EINVAL;
+	ret = diag_init_symbol();
+	if (ret)
 		goto out;
-	}
 
 	ret = alidiagnose_symbols_init();
 	if (ret)

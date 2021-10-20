@@ -48,12 +48,17 @@ void usage_run_trace(void)
 	printf("            threshold-us default THRESHOLD(US)\n");
 	printf("            buf-size-k set buf size(k) for per-thread\n");
 	printf("            timer-us perf timer(us)\n");
+	printf("            raw-stack output raw stack\n");
 	printf("        --deactivate\n");
 	printf("        --settings print settings.\n");
 	printf("        --report dump log with text.\n");
 	printf("        --test testcase for run-trace.\n");
 	printf("        --set-syscall PID SYSCALL THRESHOLD monitor special syscall\n");
 	printf("        --clear-syscall PID do not monitor syscall\n");
+	printf("        --flame Create Flame Graph by specified log file or filelist\n");
+	printf("	       	in set the log file to create Flame Graph \n");
+	printf("	       	inlist set the filelist to create Flame Graph \n");
+	printf("	       	console read filelist from the console to create Flame Graph \n");
 	printf("        --uprobe set uprobe to start/stop trace\n");
 }
 
@@ -65,7 +70,7 @@ static void do_activate(const char *arg)
 	struct diag_run_trace_settings settings;
 
 	memset(&settings, 0, sizeof(struct diag_run_trace_settings));
-	
+
 	threshold = parse.int_value("threshold");
 	if (threshold)
 		settings.threshold_us = threshold * 1000;
@@ -78,6 +83,7 @@ static void do_activate(const char *arg)
 	settings.verbose = parse.int_value("verbose");
 	settings.buf_size_k = parse.int_value("buf-size-k");
 	settings.timer_us = parse.int_value("timer-us");
+	settings.raw_stack = parse.int_value("raw-stack");
 
 	if (run_in_host) {
 		ret = diag_call_ioctl(DIAG_IOCTL_RUN_TRACE_SET, (long)&settings);
@@ -91,6 +97,7 @@ static void do_activate(const char *arg)
 	printf("    输出级别：%d\n", settings.verbose);
 	printf("    TIMER_US：%d\n", settings.timer_us);
 	printf("    BUF-SIZE-K：%d\n", settings.buf_size_k);
+	printf("    RAW-STACK：%lu\n", settings.raw_stack);
 	if (ret)
 		return;
 
@@ -105,7 +112,7 @@ static void do_activate(const char *arg)
 static void do_deactivate(void)
 {
 	int ret = 0;
-	
+
 	ret = diag_deactivate("run-trace");
 	if (ret == 0) {
 		printf("run-trace is not activated\n");
@@ -140,6 +147,7 @@ static void do_settings(const char *arg)
 			printf("    TIMER_US：%d\n", settings.timer_us);
 			printf("    线程监控项：%d\n", settings.threads_count);
 			printf("    系统调用监控项：%d\n", settings.syscall_count);
+			printf("    RAW-STACK：%lu\n", settings.raw_stack);
 		}
 		else
 		{
@@ -170,7 +178,7 @@ static void do_settings(const char *arg)
 	}
 
 }
-	
+
 static void do_monitor_syscall(char *arg)
 {
 	int ret;
@@ -215,6 +223,8 @@ static void do_uprobe(const char *arg)
 	string file_start;
 	string file_stop;
 	struct diag_run_trace_uprobe params;
+	char buf[255];
+	int len;
 
 	params.tgid = parse.int_value("tgid");
 	file_start = parse.string_value("start-file");
@@ -240,12 +250,16 @@ static void do_uprobe(const char *arg)
 		return;
 	}
 
+	len = read(params.fd_start, buf, 255);
+	printf("xby-debug, %lu, %d\n", params.fd_start, len);
+	len = read(params.fd_stop, buf, 255);
+	printf("xby-debug, %lu, %d\n", params.fd_stop, len);
 	if (run_in_host) {
 		ret = diag_call_ioctl(DIAG_IOCTL_RUN_TRACE_UPROBE, (long)&params);
 	} else {
 		ret = -ENOSYS;
 		syscall(DIAG_RUN_TRACE_UPROBE, &ret, params.tgid, params.fd_start,
-				params.offset_start, params.offset_start, params.offset_stop);
+				params.offset_start, params.fd_stop, params.offset_stop);
 	}
 
 	printf("uprobe for run-trace: tgid %lu, start-file: %s, start-offset: %lu, stop-file: %s, stop-offset: %lu, ret is %d\n",
@@ -272,7 +286,7 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 
 		if (len < sizeof(struct event_start))
 			break;
-		
+
 		printf("开始跟踪：PID：%d[%lu:%lu]\n", event->header.task.pid,
 				event->header.tv.tv_sec, event->header.tv.tv_usec);
 		ss.str("");
@@ -283,7 +297,7 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 			ss << " " << ";";
 		}
 		ss << " " << "1000000" << endl;
-		
+
 		break;
 	}
 	case et_sched_in:
@@ -336,7 +350,7 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 	case et_sched_wakeup:
 	{
 		struct event_sched_wakeup *event = (struct event_sched_wakeup *)buf;
-		
+
 		if (len < sizeof(struct event_sched_wakeup))
 			break;
 
@@ -361,6 +375,61 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 
 		break;
 	}
+	case et_sys_enter_raw:
+	{
+		struct event_sys_enter_raw *event = (struct event_sys_enter_raw *)buf;
+
+		static unsigned long raw_stack[BACKTRACE_DEPTH];
+		memset(raw_stack, 0, sizeof(raw_stack));
+
+		if (len < sizeof(struct event_sys_enter_raw))
+			break;
+
+		printf("    事件类型：进入系统调用，PID：%d，系统调用号：%ld, 距离上次事件(ns)：%lu\n",
+			event->header.task.pid,
+			event->syscall_id,
+			event->header.delta_ns);
+
+		diag_printf_raw_stack(run_in_host ? event->header.task.tgid : event->header.task.container_tgid,
+				event->header.task.container_tgid,
+				event->header.task.comm,
+				&event->raw_stack);
+
+		ss << "**" << "step " << setw(4) << setfill('0') << event->header.seq << "：用户态运行，进入系统调用" << ";";
+
+		diag_unwind_raw_stack(run_in_host ?  event->header.task.tgid : event->header.task.container_tgid,
+                                event->header.task.container_tgid,
+				&event->raw_stack,
+				raw_stack );
+
+		for (i = 0; i < BACKTRACE_DEPTH; i++) {
+			if (raw_stack[i] == (size_t)-1 || raw_stack[i] == 0) {
+				break;
+			}
+			sym.reset(raw_stack[i]);
+			init_java_env("/tmp/libperfmap.so",
+				run_in_host ? event->header.task.tgid : event->header.task.container_tgid,
+				event->header.task.container_tgid,
+				event->header.task.comm,
+				g_symbol_parser.get_java_procs());
+
+			if (g_symbol_parser.get_symbol_info(run_in_host ? event->header.task.tgid : event->header.task.container_tgid, sym, file)) {
+				if (g_symbol_parser.find_elf_symbol(sym, file, run_in_host ? event->header.task.tgid : event->header.task.container_tgid, event->header.task.container_tgid)) {
+					ss << sym.name.c_str() << ";";
+				} else {
+					ss << "UNKNOWN" << ";";
+				}
+			} else {
+				ss << "UNKNOWN" << ";";
+			}
+		}
+		for (i = 0; i < 15; i++) {
+			ss << " " << ";";
+		}
+		ss << " " << event->header.delta_ns + 500000 << endl;
+
+		break;
+	}
 	case et_sys_enter:
 	{
 		struct event_sys_enter *event = (struct event_sys_enter *)buf;
@@ -372,7 +441,7 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 			event->header.task.pid,
 			event->syscall_id,
 			event->header.delta_ns);
-		diag_printf_user_stack(event->header.task.tgid,
+		diag_printf_user_stack(run_in_host ? event->header.task.tgid : event->header.task.container_tgid,
 				event->header.task.container_tgid,
 				event->header.task.comm,
 				&event->user_stack);
@@ -384,13 +453,13 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 			}
 			sym.reset(event->user_stack.stack[i]);
 			init_java_env("/tmp/libperfmap.so",
-				event->header.task.tgid,
+				run_in_host ? event->header.task.tgid : event->header.task.container_tgid,
 				event->header.task.container_tgid,
 				event->header.task.comm,
 				g_symbol_parser.get_java_procs());
-					
-			if (g_symbol_parser.get_symbol_info(event->header.task.tgid, sym, file)) {
-				if (g_symbol_parser.find_elf_symbol(sym, file, event->header.task.tgid, event->header.task.container_tgid)) {
+
+			if (g_symbol_parser.get_symbol_info(run_in_host ? event->header.task.tgid : event->header.task.container_tgid, sym, file)) {
+				if (g_symbol_parser.find_elf_symbol(sym, file, run_in_host ? event->header.task.tgid : event->header.task.container_tgid, event->header.task.container_tgid)) {
 					ss << sym.name.c_str() << ";";
 				} else {
 					ss << "UNKNOWN" << ";";
@@ -409,7 +478,7 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 	case et_sys_exit:
 	{
 		struct event_sys_exit *event = (struct event_sys_exit *)buf;
-		
+
 		if (len < sizeof(struct event_sys_exit))
 			break;
 
@@ -431,7 +500,7 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 
 		if (len < sizeof(struct event_irq_handler_entry))
 			break;
-		
+
 		printf("    事件类型：进入中断[%d]，PID：%d, 距离上次事件(ns)：%lu\n",
 			event->irq,
 			event->header.task.pid,
@@ -439,7 +508,7 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 
 		ss << "**" << "step " << setw(4) << setfill('0') << event->header.seq << "：运行，进入中断" << ";";
 		ss << " " << event->header.delta_ns << endl;
-	
+
 		break;
 	}
 	case et_irq_handler_exit:
@@ -479,7 +548,7 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 	case et_softirq_exit:
 	{
 		struct event_softirq_exit *event = (struct event_softirq_exit *)buf;
-		
+
 		if (len < sizeof(struct event_softirq_exit))
 			break;
 
@@ -496,10 +565,10 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 	case et_timer_expire_entry:
 	{
 		struct event_timer_expire_entry *event = (struct event_timer_expire_entry *)buf;
-		
+
 		if (len < sizeof(struct event_timer_expire_entry))
 			break;
-		
+
 		printf("    事件类型：进入定时器[%lx]，PID：%d, 距离上次事件(ns)：%lu\n",
 			(unsigned long)event->func,
 			event->header.task.pid,
@@ -507,7 +576,7 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 
 		ss << "**" << "step " << setw(4) << setfill('0') << event->header.seq << "：运行，进入定时器" << ";";
 		ss << " " << event->header.delta_ns << endl;
-	
+
 		break;
 	}
 	case et_timer_expire_exit:
@@ -527,6 +596,25 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 
 		break;
 	}
+	case et_run_trace_raw:
+	{
+		struct event_run_trace_raw *event = (struct event_run_trace_raw *)buf;
+
+                if (len < sizeof(struct event_run_trace_raw))
+                        break;
+
+                printf("    事件类型：采样，PID：%d, 距离上次事件(ns)：%lu\n",
+                        event->task.pid,
+                        event->delta_ns);
+
+                diag_printf_kern_stack(&event->kern_stack);
+		diag_printf_raw_stack(run_in_host ? event->task.tgid : event->task.container_tgid,
+                        event->task.container_tgid,
+                        event->task.comm,
+                        &event->raw_stack);
+
+                break;
+	}
 	case et_run_trace_perf:
 	{
 		struct event_run_trace_perf *event = (struct event_run_trace_perf *)buf;
@@ -539,7 +627,7 @@ static int run_trace_extract_2(void *buf, unsigned int len, void *)
 			event->delta_ns);
 
 		diag_printf_kern_stack(&event->kern_stack);
-		diag_printf_user_stack(event->task.tgid,
+		diag_printf_user_stack(run_in_host ? event->task.tgid : event->task.container_tgid,
 				event->task.container_tgid,
 				event->task.comm,
 				&event->user_stack);
@@ -736,7 +824,7 @@ static int sls_extract_2(void *buf, unsigned int len, void *)
 	case et_sched_wakeup:
 	{
 		struct event_sched_wakeup *event = (struct event_sched_wakeup *)buf;
-		
+
 		if (len < sizeof(struct event_sched_wakeup))
 			break;
 
@@ -774,7 +862,7 @@ static int sls_extract_2(void *buf, unsigned int len, void *)
 			event->header.task.container_tgid,
 			event->header.task.comm,
 			&event->user_stack, root);
-	
+
 		write_file(sls_file, "run-trace", &event->header.start_tv, event->header.id, event->header.seq, root);
 		write_syslog(syslog_enabled, "run-trace", &event->header.start_tv, event->header.id, event->header.seq, root);
 
@@ -783,7 +871,7 @@ static int sls_extract_2(void *buf, unsigned int len, void *)
 	case et_sys_exit:
 	{
 		struct event_sys_exit *event = (struct event_sys_exit *)buf;
-		
+
 		if (len < sizeof(struct event_sys_exit))
 			break;
 
@@ -815,7 +903,7 @@ static int sls_extract_2(void *buf, unsigned int len, void *)
 		diag_sls_time(&event->header.tv, root);
 		root["irq"] = Json::Value(event->irq);
 		root["delta_ns"] = Json::Value(event->header.delta_ns);
-	
+
 		write_file(sls_file, "run-trace", &event->header.start_tv, event->header.id, event->header.seq, root);
 		write_syslog(syslog_enabled, "run-trace", &event->header.start_tv, event->header.id, event->header.seq, root);
 
@@ -866,7 +954,7 @@ static int sls_extract_2(void *buf, unsigned int len, void *)
 	case et_softirq_exit:
 	{
 		struct event_softirq_exit *event = (struct event_softirq_exit *)buf;
-		
+
 		if (len < sizeof(struct event_softirq_exit))
 			break;
 
@@ -887,7 +975,7 @@ static int sls_extract_2(void *buf, unsigned int len, void *)
 	case et_timer_expire_entry:
 	{
 		struct event_timer_expire_entry *event = (struct event_timer_expire_entry *)buf;
-		
+
 		if (len < sizeof(struct event_timer_expire_entry))
 			break;
 
@@ -1104,6 +1192,48 @@ static void do_test(void)
 	}
 }
 
+void do_flame(const char *args) {
+	int console=0;
+	string in_file;
+        string inlist_file;
+        string line = "";
+        string input_line;
+        struct params_parser parse(args);
+
+	console = parse.int_value("console");
+        in_file = parse.string_value("in");
+        inlist_file = parse.string_value("inlist");
+
+	char get_flame_cmd[1024];
+	if (console) {
+                 while (cin) {
+                         getline(cin, input_line);
+                         if (!cin.eof()) {
+				sprintf(get_flame_cmd, "cat %s | awk \'{if (substr($1,1,2) == \"**\") {print substr($0, 3)}}\' " \
+              				 "| /usr/diagnose-tools/flame-graph/flamegraph.pl > %s.svg", input_line.c_str(), input_line.c_str());
+        			system(get_flame_cmd);
+                         }
+                }
+         } else if (in_file.length() > 0) {
+		 sprintf(get_flame_cmd, "cat %s | awk \'{if (substr($1,1,2) == \"**\") {print substr($0, 3)}}\' " \
+                                         "| /usr/diagnose-tools/flame-graph/flamegraph.pl > %s.svg", in_file.c_str(), in_file.c_str());
+                 system(get_flame_cmd);
+	 } else if (inlist_file.length() > 0) {
+		ifstream in(inlist_file);
+                if (in) {
+                        while (getline(in, line)) {
+				if (line.c_str()) {
+					sprintf(get_flame_cmd, "cat %s | awk \'{if (substr($1,1,2) == \"**\") {print substr($0, 3)}}\' " \
+							 "| /usr/diagnose-tools/flame-graph/flamegraph.pl > %s.svg", line.c_str(), line.c_str());
+					system(get_flame_cmd);
+
+				}
+			}
+		in.close();
+                }
+	 }
+}
+
 int run_trace_main(int argc, char **argv)
 {
 	static struct option long_options[] = {
@@ -1117,6 +1247,7 @@ int run_trace_main(int argc, char **argv)
 			{"set-syscall",     required_argument, 0,  0 },
 			{"clear-syscall",     required_argument, 0,  0 },
 			{"uprobe",     required_argument, 0,  0 },
+			{"flame",     required_argument, 0,  0 },
 			{0,         0,                 0,  0 }
 		};
 	int c;
@@ -1136,7 +1267,7 @@ int run_trace_main(int argc, char **argv)
 		case 0:
 			usage_run_trace();
 			break;
-	  case 1:
+	  	case 1:
 			do_activate(optarg ? optarg : "");
 			break;
 		case 2:
@@ -1163,6 +1294,9 @@ int run_trace_main(int argc, char **argv)
 		case 9:
 			do_uprobe(optarg);
 			break;
+		case 10:
+			do_flame(optarg);
+			break;
 		default:
 			usage_run_trace();
 			break;
@@ -1171,4 +1305,3 @@ int run_trace_main(int argc, char **argv)
 
 	return 0;
 }
-

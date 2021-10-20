@@ -13,10 +13,13 @@ diagnose-tools ping-delay --help
         --help ping_delay help info
         --activate
           verbose VERBOSE
-          addr filtered ip address.
+          addr filtered ipv4 address.
         --deactivate
         --settings dump settings
         --report dump log with text.
+        --log
+          sls=/tmp/1.log store in file
+          syslog=1 store in syslog
 ```
 
 ###  安装KO
@@ -73,19 +76,21 @@ diagnose-tools ping-delay --report
 
 输出结果示例如下：
 ```
-PING延时信息, 源IP：[10.0.2.15], 目的IP：[180.101.49.12], ID：6074, SEQ: 2, 时间：[1589802125:725029]
-                       PD_ETH_RECV:       14277527179528
-                       PD_GRO_RECV:       14277527180325
+PING延时信息, 源IP：[172.16.241.166], 目的IP：[172.16.241.167], ID：2529, SEQ: 1, 时间：[1626250570:568878]
+                       PD_ETH_RECV:         272296490950
+                       PD_GRO_RECV:         272296491246
                    PD_GRO_RECV_ERR:                    0
-                       PD_RECV_SKB:       14277527181863
+                       PD_RECV_SKB:         272296492201
                   PD_RECV_SKB_DROP:                    0
-                         PD_IP_RCV:                    0
-                  PD_IP_RCV_FINISH:                    0
-                      PD_DST_INPUT:       14277527220383
-                  PD_LOCAL_DELIVER:       14277527220563
-           PD_LOCAL_DELIVER_FINISH:       14277527220652
-                       PD_ICMP_RCV:       14277527234109
-                       PD_SEND_SKB:       14277491867008
+                         PD_IP_RCV:         272296493223
+                  PD_IP_RCV_FINISH:         272296493815
+                      PD_DST_INPUT:         272296494982
+                  PD_LOCAL_DELIVER:         272296495129
+           PD_LOCAL_DELIVER_FINISH:         272296495186
+                       PD_ICMP_RCV:         272296497254
+                        PD_IP_SEND:         272296181957
+                     PD_QUEUE_XMIT:         272296238226
+                       PD_DEV_XMIT:         272296241068
 ```
 
 输出结果中包含ping报文在各个阶段的时间，以ns为单位。

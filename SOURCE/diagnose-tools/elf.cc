@@ -18,12 +18,13 @@
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
+#include <stdio.h>
 
 #include "elf.h"
 #include "attach.h"
 #include "internal.h"
 
-static int first_init = 0;
+#define NOTE_ALIGN(n) (((n) + 3) & -4U)
 
 struct sym_section_ctx {
     Elf_Data *syms;
@@ -54,6 +55,145 @@ struct plt_ctx {
     section_info plt;
 };
 
+__attribute__((unused)) static Elf_Scn *elf_section_by_name(Elf *elf, GElf_Ehdr *ep,
+                                    GElf_Shdr *shp, const char *name,
+                                    size_t *idx) {
+    Elf_Scn *sec = NULL;
+    size_t cnt = 1;
+
+    /* Elf is corrupted/truncated, avoid calling elf_strptr. */
+    if (!elf_rawdata(elf_getscn(elf, ep->e_shstrndx), NULL))
+        return NULL;
+
+    while ((sec = elf_nextscn(elf, sec)) != NULL) {
+        char *str;
+
+        gelf_getshdr(sec, shp);
+        str = elf_strptr(elf, ep->e_shstrndx, shp->sh_name);
+
+        if (!strcmp(name, str)) {
+            if (idx)
+                *idx = cnt;
+
+            break;
+        }
+
+        ++cnt;
+    }
+
+    return sec;
+}
+
+__attribute__((unused)) static int elf_read_build_id(Elf *elf, char *bf, size_t size) {
+    int err = -1;
+    GElf_Ehdr ehdr;
+    GElf_Shdr shdr;
+    Elf_Data *data;
+    Elf_Scn *sec;
+    Elf_Kind ek;
+    char *ptr;
+
+    if (size < BUILD_ID_SIZE)
+        goto out;
+
+    ek = elf_kind(elf);
+
+    if (ek != ELF_K_ELF)
+        goto out;
+
+    if (gelf_getehdr(elf, &ehdr) == NULL) {
+        fprintf(stderr, "%s: cannot get elf header.\n", __func__);
+        goto out;
+    }
+
+    /*
+     * Check following sections for notes:
+     *   '.note.gnu.build-id'
+     *   '.notes'
+     *   '.note' (VDSO specific)
+     */
+    do {
+        sec = elf_section_by_name(elf, &ehdr, &shdr,
+                                  ".note.gnu.build-id", NULL);
+
+        if (sec)
+            break;
+
+        sec = elf_section_by_name(elf, &ehdr, &shdr,
+                                  ".notes", NULL);
+
+        if (sec)
+            break;
+
+        sec = elf_section_by_name(elf, &ehdr, &shdr,
+                                  ".note", NULL);
+
+        if (sec)
+            break;
+
+        return err;
+
+    } while (0);
+
+    data = elf_getdata(sec, NULL);
+
+    if (data == NULL)
+        goto out;
+
+    ptr = (char *)data->d_buf;
+
+    while ((intptr_t)ptr < (intptr_t)((char *)data->d_buf + data->d_size)) {
+        GElf_Nhdr *nhdr = (GElf_Nhdr *)ptr;
+        size_t namesz = NOTE_ALIGN(nhdr->n_namesz),
+               descsz = NOTE_ALIGN(nhdr->n_descsz);
+        const char *name;
+
+        ptr += sizeof(*nhdr);
+        name = (const char *)ptr;
+        ptr += namesz;
+
+        if (nhdr->n_type == NT_GNU_BUILD_ID &&
+                nhdr->n_namesz == sizeof("GNU")) {
+            if (memcmp(name, "GNU", sizeof("GNU")) == 0) {
+                size_t sz = size < descsz ? size : descsz;
+                memcpy(bf, ptr, sz);
+                memset(bf + sz, 0, size - sz);
+                err = descsz;
+                break;
+            }
+        }
+
+        ptr += descsz;
+    }
+
+out:
+    return err;
+}
+
+extern int calc_sha1_1M(const char *filename, unsigned char *buf);
+
+int filename__read_build_id(int pid, const char *mnt_ns_name, const char *filename, char *bf, size_t size) {
+    int fd, err = -1;
+    struct stat sb;
+
+    if (size < BUILD_ID_SIZE)
+        goto out;
+
+    fd = open(filename, O_RDONLY);
+
+    if (fd < 0)
+        goto out;
+
+    if (fstat(fd, &sb) == 0) {
+        snprintf(bf, size, "%s[%lu]", filename, sb.st_size);
+        err = 0;
+    }
+
+    close(fd);
+out:
+    return err;
+}
+
 static int is_function(const GElf_Sym *sym)
 {
     return GELF_ST_TYPE(sym->st_info) == STT_FUNC &&
@@ -61,24 +201,27 @@ static int is_function(const GElf_Sym *sym)
         sym->st_shndx != SHN_UNDEF;
 }
 
-
 static int get_symbols_in_section(sym_section_ctx *sym, Elf *elf, Elf_Scn *sec, GElf_Shdr *shdr, int is_reloc)
 {
     sym->syms = elf_getdata(sec, NULL);
     if (!sym->syms) {
         return -1;
     }
+
     Elf_Scn *symstrs_sec = elf_getscn(elf, shdr->sh_link);
     if (!sec) {
         return -1;
     }
+
     sym->symstrs = elf_getdata(symstrs_sec, NULL);
     if (!sym->symstrs) {
         return -1;
     }
+
     sym->sym_count = shdr->sh_size / shdr->sh_entsize;
     sym->is_plt = 0;
     sym->is_reloc = is_reloc;
+
     return 0;
 }
 
@@ -88,23 +231,28 @@ static int get_plt_symbols_in_section(sym_section_ctx *sym, Elf *elf, plt_ctx *p
     if (!sym->syms) {
         return -1;
     }
+   
     sym->rel_data = elf_getdata(plt->plt_rel.sec, NULL);       
     if (!sym->rel_data) {
         return -1;
     }
+   
     Elf_Scn *symstrs_sec = elf_getscn(elf, plt->dynsym.hdr->sh_link);
     if (!symstrs_sec) {
         return -1;
     }
+    
     sym->symstrs = elf_getdata(symstrs_sec, NULL);
     if (!sym->symstrs) {
         return -1;
     }
+
     sym->is_plt = 1;
     sym->plt_entsize = plt->plt.hdr->sh_type;
     sym->plt_offset = plt->plt.hdr->sh_offset;
     sym->sym_count = plt->plt_rel.hdr->sh_size / plt->plt_rel.hdr->sh_entsize;
     sym->plt_rel_type = plt->plt_rel.hdr->sh_type;
+
     return 0;
 }
 
@@ -211,35 +359,31 @@ static void get_all_symbols(std::set<symbol> &ss, symbol_sections_ctx *si, Elf *
 bool search_symbol(const std::set<symbol> &ss, symbol &sym)
 {
     std::set<symbol>::const_iterator it = ss.find(sym);
+
     if (it != ss.end()) {
         sym.end = it->end;
         sym.start = it->start;
         sym.name = it->name;
+
         return true;
     }
+
     return false;
 }
 
-bool get_symbol_in_elf(std::set<symbol> &ss, const char *path, int pid, const char *mnt_ns_name)
+bool get_symbol_from_elf(std::set<symbol> &ss, const char *path)
 {
+    static int first_init = 0;
+
     if (!first_init) {
         first_init = true;
         init_global_env();
     }
 
-    int mnt_fd = -1;
-    if (pid > 0) {
-        mnt_fd = attach_mount_namespace(pid, mnt_ns_name);
-    }
-
     int is_reloc = 0;
     elf_version(EV_CURRENT);
     int fd = open(path, O_RDONLY);
-    if (fd < 0) {
-        detach_mount_namespace(mnt_fd);
-        return false;
-    }
-    detach_mount_namespace(mnt_fd);
+
     Elf *elf = elf_begin(fd, ELF_C_READ, NULL);
     if (elf == NULL) {
         close(fd);
@@ -335,5 +479,90 @@ bool get_symbol_in_elf(std::set<symbol> &ss, const char *path, int pid, const ch
     get_all_symbols(ss, &si, elf);
     elf_end(elf);
     close(fd);
+    return true;
+}
+
+struct symbol_cache_item {
+    int start;
+    int size;
+    char name[0];
+};
+
+bool save_symbol_cache(std::set<symbol> &ss, const char *path)
+{
+    char buf[2048];
+    int len = 0;
+    bool status = true;
+
+    int fd = open(path, O_RDONLY);
+    if (fd < 0) {
+        status = false;
+        return status;
+    }
+    int ret;
+    ret = read(fd, &len, 4);
+    if (ret <= 0) {
+        close(fd);
+        status = false;
+        return status;
+    }
+    ret = read(fd, buf, len);
+    if (ret <= 0) {
+        close(fd);
+        status = false;
+        return status;
+    }
+
+    while (1) {
+        struct symbol_cache_item *sym;
+        symbol s;
+        ret = read(fd, &len, 4);
+        if (ret <= 0) {
+            status = false;
+            break;
+        }
+        ret = read(fd, buf, len);
+        if (ret < len) {
+            status = false;
+            break;
+        }
+        sym = (struct symbol_cache_item *)buf;
+        s.start = sym->start;
+        s.end = sym->start + sym->size;
+        s.ip = sym->start;
+        s.name = sym->name;
+        ss.insert(s);
+    }
+    close(fd);
+    return status;
+}
+
+bool load_symbol_cache(std::set<symbol> &ss, const char *path, const char *filename)
+{
+    int fd = open(path, O_RDWR | O_EXCL);
+    if (fd < 0) {
+        return false;
+    }
+    int len = strlen(filename);
+    int ret = write(fd, &len, 4);
+    if (ret < 0) {
+        close(fd);
+        return false;
+    }
+    ret = write(fd, filename, len);
+    if (ret < 0) {
+        close(fd);
+        return false;
+    }
+
+    std::set<symbol>::iterator it;
+    int v;
+    for (it = ss.begin(); it != ss.end(); ++it) {
+        v = it->start;
+        ret = write(fd, &v, 4);
+        v = it->end - it->start;
+        ret = write(fd, &v, 4);
+        ret = write(fd, it->name.c_str(), it->name.length());
+    }
     return true;
 }

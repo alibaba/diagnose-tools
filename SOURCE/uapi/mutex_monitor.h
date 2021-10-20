@@ -32,7 +32,7 @@ struct diag_mutex_monitor_settings {
 
 struct mutex_monitor_detail {
 	int et_type;
-	struct timeval tv;
+	struct diag_timespec tv;
 	unsigned long delay_ns;
 	void *lock;
 	struct diag_task_detail task;

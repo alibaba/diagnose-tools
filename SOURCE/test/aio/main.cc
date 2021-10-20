@@ -51,7 +51,7 @@ int main()
 	        	printf("==io_submit==: %d:%s\n", n, strerror(-n));
 
 	        	struct io_event events[10];
-		        struct timespec timeout = {1, 100};
+		        struct diag_timespec timeout = {1, 100};
         		// 检查写磁盘情况，类似于epoll_wait或select
 		        n = io_getevents(ctx, 1, 10, events, &timeout);
         		printf("io_getevents: %d:%s\n", n, strerror(-n));

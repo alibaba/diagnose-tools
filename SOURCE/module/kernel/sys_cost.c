@@ -258,7 +258,7 @@ static void do_dump(void *info)
 	memset(detail, 0, sizeof(struct sys_cost_detail));
 	
 	detail->et_type = et_sys_cost_detail;
-	do_gettimeofday(&detail->tv);
+	do_diag_gettimeofday(&detail->tv);
 	detail->cpu = smp_processor_id();
 	for (i = 0; i < NR_syscalls_virt && i < USER_NR_syscalls_virt; i++) {
 		detail->count[i] = context->sys_cost.count[i];

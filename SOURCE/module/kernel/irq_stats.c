@@ -105,9 +105,7 @@ static void trace_irq_handler_exit_hit(void *ignore, int irq,
 {
 	struct irq_runtime *entry_runtime;
 	struct irq_result *result;
-	struct rtc_time tm_val;
-	struct timespec ts;
-	unsigned long local_time;
+	struct diag_timespec ts;
 	struct diag_percpu_context *context;
 
 	u64 now = ktime_to_ns(ktime_get());
@@ -131,15 +129,12 @@ static void trace_irq_handler_exit_hit(void *ignore, int irq,
 
 		if (delta_ns > result->max_irq.time)
 		{
-			getnstimeofday(&ts);
-			local_time = ts.tv_sec - (sys_tz.tz_minuteswest * 60);
-			rtc_time_to_tm(local_time, &tm_val);
+			do_diag_gettimeofday(&ts);
 
 			sprintf(result->max_irq.timestamp,
-					"%d-%d-%d %02d:%02d:%02d",
-					1900 + tm_val.tm_year, 1 + tm_val.tm_mon,
-					tm_val.tm_mday, tm_val.tm_hour,
-					tm_val.tm_min, tm_val.tm_sec);
+					"%lu / %lu",
+					ts.tv_sec,
+					ts.tv_usec);
 
 			result->max_irq.time = delta_ns;
 			result->max_irq.irq = irq;
@@ -367,7 +362,7 @@ static void dump_data(void)
 	event_id = get_cycles();
 	header.et_type = et_irq_stats_header;
 	header.id = event_id;
-	do_gettimeofday(&header.tv);
+	do_diag_gettimeofday(&header.tv);
 	diag_variant_buffer_spin_lock(&irq_stats_variant_buffer, flags);
 	diag_variant_buffer_reserve(&irq_stats_variant_buffer, sizeof(struct irq_stats_header));
 	diag_variant_buffer_write_nolock(&irq_stats_variant_buffer, &header, sizeof(struct irq_stats_header));

@@ -38,6 +38,7 @@
 #include "internal.h"
 #include "pub/trace_file.h"
 #include "pub/trace_point.h"
+#include "pub/kprobe.h"
 
 #include "uapi/mutex_monitor.h"
 
@@ -266,7 +267,7 @@ static __used noinline struct mutex_desc *find_desc_alloc(struct mutex *mutex)
 	return desc;
 }
 
-static __used noinline void hook_mutex_lock(struct mutex *lock)
+static __used noinline void hook_lock(void *lock)
 {
 	struct mutex_desc *ret;
 
@@ -276,26 +277,31 @@ static __used noinline void hook_mutex_lock(struct mutex *lock)
 	}
 }
 
-static __used noinline void hook_mutex_unlock(struct mutex *lock)
+static __used noinline void hook_unlock(void *lock, int threshold)
 {
 	struct mutex_desc *tmp;
 	u64 delay_ns;
 	static struct mutex_monitor_detail detail;
+	u64 now;
 
 	tmp = __find_desc(lock);
 	if (!tmp)
 		return;
 	if (tmp->lock_time == 0)
 		return;
-	delay_ns = sched_clock() - tmp->lock_time;
-	if (delay_ns > mutex_monitor_settings.threshold * 10000 * 1000) {
+	now = sched_clock();
+	if (now <= tmp->lock_time)
+		return;
+
+	delay_ns = now - tmp->lock_time;
+	if (delay_ns > threshold * 1000 * 1000) {
 		unsigned long flags;
 
 		diag_variant_buffer_spin_lock(&mutex_monitor_variant_buffer, flags);
 		detail.et_type = et_mutex_monitor_detail;
 		detail.lock = lock;
 		detail.delay_ns = delay_ns;
-		do_gettimeofday(&detail.tv);
+		do_diag_gettimeofday(&detail.tv);
 		diag_task_brief(current, &detail.task);
 		diag_task_kern_stack(current, &detail.kern_stack);
 		diag_task_user_stack(current, &detail.user_stack);
@@ -315,7 +321,7 @@ static void diag_mutex_lock(struct mutex *lock)
 
 	if (!__mutex_trylock_fast(lock))
 		orig___mutex_lock_slowpath(lock);
-	hook_mutex_lock(lock);
+	hook_lock(lock);
 }
 #else
 static void diag_mutex_lock(struct mutex *lock)
@@ -327,7 +333,7 @@ static void diag_mutex_lock(struct mutex *lock)
 	 */
 	__mutex_fastpath_lock(&lock->count, *orig___mutex_lock_slowpath);
 	mutex_set_owner(lock);
-	hook_mutex_lock(lock);
+	hook_lock(lock);
 }
 #endif
 
@@ -341,7 +347,7 @@ void new_mutex_lock(struct mutex *lock)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
 static void diag_mutex_unlock(struct mutex *lock)
 {
-	hook_mutex_unlock(lock);
+	hook_unlock(lock, mutex_monitor_settings.threshold);
 #ifndef CONFIG_DEBUG_LOCK_ALLOC
 	if (__mutex_unlock_fast(lock))
 		return;
@@ -363,7 +369,7 @@ static void diag_mutex_unlock(struct mutex *lock)
 	 */
 	mutex_clear_owner(lock);
 #endif
-	hook_mutex_unlock(lock);
+	hook_unlock(lock, mutex_monitor_settings.threshold);
 	__mutex_fastpath_unlock(&lock->count, *orig___mutex_unlock_slowpath);
 }
 #endif
@@ -448,8 +454,10 @@ static void __deactivate_mutex_monitor(void)
 
 	get_online_cpus();
 	new_mutex_lock(orig_text_mutex);
+
 	JUMP_REMOVE(mutex_lock);
 	JUMP_REMOVE(mutex_unlock);
+
 	new_mutex_unlock(orig_text_mutex);
 	put_online_cpus();
 
@@ -608,24 +616,24 @@ long diag_ioctl_mutex_monitor(unsigned int cmd, unsigned long arg)
 static int lookup_syms(void)
 {
 	LOOKUP_SYMS(__mutex_lock_slowpath);
-	
-	orig___mutex_unlock_slowpath = (void *)__kallsyms_lookup_name("__mutex_unlock_slowpath.isra.0");
+
+	orig___mutex_unlock_slowpath = (void *)diag_kallsyms_lookup_name("__mutex_unlock_slowpath.isra.0");
 	if (orig___mutex_unlock_slowpath == NULL)
-		orig___mutex_unlock_slowpath = (void *)__kallsyms_lookup_name("__mutex_unlock_slowpath.isra.12");
+		orig___mutex_unlock_slowpath = (void *)diag_kallsyms_lookup_name("__mutex_unlock_slowpath.isra.12");
 	if (orig___mutex_unlock_slowpath == NULL)
-		orig___mutex_unlock_slowpath = (void *)__kallsyms_lookup_name("__mutex_unlock_slowpath.isra.14");
+		orig___mutex_unlock_slowpath = (void *)diag_kallsyms_lookup_name("__mutex_unlock_slowpath.isra.14");
 	if (orig___mutex_unlock_slowpath == NULL)
-		orig___mutex_unlock_slowpath = (void *)__kallsyms_lookup_name("__mutex_unlock_slowpath.isra.15");
+		orig___mutex_unlock_slowpath = (void *)diag_kallsyms_lookup_name("__mutex_unlock_slowpath.isra.15");
 	if (orig___mutex_unlock_slowpath == NULL)
-		orig___mutex_unlock_slowpath = (void *)__kallsyms_lookup_name("__mutex_unlock_slowpath.isra.16");
+		orig___mutex_unlock_slowpath = (void *)diag_kallsyms_lookup_name("__mutex_unlock_slowpath.isra.16");
 	if (orig___mutex_unlock_slowpath == NULL)
-		orig___mutex_unlock_slowpath = (void *)__kallsyms_lookup_name("__mutex_unlock_slowpath.isra.18");
+		orig___mutex_unlock_slowpath = (void *)diag_kallsyms_lookup_name("__mutex_unlock_slowpath.isra.18");
 	if (orig___mutex_unlock_slowpath == NULL)
-		orig___mutex_unlock_slowpath = (void *)__kallsyms_lookup_name("__mutex_unlock_slowpath.isra.17");
+		orig___mutex_unlock_slowpath = (void *)diag_kallsyms_lookup_name("__mutex_unlock_slowpath.isra.17");
 	if (orig___mutex_unlock_slowpath == NULL)
-		orig___mutex_unlock_slowpath = (void *)__kallsyms_lookup_name("__mutex_unlock_slowpath.isra.19");
+		orig___mutex_unlock_slowpath = (void *)diag_kallsyms_lookup_name("__mutex_unlock_slowpath.isra.19");
 	if (orig___mutex_unlock_slowpath == NULL)
-		orig___mutex_unlock_slowpath = (void *)__kallsyms_lookup_name("__mutex_unlock_slowpath");
+		orig___mutex_unlock_slowpath = (void *)diag_kallsyms_lookup_name("__mutex_unlock_slowpath");
 	if (orig___mutex_unlock_slowpath == NULL)
 		return -EINVAL;
 

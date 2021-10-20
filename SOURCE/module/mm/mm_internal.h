@@ -17,3 +17,5 @@ extern int diag_mm_page_fault_init(void);
 extern void diag_mm_page_fault_exit(void);
 extern int diag_alloc_top_init(void);
 extern void diag_alloc_top_exit(void);
+extern int diag_rss_monitor_init(void);
+extern void diag_rss_monitor_exit(void);

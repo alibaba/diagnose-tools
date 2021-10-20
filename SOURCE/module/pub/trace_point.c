@@ -16,6 +16,10 @@
 #include <linux/version.h>
 #include <linux/tracepoint.h>
 #include <linux/rculist.h>
+#include <linux/module.h>
+
+extern struct mutex *orig_tracepoint_module_list_mutex;
+extern struct list_head *orig_tracepoint_module_list;
 
 #include "pub/trace_point.h"
 
@@ -150,10 +154,61 @@ static void probe_tracepoint(struct tracepoint *tp, void *priv)
 		tp_ret = tp;
 }
 
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0)
+void orig_for_each_tracepoint_range(struct tracepoint * const *begin,
+		struct tracepoint * const *end,
+		void (*fct)(struct tracepoint *tp, void *priv),
+		void *priv)
+{
+	struct tracepoint * const *iter;
+
+	if (!begin)
+		return;
+	for (iter = begin; iter < end; iter++)
+		fct(*iter, priv);
+}
+
+#else
+static void orig_for_each_tracepoint_range(
+                tracepoint_ptr_t *begin, tracepoint_ptr_t *end,
+                void (*fct)(struct tracepoint *tp, void *priv),
+                void *priv)
+{
+        tracepoint_ptr_t *iter;
+
+        if (!begin)
+                return;
+        for (iter = begin; iter < end; iter++)
+                fct(tracepoint_ptr_deref(iter), priv);
+}
+#endif
+
+static void for_each_moudule_trace_point(
+		void (*fct)(struct tracepoint *tp, void *priv),
+		void *priv)
+{
+    struct tp_module *tp_mod;
+    struct module *mod;
+
+	mutex_lock(orig_tracepoint_module_list_mutex);
+
+	list_for_each_entry(tp_mod, orig_tracepoint_module_list, list) {
+            mod = tp_mod->mod;
+            if (mod->num_tracepoints) {
+                orig_for_each_tracepoint_range((mod->tracepoints_ptrs),
+			mod->tracepoints_ptrs + mod->num_tracepoints, fct, priv);
+          }
+	}
+
+	mutex_unlock(orig_tracepoint_module_list_mutex);
+}
+
 static struct tracepoint *find_tracepoint(const char *name)
 {
 	tp_ret = NULL;
 	for_each_kernel_tracepoint(probe_tracepoint, (void *)name);
+	for_each_moudule_trace_point(probe_tracepoint, (void *)name);
 
 	return tp_ret;
 }

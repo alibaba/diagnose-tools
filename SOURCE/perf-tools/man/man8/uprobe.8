@@ -111,9 +111,9 @@ trace this address (use caution: must be instruction aligned):
 #
 .B uprobe p:libc:0xbf130
 .TP
-trace gettimeofday() for PID 1182 only:
+trace diag_gettimeofday() for PID 1182 only:
 #
-.B uprobe -p 1182 p:libc:gettimeofday
+.B uprobe -p 1182 p:libc:diag_gettimeofday
 .TP
 trace the return of fopen() only when it returns NULL:
 #

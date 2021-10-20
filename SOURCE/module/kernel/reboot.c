@@ -64,7 +64,7 @@ static int hook_reboot(void)
 	}
 
 	detail.et_type = et_reboot_detail;
-	do_gettimeofday(&detail.tv);
+	do_diag_gettimeofday(&detail.tv);
 	detail.proc_chains.chains[0][0] = 0;
 	dump_proc_chains_simple(current, &detail.proc_chains);
 	diag_task_brief(current, &detail.task);

@@ -53,7 +53,7 @@ static void record_dither(int source, void *func, unsigned long time)
 	unsigned long flags;
 
 	irq_trace_detail.et_type = et_irq_trace_detail;
-	do_gettimeofday(&irq_trace_detail.tv);
+	do_diag_gettimeofday(&irq_trace_detail.tv);
 	irq_trace_detail.cpu = smp_processor_id();
 	irq_trace_detail.source = source;
 	irq_trace_detail.func = func;
@@ -364,7 +364,7 @@ static void do_dump(void)
 	}
 	on_each_cpu(clear_sum, NULL, 1);
 
-	do_gettimeofday(&sum.tv);
+	do_diag_gettimeofday(&sum.tv);
 	diag_variant_buffer_spin_lock(&irq_trace_variant_buffer, flags);
 	diag_variant_buffer_reserve(&irq_trace_variant_buffer, sizeof(struct irq_trace_sum));
 	diag_variant_buffer_write_nolock(&irq_trace_variant_buffer, &sum, sizeof(struct irq_trace_sum));

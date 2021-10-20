@@ -28,13 +28,15 @@
 
 #include "internal.h"
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,8,0) && LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0)
 int sysctl_alloc_cost[MAX_TEST_ORDER + 1];
 
 static u64 alloc_page_test(unsigned int order)
 {
 	ktime_t time_start, time_stop, time;
-	struct timespec timespec;
+	struct diag_timespec diag_timespec;
 	struct page *ret;
+	struct timespec64 ts;
 
 	time_start = ktime_get();
 
@@ -44,11 +46,13 @@ static u64 alloc_page_test(unsigned int order)
 
 	time_stop = ktime_get();
 	time = ktime_sub(time_stop, time_start);
-	timespec = ktime_to_timespec(time);
+	ts = ktime_to_timespec64(time);
+	diag_timespec.tv_sec = ts.tv_sec;
+	diag_timespec.tv_usec = ts.tv_nsec / 1000;
 
 	__free_pages(ret, order);
 
-	return timespec.tv_sec * 1000000000 + timespec.tv_nsec;
+	return diag_timespec.tv_sec * 1000000000 + diag_timespec.tv_usec * 1000;
 }
 
 static void stress_alloc_page(void)
@@ -127,3 +131,5 @@ void diag_alloc_page_exit(void)
 
 	return;
 }
+
+#endif

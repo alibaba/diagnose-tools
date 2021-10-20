@@ -1,0 +1,11 @@
+prefix=/home/baoyou.xie/git/diagnose-tools/deps
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: libunwind-ptrace
+Description: libunwind ptrace library
+Version: 1.5-rc1
+Requires: libunwind-generic libunwind
+Libs: -L${libdir} -lunwind-ptrace
+Cflags: -I${includedir}

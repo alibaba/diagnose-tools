@@ -27,6 +27,9 @@
 #include "uapi/kprobe.h"
 #include "unwind.h"
 #include "params_parse.h"
+#include <iostream>
+#include <fstream>
+
 
 using namespace std;
 
@@ -47,6 +50,11 @@ void usage_kprobe(void)
 	printf("            probe function that monitored\n");
 	printf("        --deactivate\n");
 	printf("        --report dump log with text.\n");
+	printf("          out output raw stack into special file.\n");
+	printf("          in input one raw-stack file to extract.\n");
+	printf("          inlist input filename including raw-stack file list to extract .\n");
+	printf("          input filename including raw-stack file list to extract .\n");
+	printf("          console get raw-stack file list from console to extract .\n");
 	printf("        --settings dump settings\n");
 	printf("        --log\n");
 	printf("          sls=/tmp/1.log store in file\n");
@@ -95,7 +103,7 @@ static void do_activate(const char *arg)
 	}
 
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
-	printf("    进程ID：%d\n", settings.pid);
+	printf("    进程ID：%d\n", settings.tgid);
 	printf("    线程ID：%d\n", settings.pid);
 	printf("    进程名称：%s\n", settings.comm);
 	printf("    函数名称：%s\n", settings.func);
@@ -133,7 +141,7 @@ static void print_settings_in_json(struct diag_kprobe_settings *settings, int re
 
 	if (ret == 0) {
 		root["activated"] = Json::Value(settings->activated);
-		root["tgid"] = Json::Value(settings->pid);
+		root["tgid"] = Json::Value(settings->tgid);
 		root["pid"] = Json::Value(settings->pid);
 		root["comm"] = Json::Value(settings->comm);
 		root["func"] = Json::Value(settings->func);
@@ -172,7 +180,7 @@ static void do_settings(const char *arg)
 	if (ret == 0) {
 		printf("功能设置：\n");
 		printf("    是否激活：%s\n", settings.activated ? "√" : "×");
-		printf("    进程ID：%d\n", settings.pid);
+		printf("    进程ID：%d\n", settings.tgid);
 		printf("    线程ID：%d\n", settings.pid);
 		printf("    进程名称：%s\n", settings.comm);
 		printf("    函数名称：%s\n", settings.func);
@@ -214,21 +222,12 @@ static int kprobe_extract(void *buf, unsigned int len, void *)
 				seq,
 				detail->tv.tv_sec, detail->tv.tv_usec);
 		diag_printf_kern_stack(&detail->kern_stack);
-#if 1
 		diag_printf_user_stack(detail->task.tgid,
 				detail->task.container_tgid,
 				detail->task.comm,
 				&detail->user_stack, 0);
 		printf("#*        0xffffffffffffff %s (UNKNOWN)\n",
 				detail->task.comm);
-#else
-		diag_printf_raw_stack(detail->task.tgid,
-				detail->task.container_tgid,
-				detail->task.comm,
-				&detail->raw_stack);
-		printf("#*        0xffffffffffffff %s (UNKNOWN)\n",
-				detail->task.comm);
-#endif
 		diag_printf_proc_chains(&detail->proc_chains);
 		printf("##\n");
 
@@ -249,21 +248,12 @@ static int kprobe_extract(void *buf, unsigned int len, void *)
 				seq,
 				raw_detail->tv.tv_usec, raw_detail->tv.tv_usec);
 		diag_printf_kern_stack(&raw_detail->kern_stack);
-#if 0
-		diag_printf_user_stack(raw_detail->task.tgid,
-				raw_detail->task.container_tgid,
-				raw_detail->task.comm,
-				&raw_detail->user_stack, 0);
-		printf("#*        0xffffffffffffff %s (UNKNOWN)\n",
-				raw_detail->task.comm);
-#else
-		diag_printf_raw_stack(raw_detail->task.tgid,
+		diag_printf_raw_stack(run_in_host ? raw_detail->task.tgid : raw_detail->task.container_tgid,
 				raw_detail->task.container_tgid,
 				raw_detail->task.comm,
 				&raw_detail->raw_stack);
 		printf("#*        0xffffffffffffff %s (UNKNOWN)\n",
 				raw_detail->task.comm);
-#endif
 		diag_printf_proc_chains(&raw_detail->proc_chains);
 		printf("##\n");
 
@@ -336,28 +326,88 @@ static void do_extract(char *buf, int len)
 	extract_variant_buffer(buf, len, kprobe_extract, NULL);
 }
 
-static void do_dump(void)
+static void do_dump(const char *arg)
 {
 	static char variant_buf[40 * 1024 * 1024];
 	int len;
 	int ret = 0;
+	int console=0;
+	struct params_parser parse(arg);
 	struct diag_ioctl_dump_param dump_param = {
 		.user_ptr_len = &len,
 		.user_buf_len = 40 * 1024 * 1024,
 		.user_buf = variant_buf,
 	};
 
-	memset(variant_buf, 0, 40* 1024 * 1024);
-	if (run_in_host) {
-		ret = diag_call_ioctl(DIAG_IOCTL_KPROBE_DUMP, (long)&dump_param);
+	string in_file;
+	string out_file;
+	string inlist_file;
+	string line = "";
+	string input_line;
+	
+	console = parse.int_value("console");
+	in_file = parse.string_value("in");
+	out_file = parse.string_value("out");
+	inlist_file = parse.string_value("inlist");
+	
+	memset(variant_buf, 0, 40 * 1024 * 1024);
+	if (console) {
+	         while (cin) {
+	                 getline(cin, input_line);
+	                 if (!cin.eof()){
+	                         ifstream fin(input_line, ios::binary);
+	                         fin.read(variant_buf, 40 * 1024 * 1024);
+	                         len = fin.gcount();
+	                         if (len > 0) {
+	                                 do_extract(variant_buf, len);
+	                                 memset(variant_buf, 0, 40 * 1024 * 1024);
+	                         }
+	                         fin.close();
+	                  }
+	         }
+	 } else if (in_file.length() > 0) {
+	         ifstream fin(in_file, ios::binary);
+	         fin.read(variant_buf, 40 * 1024 * 1024);
+	         len = fin.gcount();
+	         if (len > 0) {
+	                 do_extract(variant_buf, len);
+	                 fin.close();
+	         }
+	} else if (inlist_file.length() > 0) {
+	        ifstream in(inlist_file);
+	        if(in) {
+	                while (getline(in, line)){
+	                        ifstream fin(line.c_str());
+	                        fin.read(variant_buf, 40 * 1024 * 1024);
+	                        len = fin.gcount();
+	                        if (len > 0) {
+	                                do_extract(variant_buf, len);
+	                                memset(variant_buf, 0, 40 * 1024 * 1024);
+	                        }
+	                        fin.close();
+	                }
+	        in.close();
+	        }
 	} else {
-		ret = -ENOSYS;
-		syscall(DIAG_KPROBE_DUMP, &ret, &len, variant_buf, 40 * 1024 * 1024);
-	}
-
-	if (ret == 0) {
-		do_extract(variant_buf, len);
-	}
+		if (run_in_host) {
+			ret = diag_call_ioctl(DIAG_IOCTL_KPROBE_DUMP, (long)&dump_param);
+		} else {
+			ret = -ENOSYS;
+			syscall(DIAG_KPROBE_DUMP, &ret, &len, variant_buf, 40 * 1024 * 1024);
+		}
+		
+		if (out_file.length() > 0) {
+			if (ret == 0 && len > 0) {
+				ofstream fout(out_file);
+				fout.write(variant_buf, len);
+				fout.close();
+			}
+		} else {
+			if (ret == 0 && len > 0 ) {
+				do_extract(variant_buf, len);
+			}					
+		}	
+	}		
 }
 
 static void do_sls(char *arg)
@@ -398,7 +448,7 @@ int kprobe_main(int argc, char **argv)
 			{"activate",     optional_argument, 0,  0 },
 			{"deactivate", no_argument,       0,  0 },
 			{"settings",     optional_argument, 0,  0 },
-			{"report",     no_argument, 0,  0 },
+			{"report",     optional_argument, 0,  0 },
 			{"log",     required_argument, 0,  0 },
 			{0,         0,                 0,  0 }
 		};
@@ -428,7 +478,7 @@ int kprobe_main(int argc, char **argv)
 			do_settings(optarg ? optarg : "");
 			break;
 		case 4:
-			do_dump();
+			do_dump(optarg ? optarg : "");
 			break;
 		case 5:
 			do_sls(optarg);

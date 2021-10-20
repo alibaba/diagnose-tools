@@ -66,8 +66,14 @@ int diag_mm_init(void)
 	if (ret)
 		goto out_high_order;
 
+	ret = diag_rss_monitor_init();
+	if(ret)
+		goto out_rss_monitor;
+
 	return 0;
 
+out_rss_monitor:
+	diag_high_order_exit();
 out_high_order:
 	diag_alloc_top_exit();
 out_alloc_top:
@@ -82,6 +88,7 @@ out_alloc:
 
 void diag_mm_exit(void)
 {
+	diag_rss_monitor_exit();
 	diag_high_order_exit();
 	diag_alloc_page_exit();
 	diag_memory_leak_exit();

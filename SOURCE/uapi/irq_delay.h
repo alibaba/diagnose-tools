@@ -31,7 +31,7 @@ struct diag_irq_delay_settings {
 
 struct irq_delay_detail {
 	int et_type;
-	struct timeval tv;
+	struct diag_timespec tv;
 	int cpu;
 	unsigned long delay_ns;
 	struct diag_task_detail task;

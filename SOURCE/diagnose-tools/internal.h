@@ -18,6 +18,8 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
+#include "debug.h"
+
 extern std::set<int> g_proc_map;
 
 int run_trace_main(int argc, char **argv);
@@ -50,6 +52,9 @@ int memcpy_main(int argc, char* argv[]);
 int md5_main(int argc, char *argv[]);
 int net_bandwidth_main(int argc, char *argv[]);
 int sig_info_main(int argc, char *argv[]);
+int task_monitor_main(int argc, char **argv);
+int rw_sem_main(int argc, char **argv);
+int rss_monitor_main(int argc, char **argv);
 
 void usage_run_trace(void);
 void usage_sys_delay(void);
@@ -79,12 +84,17 @@ void usage_test_pi(void);
 void usage_test_md5(void);
 void usage_net_bandwidth(void);
 void usage_sig_info(void);
+void usage_task_monitor(void);
+void usage_rw_sem(void);
+void usage_rss_monitor(void);
 
 int uprobe_main(int argc, char **argv);
 void usage_uprobe();
 
 int ping_delay_main(int argc, char *argv[]);
 void usage_ping_delay(void);
+int ping_delay6_main(int argc, char *argv[]);
+void usage_ping_delay6(void);
 
 int test_run_trace_main(int argc, char *argv[]);
 void usage_test_run_trace(void);
@@ -93,7 +103,7 @@ int diag_activate(const char func[]);
 int diag_deactivate(const char func[]);
 
 void diag_printf_inode(struct diag_inode_detail *inode);
-void diag_printf_time(struct timeval *tv);
+void diag_printf_time(struct diag_timespec *tv);
 void diag_printf_task(struct diag_task_detail *task);
 void diag_printf_proc_chains(struct diag_proc_chains_detail *proc_chains);
 void diag_printf_proc_chains(struct diag_proc_chains_detail *proc_chains, int reverse);
@@ -111,8 +121,10 @@ void diag_printf_raw_stack(int pid, int ns_pid, const char *comm,
 void diag_printf_raw_stack(int pid, int ns_pid, const char *comm,
 	struct diag_raw_stack_detail *raw_stack, int attach);
 void init_java_env(const char *agent, int pid, int ns_pid, const char *comm, std::set<int> &);
+void diag_unwind_raw_stack(int pid, int ns_pid,
+	struct diag_raw_stack_detail *raw_stack, unsigned long stack[BACKTRACE_DEPTH]);
 
-void diag_sls_time(struct timeval *tv, Json::Value &owner);
+void diag_sls_time(struct diag_timespec *tv, Json::Value &owner);
 void diag_sls_task(struct diag_task_detail *tsk_info, Json::Value &task);
 void diag_sls_proc_chains(struct diag_proc_chains_detail *proc_chains, Json::Value &task);
 void diag_sls_kern_stack(struct diag_kern_stack_detail *kern_stack, Json::Value &task);
@@ -122,8 +134,8 @@ void diag_sls_user_stack(pid_t pid, pid_t ns_pid, const char *comm,
 	struct diag_user_stack_detail *user_stack, Json::Value &task, int attach);
 void diag_sls_inode(struct diag_inode_detail *inode, Json::Value &root);
 int log_config(char *arg, char *sls_file, int *p_syslog_enabled);
-void write_syslog(int enabled, const char mod[], struct timeval *tv, unsigned long id, int seq, Json::Value &root);
-void write_file(char *sls_file, const char mod[], struct timeval *tv, unsigned long id, int seq, Json::Value &root);
+void write_syslog(int enabled, const char mod[], struct diag_timespec *tv, unsigned long id, int seq, Json::Value &root);
+void write_file(char *sls_file, const char mod[], struct diag_timespec *tv, unsigned long id, int seq, Json::Value &root);
 void diag_ip_addr_to_str(unsigned char *ip_addr,const char type[], Json::Value &root);
 #define ULONG_MAX	(~0UL)
 #define STACK_IS_END(v) ((v) == 0 || (v) == ULONG_MAX)
@@ -160,3 +172,9 @@ int high_order_main(int argc, char *argv[]);
 void usage_high_order(void);
 
 int testcase_main(int argc, char *argv[]);
+
+struct timeval;
+struct timezone;
+extern "C" {
+void diag_gettimeofday(struct diag_timespec *tv, struct timezone *tz);
+}

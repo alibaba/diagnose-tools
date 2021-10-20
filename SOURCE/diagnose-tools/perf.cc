@@ -34,11 +34,18 @@
 #include "params_parse.h"
 #include <syslog.h>
 
+#include "debug.h"
+
 using namespace std;
 
 static char sls_file[256];
 static int report_reverse = 0;
 static int syslog_enabled;
+
+static int out_json = 0;
+static int out_flame = 1;
+
+static Json::FastWriter fast_writer;
 
 void usage_perf(void)
 {
@@ -68,7 +75,7 @@ static void do_activate(const char *arg)
 	struct diag_perf_settings settings;
 
 	memset(&settings, 0, sizeof(struct diag_perf_settings));
-	
+
 	settings.style = parse.int_value("style");
 	settings.verbose = parse.int_value("verbose");
 	settings.tgid = parse.int_value("tgid");
@@ -106,7 +113,7 @@ static void do_activate(const char *arg)
 	printf("    BVT：\t%d\n", settings.bvt);
 	printf("    SYS：\t%d\n", settings.sys);
 	printf("    RAW-STACK：%lu\n", settings.raw_stack);
-	
+
 	if (ret)
 		return;
 
@@ -151,7 +158,7 @@ static void do_settings(const char *arg)
 		{
 			printf("功能设置：\n");
 			printf("    是否激活：\t%s\n", settings.activated ? "√" : "×");
-			printf("    进程ID：\t%d\n", settings.pid);
+			printf("    进程ID：\t%d\n", settings.tgid);
 			printf("    线程ID：\t%d\n", settings.pid);
 			printf("    进程名称：\t%s\n", settings.comm);
 			printf("    CPUS：\t%s\n", settings.cpus);
@@ -164,8 +171,8 @@ static void do_settings(const char *arg)
 		else
 		{
 			root["activated"] = Json::Value(settings.activated);
+			root["tgid"] = Json::Value(settings.tgid);
 			root["pid"] = Json::Value(settings.pid);
-			root["tid"] = Json::Value(settings.pid);
 			root["comm"] = Json::Value(settings.comm);
 			root["cpus"] = Json::Value(settings.cpus);
 			root["idle"] = Json::Value(settings.idle);
@@ -254,7 +261,7 @@ static int perf_extract(void *buf, unsigned int len, void *)
 				raw_detail->task.pid,
 				seq);
 		diag_printf_kern_stack(&raw_detail->kern_stack, report_reverse);
-		diag_printf_raw_stack(raw_detail->task.tgid,
+		diag_printf_raw_stack(run_in_host ? raw_detail->task.tgid : raw_detail->task.container_tgid,
 			raw_detail->task.container_tgid,
 			raw_detail->task.comm,
 			&raw_detail->raw_stack);
@@ -270,9 +277,65 @@ static int perf_extract(void *buf, unsigned int len, void *)
 	return 0;
 }
 
+static int json_extract(void *buf, unsigned int len, void *)
+{
+	int *et_type;
+	struct perf_detail *detail;
+    	symbol sym;
+
+	Json::Value root;
+	Json::Value task;
+	Json::Value kern_stack;
+	Json::Value user_stack;
+	Json::Value proc_chains;
+
+	if (len == 0)
+		return 0;
+
+	et_type = (int *)buf;
+	switch (*et_type) {
+	case et_perf_detail:
+		if (len < sizeof(struct perf_detail))
+			break;
+		detail = (struct perf_detail *)buf;
+		root["id"] = detail->id;
+		root["seq"] = detail->seq;
+		diag_sls_time(&detail->tv, root);
+		diag_sls_task(&detail->task, task);
+		diag_sls_kern_stack(&detail->kern_stack, task);
+		diag_sls_user_stack(detail->task.tgid,
+			detail->task.container_tgid,
+			detail->task.comm,
+			&detail->user_stack, task, 0);
+		diag_sls_proc_chains(&detail->proc_chains, task);
+		root["task"] = task;
+
+		root["tv_sec"] = Json::Value(detail->tv.tv_sec);
+		root["tv_usec"] = Json::Value(detail->tv.tv_usec);
+
+		std::cout << "#$" << fast_writer.write(root);
+		//json_root[std::to_string(detail->id)]["samples"].append(root);
+
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
 static void do_extract(char *buf, int len)
 {
-	extract_variant_buffer(buf, len, perf_extract, NULL);
+	if (out_json) {
+		extract_variant_buffer(buf, len, json_extract, NULL);
+	}
+
+	if (out_flame) {
+		extract_variant_buffer(buf, len, perf_extract, NULL);
+	}
+
+	diag_report_memory();
+	g_symbol_parser.dump();
 }
 
 static void do_dump(const char *arg)
@@ -280,6 +343,7 @@ static void do_dump(const char *arg)
 	static char variant_buf[50 * 1024 * 1024];
 	int len;
 	int ret = 0;
+	int console=0;
 	struct params_parser parse(arg);
 	struct diag_ioctl_dump_param dump_param = {
 		.user_ptr_len = &len,
@@ -288,21 +352,67 @@ static void do_dump(const char *arg)
 	};
 	string in_file;
 	string out_file;
+	string inlist_file;
+	string line = "";
+	string input_line;
+	int java_only = 0;
+	int user_symbol = 1;
 
 	report_reverse = parse.int_value("reverse");
+	console = parse.int_value("console");
 	in_file = parse.string_value("in");
 	out_file = parse.string_value("out");
+	inlist_file = parse.string_value("inlist");
+	out_json = parse.int_value("json", 0);
+	out_flame = parse.int_value("flame", 1);
+	java_only = parse.int_value("java-only", 0);
+	user_symbol = parse.int_value("user-symbol", 1);
+	g_symbol_parser.java_only = java_only;
+	g_symbol_parser.user_symbol = user_symbol;
 
 	memset(variant_buf, 0, 50 * 1024 * 1024);
-	if (in_file.length() > 0) {
+	if (console) {
+		java_attach_once();
+
+		while (cin) {
+			getline(cin, input_line);
+			if (!cin.eof()){
+				ifstream fin(input_line, ios::binary);
+				fin.read(variant_buf, 50 * 1024 * 1024);
+				len = fin.gcount();
+				if (len > 0) {
+					do_extract(variant_buf, len);
+					memset(variant_buf, 0, 50 * 1024 * 1024);
+				}
+				fin.close();
+			}
+		}
+	} else if (in_file.length() > 0) {
 		ifstream fin(in_file, ios::binary);
 		fin.read(variant_buf, 50 * 1024 * 1024);
 		len = fin.gcount();
 		if (len > 0) {
 			java_attach_once();
 			do_extract(variant_buf, len);
+                        fin.close();
 		}
-	} else {
+       } else if (inlist_file.length() > 0) {
+               ifstream in(inlist_file);
+               if(in) {
+                       while (getline(in, line)){
+                               ifstream fin(line.c_str());
+                               fin.read(variant_buf, 50 * 1024 * 1024);
+                               len = fin.gcount();
+                               if (len > 0) {
+                                       java_attach_once();
+                                       do_extract(variant_buf, len);
+                                       memset(variant_buf, 0, 50 * 1024 * 1024);
+                               }
+                               fin.close();
+                       }
+               in.close();
+	       }
+       } else {
 		if (run_in_host) {
 			ret = diag_call_ioctl(DIAG_IOCTL_PERF_DUMP, (long)&dump_param);
 		} else {
@@ -330,7 +440,7 @@ static int sls_extract(void *buf, unsigned int len, void *)
 	int *et_type;
 	struct perf_detail *detail;
     symbol sym;
-	
+
 	Json::Value root;
 	Json::Value task;
 	Json::Value kern_stack;
