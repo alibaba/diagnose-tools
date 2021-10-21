@@ -132,9 +132,9 @@ static int lookup_syms(void)
 	LOOKUP_SYMS(stack_trace_save_user);
 #endif
 #else
-	LOOKUP_SYMS(save_stack_trace_user);
-#ifdef CONFIG_USER_STACKTRACE_SUPPORT
 	LOOKUP_SYMS(save_stack_trace_tsk);
+#ifdef CONFIG_USER_STACKTRACE_SUPPORT
+	LOOKUP_SYMS(save_stack_trace_user);
 #endif
 #endif
 #else
