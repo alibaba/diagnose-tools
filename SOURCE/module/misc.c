@@ -107,6 +107,14 @@ static char *bdevt_str(dev_t devt, char *buf)
  * filesystem can't be mounted and thus to give the victim some idea of what
  * went wrong
  */
+
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5,10,0)
+
+void diag_printk_all_partitions(void)
+{
+}
+
+#else
 void diag_printk_all_partitions(void)
 {
 	struct class_dev_iter iter;
@@ -173,6 +181,8 @@ void diag_printk_all_partitions(void)
 	}
 	class_dev_iter_exit(&iter);
 }
+
+#endif
 
 struct proc_dir_entry *diag_proc_mkdir(const char *name,
                 struct proc_dir_entry *parent)

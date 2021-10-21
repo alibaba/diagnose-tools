@@ -126,7 +126,17 @@ static int lookup_syms(void)
 #if defined(DIAG_ARM64)
 	LOOKUP_SYMS(__flush_dcache_area);
 	LOOKUP_SYMS(aarch64_insn_patch_text);
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 0, 0) || defined(CENTOS_4_18_193)
+	LOOKUP_SYMS(stack_trace_save_tsk);
+#ifdef CONFIG_USER_STACKTRACE_SUPPORT
+	LOOKUP_SYMS(stack_trace_save_user);
+#endif
+#else
+	LOOKUP_SYMS(save_stack_trace_user);
+#ifdef CONFIG_USER_STACKTRACE_SUPPORT
 	LOOKUP_SYMS(save_stack_trace_tsk);
+#endif
+#endif
 #else
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,12,0)
 	LOOKUP_SYMS(text_poke_smp);
@@ -181,7 +191,9 @@ static int lookup_syms(void)
 	LOOKUP_SYMS_NORET(css_next_descendant_pre);
 	LOOKUP_SYMS_NORET(cpuacct_subsys);
 	LOOKUP_SYMS_NORET(css_get_next);
+#if !defined(DIAG_ARM64)
 	LOOKUP_SYMS_NORET(x86_pmu);
+#endif
 
 	return 0;
 }
