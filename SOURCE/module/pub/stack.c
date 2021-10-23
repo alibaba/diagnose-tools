@@ -44,7 +44,7 @@
 #include "pub/trace_file.h"
 #include "pub/stack.h"
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5,10,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,19,0)
 #include <asm/msr.h>
 #endif
 

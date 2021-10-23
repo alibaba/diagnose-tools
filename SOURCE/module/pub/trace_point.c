@@ -155,7 +155,7 @@ static void probe_tracepoint(struct tracepoint *tp, void *priv)
 }
 
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0)
 void orig_for_each_tracepoint_range(struct tracepoint * const *begin,
 		struct tracepoint * const *end,
 		void (*fct)(struct tracepoint *tp, void *priv),
