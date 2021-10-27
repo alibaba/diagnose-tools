@@ -732,6 +732,17 @@ int diag_copy_stack_frame(struct task_struct *tsk,
 #define synchronize_sched synchronize_rcu
 #endif
 
+#ifdef ALIOS_5000
+#define  ali_reserved1    ck_reserved1
+#define  ali_reserved2    ck_reserved2
+#define  ali_reserved3    ck_reserved3
+#define  ali_reserved4    ck_reserved4
+#define  ali_reserved5    ck_reserved5
+#define  ali_reserved6    ck_reserved6
+#define  ali_reserved7    ck_reserved7
+#define  ali_reserved8    ck_reserved8
+#endif
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 0)
 static inline void do_diag_gettimeofday(struct diag_timespec *tv)
 {
