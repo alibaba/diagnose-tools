@@ -98,7 +98,9 @@ extern unsigned long debug_mode;
 #define DIAG_IOCTL_TYPE_TASK_MONITOR (DIAG_IOCTL_TYPE_SIG_INFO + 1)
 #define DIAG_IOCTL_TYPE_RW_SEM (DIAG_IOCTL_TYPE_TASK_MONITOR + 1)
 #define DIAG_IOCTL_TYPE_RSS_MONITOR (DIAG_IOCTL_TYPE_RW_SEM + 1)
-#define DIAG_IOCTL_TYPE_END (DIAG_IOCTL_TYPE_RSS_MONITOR + 1)
+#define DIAG_IOCTL_TYPE_MEMCG_STATS (DIAG_IOCTL_TYPE_RSS_MONITOR + 1)
+
+#define DIAG_IOCTL_TYPE_END (DIAG_IOCTL_TYPE_MEMCG_STATS + 1)
 
 long diag_ioctl_sys_delay(unsigned int cmd, unsigned long arg);
 long diag_ioctl_sys_cost(unsigned int cmd, unsigned long arg);
@@ -133,6 +135,7 @@ long diag_ioctl_sig_info(unsigned int cmd, unsigned long arg);
 long diag_ioctl_task_monitor(unsigned int cmd, unsigned long arg);
 long diag_ioctl_rw_sem(unsigned int cmd, unsigned long arg);
 long diag_ioctl_rss_monitor(unsigned int cmd, unsigned long arg);
+long diag_ioctl_memcg_stats(unsigned int cmd, unsigned long arg);
 
 struct diag_ioctl_test {
 	int in;
@@ -336,6 +339,10 @@ struct diag_ioctl_dump_param_cycle {
 #define DIAG_BASE_SYSCALL_PING_DELAY6 \
 	(DIAG_BASE_SYSCALL_RSS_MONITOR + DIAG_SYSCALL_INTERVAL)
 
+///1900
+#define DIAG_BASE_SYSCALL_MEMCG_STATS \
+	(DIAG_BASE_SYSCALL_PING_DELAY6 + DIAG_SYSCALL_INTERVAL)
+
 #define DIAG_SYSCALL_END (DIAG_BASE_SYSCALL + DIAG_SYSCALL_INTERVAL * 1000)
 
 enum diag_record_id {
@@ -498,6 +505,10 @@ enum diag_record_id {
 	et_rss_monitor_base = et_rw_sem_base + DIAG_EVENT_TYPE_INTERVAL,
 	et_rss_monitor_detail,
 	et_rss_monitor_raw_detail,
+
+	et_memcg_stats_base = et_rss_monitor_base + DIAG_EVENT_TYPE_INTERVAL,
+	et_memcg_stats_summary,
+	et_memcg_stats_detail,
 
 	et_count
 };

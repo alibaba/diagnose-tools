@@ -175,6 +175,8 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 			activate_rw_sem();
 		} else if (strcmp(func, "rss-monitor") == 0) {
 			activate_rss_monitor();
+		} else if (strcmp(func, "memcg-stats") == 0) {
+			activate_memcg_stats();
 		}
 
 		up(&controller_sem);
@@ -250,6 +252,8 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 			deactivate_rw_sem();
 		} else if (strcmp(func, "rss-monitor") == 0) {
 			deactivate_rss_monitor();
+		} else if (strcmp(func, "memcg-stats") == 0) {
+			deactivate_memcg_stats();
 		}
 
 		up(&controller_sem);
@@ -260,7 +264,7 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 		ret = sscanf(chr, "%255s %255s", cmd, sub);
 		if (ret != 2)
 			return -EINVAL;
-		
+
 		if (strcmp(sub, "on") == 0) {
 			diag_hook_sys_enter();
 		} else if (strcmp(sub, "off") == 0) {

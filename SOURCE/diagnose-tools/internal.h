@@ -99,6 +99,9 @@ void usage_ping_delay6(void);
 int test_run_trace_main(int argc, char *argv[]);
 void usage_test_run_trace(void);
 
+int memcg_stats_main(int argc, char *argv[]);
+void usage_memcg_stats(void);
+
 int diag_activate(const char func[]);
 int diag_deactivate(const char func[]);
 

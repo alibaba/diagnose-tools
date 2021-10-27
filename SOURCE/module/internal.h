@@ -880,6 +880,11 @@ int deactivate_rss_monitor(void);
 int diag_rss_monitor_init(void);
 void diag_rss_monitor_exit(void);
 
+int activate_memcg_stats(void);
+int deactivate_memcg_stats(void);
+int diag_memcg_stats_init(void);
+void diag_memcg_stats_exit(void);
+
 int diag_dev_init(void);
 void diag_dev_cleanup(void);
 
