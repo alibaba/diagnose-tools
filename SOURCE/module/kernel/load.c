@@ -40,7 +40,7 @@
 
 static atomic64_t diag_nr_running = ATOMIC64_INIT(0);
 
-struct diag_load_monitor_settings load_monitor_settings;
+static struct diag_load_monitor_settings load_monitor_settings;
 
 static unsigned int load_monitor_alloced;
 
@@ -49,6 +49,7 @@ static struct mm_tree mm_tree;
 unsigned long *orig_avenrun_r;
 unsigned long *orig_avenrun;
 
+static struct load_monitor_cpu_run ld_mon_cpu_run[NR_CPUS];
 static struct diag_variant_buffer load_monitor_variant_buffer;
 
 static ktime_t last_dump;
@@ -77,6 +78,38 @@ void diag_load_timer(struct diag_percpu_context *context)
 	return;
 }
 #else
+
+static void load_monitor_ipi(void *ignore)
+{
+	struct load_monitor_cpu_run *cpu_run;
+	struct task_struct *tsk;
+	unsigned long flags;
+	int cpu;
+
+	tsk = current;
+	cpu = smp_processor_id();
+	if (cpu >= NR_CPUS)
+		return;
+
+	cpu_run = &ld_mon_cpu_run[cpu];
+
+	cpu_run->id = get_cycles();
+	cpu_run->et_type = et_load_monitor_cpu_run;
+	cpu_run->cpu = cpu;
+	do_gettimeofday(&cpu_run->tv);
+
+	diag_task_brief(tsk, &cpu_run->task);
+	diag_task_kern_stack(tsk, &cpu_run->kern_stack);
+	diag_task_user_stack(tsk, &cpu_run->user_stack);
+
+	diag_variant_buffer_spin_lock(&load_monitor_variant_buffer, flags);
+	diag_variant_buffer_reserve(&load_monitor_variant_buffer, sizeof(struct load_monitor_cpu_run));
+	diag_variant_buffer_write_nolock(&load_monitor_variant_buffer,
+					 cpu_run, sizeof(struct load_monitor_cpu_run));
+	diag_variant_buffer_seal(&load_monitor_variant_buffer);
+	diag_variant_buffer_spin_unlock(&load_monitor_variant_buffer, flags);
+}
+
 void diag_load_timer(struct diag_percpu_context *context)
 {
 	u64 ms;
@@ -190,6 +223,11 @@ void diag_load_timer(struct diag_percpu_context *context)
 			}
 		} while_each_thread(g, p);
 		rcu_read_unlock();
+
+		if (!load_monitor_settings.mass && load_monitor_settings.cpu_run) {
+			smp_call_function(load_monitor_ipi, NULL, 1);
+			load_monitor_ipi(NULL);
+		}
 	}
 }
 #endif

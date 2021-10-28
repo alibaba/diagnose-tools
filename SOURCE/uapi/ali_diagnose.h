@@ -402,6 +402,7 @@ enum diag_record_id {
 	et_load_monitor_base = et_kprobe_base + DIAG_EVENT_TYPE_INTERVAL,
 	et_load_monitor_detail,
 	et_load_monitor_task,
+	et_load_monitor_cpu_run,
 
 	et_mm_leak_base = et_load_monitor_base + DIAG_EVENT_TYPE_INTERVAL,
 	et_mm_leak_detail,

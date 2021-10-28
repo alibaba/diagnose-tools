@@ -27,6 +27,7 @@ struct diag_load_monitor_settings {
 	unsigned int verbose;
 	unsigned int style;
 	unsigned int mass;
+	unsigned int cpu_run;
 	unsigned int threshold_load;
 	unsigned int threshold_load_r;
 	unsigned int threshold_load_d;
@@ -40,6 +41,16 @@ struct load_monitor_task {
 	struct diag_task_detail task;
 	struct diag_kern_stack_detail kern_stack;
 	struct diag_proc_chains_detail proc_chains;
+};
+
+struct load_monitor_cpu_run {
+	int et_type;
+	unsigned long id;
+	unsigned long cpu;
+	struct timeval tv;
+	struct diag_task_detail task;
+	struct diag_kern_stack_detail kern_stack;
+	struct diag_user_stack_detail user_stack;
 };
 
 struct load_monitor_detail {
