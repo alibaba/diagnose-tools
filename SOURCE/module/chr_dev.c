@@ -177,6 +177,9 @@ static long diag_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     case DIAG_IOCTL_TYPE_MM_LEAK:
         ret = diag_ioctl_mm_leak(nr, arg);
         break;
+    case DIAG_IOCTL_TYPE_MEMCG_STATS:
+        ret = diag_ioctl_memcg_stats(nr, arg);
+        break;
     default:
         break;
     }

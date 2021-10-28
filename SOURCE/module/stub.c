@@ -1219,3 +1219,21 @@ int __weak rss_monitor_syscall(struct pt_regs *regs, long id)
 	return -ENOSYS;
 }
 
+int __weak diag_memcg_stats_init(void)
+{
+	return 0;
+}
+
+void __weak diag_memcg_stats_exit(void)
+{
+}
+
+long __weak diag_ioctl_memcg_stats(unsigned int cmd, unsigned long arg)
+{
+	return -EINVAL;
+}
+
+int __weak memcg_stats_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
+}

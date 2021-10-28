@@ -1,5 +1,5 @@
 CXX ?= g++
-VENDER_LDFLAGS ?= 
+VENDER_LDFLAGS ?= -L../../deps/lib
 
 arch=$(shell uname -i)
 ifeq ($(arch),x86_64)
