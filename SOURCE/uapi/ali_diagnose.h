@@ -106,6 +106,7 @@ extern unsigned long debug_mode;
 long diag_ioctl_sys_delay(unsigned int cmd, unsigned long arg);
 long diag_ioctl_sys_cost(unsigned int cmd, unsigned long arg);
 long diag_ioctl_sched_delay(unsigned int cmd, unsigned long arg);
+long diag_ioctl_throttle_delay(unsigned int cmd, unsigned long arg);
 long diag_ioctl_irq_delay(unsigned int cmd, unsigned long arg);
 long diag_ioctl_irq_stats(unsigned int cmd, unsigned long arg);
 long diag_ioctl_irq_trace(unsigned int cmd, unsigned long arg);

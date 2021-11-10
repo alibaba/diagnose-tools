@@ -25,6 +25,7 @@ extern std::set<int> g_proc_map;
 int run_trace_main(int argc, char **argv);
 int sys_delay_main(int argc, char **argv);
 int sched_delay_main(int argc, char **argv);
+int throttle_delay_main(int argc, char **argv);
 int load_monitor_main(int argc, char **argv);
 int exit_monitor_main(int argc, char **argv);
 int utilization_main(int argc, char **argv);
@@ -87,6 +88,7 @@ void usage_sig_info(void);
 void usage_task_monitor(void);
 void usage_rw_sem(void);
 void usage_rss_monitor(void);
+void usage_throttle_delay(void);
 
 int uprobe_main(int argc, char **argv);
 void usage_uprobe();

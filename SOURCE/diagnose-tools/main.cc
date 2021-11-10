@@ -123,6 +123,7 @@ static int usage(int argc, char **argv)
 	usage_rw_sem();
 	usage_rss_monitor();
 	usage_memcg_stats();
+	usage_throttle_delay();
 
 	printf("\n");
 	printf("/***************************************************************************/\n");
@@ -206,6 +207,7 @@ static struct diagnose_func all_funcs[] {
 	{"exit-monitor", exit_monitor_main, 0},
 	{"sys-delay", sys_delay_main, 0},
 	{"sched-delay", sched_delay_main, 0},
+	{"throttle-delay", throttle_delay_main, 0},
 	{"utilization", utilization_main, 0},
 	{"tcp-retrans", tcp_retrans_main, 0},
 	{"rw-top", rw_top_main, 0},

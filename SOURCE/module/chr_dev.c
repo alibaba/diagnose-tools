@@ -91,6 +91,9 @@ static long diag_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     case DIAG_IOCTL_TYPE_SCHED_DELAY:
         ret = diag_ioctl_sched_delay(nr, arg);
         break;
+	case DIAG_IOCTL_TYPE_THROTTLE_DELAY:
+		ret = diag_ioctl_throttle_delay(nr, arg);
+		break;
     case DIAG_IOCTL_TYPE_IRQ_DELAY:
         ret = diag_ioctl_irq_delay(nr, arg);
         break;

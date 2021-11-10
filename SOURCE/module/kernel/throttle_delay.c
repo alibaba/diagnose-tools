@@ -756,21 +756,45 @@ static int __activate_throttle_delay(void)
 		goto out_variant_buffer;
 	throttle_delay_alloced = 1;
 
-	JUMP_CHECK(throttle_cfs_rq);
+//	JUMP_CHECK(throttle_cfs_rq);
+
+#if 1	
+    do {                    
+        char *inst = (void *)orig_throttle_cfs_rq;
+                                            
+        if (!diag_ignore_jump_check) {
+            if (!inst) {
+			pr_info("!inst return 0\n");
+                return 0;
+			}
+            if (inst[0] != 0x0f) {
+			pr_info("inst[0] return 0\n");
+                return 0;
+			}
+            if (diag_get_symbol_count("throttle_cfs_rq") > 1) {
+			pr_info("diag_get_symbol_count return 0\n");
+                return 0;
+			}
+        }
+    } while (0);
+#endif
+
 
 	hook_tracepoint("sched_switch", trace_sched_switch_hit, NULL);
-//	hook_kprobe(&kprobe_dequeue_entity, "dequeue_entity",
-//							kprobe_dequeue_entity_pre, NULL);
+	
 	JUMP_INSTALL(throttle_cfs_rq);
+
 	return 1;
+
 out_variant_buffer:
 	return 0;
 }
 
 int activate_throttle_delay(void)
 {
-	if (!throttle_delay_settings.activated)
+	if (!throttle_delay_settings.activated) {
 		throttle_delay_settings.activated = __activate_throttle_delay();
+	}
 
 	return throttle_delay_settings.activated;
 }

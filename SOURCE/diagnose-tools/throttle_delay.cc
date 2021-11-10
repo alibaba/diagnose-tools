@@ -188,7 +188,7 @@ static int throttle_delay_extract(void *buf, unsigned int len, void *)
 			break;
 		dither = (struct throttle_delay_dither *)buf;
 
-		printf("警告：调度被延迟 %lu ms，NOW: %lu, QUEUED: %lu, 当前时间：[%lu:%lu]\n",
+		printf("警告：调度被延迟 %lu ms，NOW: %lu,THROTTLED: %lu, 当前时间：[%lu:%lu]\n",
 			dither->delay_ms,
 			dither->now,
 			dither->dequeued,

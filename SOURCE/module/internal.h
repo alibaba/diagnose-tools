@@ -778,6 +778,8 @@ int activate_tcp_retrans(void);
 int deactivate_tcp_retrans(void);
 int activate_sys_delay(void);
 int deactivate_sys_delay(void);
+int activate_throttle_delay(void);
+int deactivate_throttle_delay(void);
 int activate_irq_delay(void);
 int deactivate_irq_delay(void);
 int activate_mutex_monitor(void);
