@@ -99,8 +99,9 @@ extern unsigned long debug_mode;
 #define DIAG_IOCTL_TYPE_RW_SEM (DIAG_IOCTL_TYPE_TASK_MONITOR + 1)
 #define DIAG_IOCTL_TYPE_RSS_MONITOR (DIAG_IOCTL_TYPE_RW_SEM + 1)
 #define DIAG_IOCTL_TYPE_MEMCG_STATS (DIAG_IOCTL_TYPE_RSS_MONITOR + 1)
+#define DIAG_IOCTL_TYPE_THROTTLE_DELAY (DIAG_IOCTL_TYPE_MEMCG_STATS + 1)
 
-#define DIAG_IOCTL_TYPE_END (DIAG_IOCTL_TYPE_MEMCG_STATS + 1)
+#define DIAG_IOCTL_TYPE_END (DIAG_IOCTL_TYPE_THROTTLE_DELAY + 1)
 
 long diag_ioctl_sys_delay(unsigned int cmd, unsigned long arg);
 long diag_ioctl_sys_cost(unsigned int cmd, unsigned long arg);
@@ -343,6 +344,11 @@ struct diag_ioctl_dump_param_cycle {
 #define DIAG_BASE_SYSCALL_MEMCG_STATS \
 	(DIAG_BASE_SYSCALL_PING_DELAY6 + DIAG_SYSCALL_INTERVAL)
 
+/// 1900
+#define DIAG_BASE_SYSCALL_THROTTLE_DELAY \
+	(DIAG_BASE_SYSCALL_PING_DELAY6 + DIAG_SYSCALL_INTERVAL)
+
+
 #define DIAG_SYSCALL_END (DIAG_BASE_SYSCALL + DIAG_SYSCALL_INTERVAL * 1000)
 
 enum diag_record_id {
@@ -510,6 +516,10 @@ enum diag_record_id {
 	et_memcg_stats_base = et_rss_monitor_base + DIAG_EVENT_TYPE_INTERVAL,
 	et_memcg_stats_summary,
 	et_memcg_stats_detail,
+
+	et_throttle_delay_base = et_rss_monitor_base + DIAG_EVENT_TYPE_INTERVAL,
+	et_throttle_delay_dither,
+	et_throttle_delay_rq,
 
 	et_count
 };
