@@ -3,7 +3,7 @@ VENDER_LDFLAGS ?= -L../../deps/lib
 
 arch=$(shell uname -i)
 ifeq ($(arch),x86_64)
-LDFLAGS = $(VENDER_LDFLAGS) -static-libgcc -static-libstdc++ -lgcc_eh -lunwind-x86_64 -lunwind -lelf \
+LDFLAGS = $(VENDER_LDFLAGS) -static-libgcc -static-libstdc++ -lgcc_eh -lunwind-x86_64 -lunwind -lelf -llzma \
 	-L`pwd` -L/usr/lib64 -I./ -lz \
 	-lssh2 -ldl -lpthread -Wl,-allow-multiple-definition
 else
