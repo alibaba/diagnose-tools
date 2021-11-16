@@ -57,7 +57,7 @@ static inline void __percpu_counter_add(struct percpu_counter *fbc,
 #include "uapi/rss_monitor.h"
 #include "pub/variant_buffer.h"
 #include "pub/stack.h"
-
+#include "uapi/throttle_delay.h"
 /**
  * 手工替换函数相关的宏
  */
@@ -429,6 +429,7 @@ struct diag_percpu_context {
 	struct event_run_trace_raw event_run_trace_raw;
 	struct sys_delay_detail sys_delay_detail;
 	struct sched_delay_dither sched_delay_dither;
+	struct throttle_delay_dither throttle_delay_dither;
 
 	struct {
 		struct uprobe_detail uprobe_detail;
@@ -777,6 +778,8 @@ int activate_tcp_retrans(void);
 int deactivate_tcp_retrans(void);
 int activate_sys_delay(void);
 int deactivate_sys_delay(void);
+int activate_throttle_delay(void);
+int deactivate_throttle_delay(void);
 int activate_irq_delay(void);
 int deactivate_irq_delay(void);
 int activate_mutex_monitor(void);

@@ -177,6 +177,8 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 			activate_rss_monitor();
 		} else if (strcmp(func, "memcg-stats") == 0) {
 			activate_memcg_stats();
+		} else if (strcmp(func, "throttle-delay") == 0) {
+			activate_throttle_delay();
 		}
 
 		up(&controller_sem);
@@ -254,6 +256,8 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 			deactivate_rss_monitor();
 		} else if (strcmp(func, "memcg-stats") == 0) {
 			deactivate_memcg_stats();
+		} else if (strcmp(func, "throttle-delay") == 0) {
+			deactivate_throttle_delay();
 		}
 
 		up(&controller_sem);
@@ -311,6 +315,7 @@ void diag_linux_proc_exit(void)
 
 static void diag_cb_sys_enter(void *data, struct pt_regs *regs, long id)
 {
+
 	if (id >= DIAG_BASE_SYSCALL) {
 		int ret = -ENOSYS;
 
@@ -419,6 +424,9 @@ static void diag_cb_sys_enter(void *data, struct pt_regs *regs, long id)
 		} else if (id >= DIAG_BASE_SYSCALL_RSS_MONITOR
 		   && id < DIAG_BASE_SYSCALL_RSS_MONITOR + DIAG_SYSCALL_INTERVAL) {
 			ret = rss_monitor_syscall(regs, id);
+		} else if (id >= DIAG_BASE_SYSCALL_THROTTLE_DELAY
+		   && id < DIAG_BASE_SYSCALL_THROTTLE_DELAY + DIAG_SYSCALL_INTERVAL) {
+			ret = throttle_delay_syscall(regs, id);
 		}
 
 		up(&controller_sem);

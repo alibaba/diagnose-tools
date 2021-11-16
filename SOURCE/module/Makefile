@@ -214,7 +214,7 @@ ifneq ($(KERNELRELEASE),)
 			kernel/exec.o kernel/perf.o kernel/run_trace.o kernel/irq_trace.o \
 			kernel/kprobe.o kernel/utilization.o kernel/sched_delay.o kernel/reboot.o \
 			kernel/uprobe.o kernel/sys_cost.o kernel/sig_info.o kernel/task_monitor.o \
-			kernel/rw_sem.o
+			kernel/rw_sem.o kernel/throttle_delay.o
 
 	$(TARGET)-objs += mm/mm_entry.o mm/alloc_page.o mm/alloc_top.o mm/high_order.o mm/rss_monitor.o mm/memcg_stats.o
 	$(TARGET)-objs += io/io_entry.o

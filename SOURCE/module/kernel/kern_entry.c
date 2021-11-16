@@ -311,6 +311,10 @@ int diag_kernel_init(void)
 		goto out_rw_sem;
 	}
 
+	ret = diag_throttle_delay_init();
+	if (ret)
+		goto out_throttle_delay;
+
 	on_each_cpu(start_timer, NULL, 1);
 
 #if !defined(XBY_UBUNTU_1604) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
@@ -318,6 +322,9 @@ int diag_kernel_init(void)
 #endif
 
 	return 0;
+
+out_throttle_delay:
+	diag_throttle_delay_exit();
 
 out_rw_sem:
 	diag_task_monitor_exit();

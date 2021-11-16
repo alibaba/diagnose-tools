@@ -17,6 +17,8 @@ extern int diag_irq_delay_init(void);
 extern void diag_irq_delay_exit(void);
 extern int diag_sched_delay_init(void);
 extern void diag_sched_delay_exit(void);
+extern int diag_throttle_delay_init(void);
+extern void diag_throttle_delay_exit(void);
 extern int diag_load_init(void);
 extern void diag_load_exit(void);
 extern int diag_exit_init(void);
