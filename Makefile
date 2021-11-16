@@ -17,7 +17,7 @@ ifneq ($(findstring Ubuntu,$(UNAME_A) $(shell test -e /etc/os-release && head -1
 	cd rpmbuild; sudo dpkg -i diagnose-tools*.deb
 else
 	yum remove -y diagnose-tools
-	yum localinstall -y rpmbuild/RPMS/x86_64/diagnose-tools-*.rpm
+	yum localinstall -y rpmbuild/RPMS/${ARCH}/diagnose-tools-*.rpm
 	diagnose-tools -v
 endif
 
@@ -76,7 +76,7 @@ module:
 	/bin/cp -f SOURCE/module/diagnose.ko build/lib/`uname -r`/
 
 tools:
-	cd SOURCE/diagnose-tools; make clean; VENDER_LDFLAGS="-static -lunwind-x86_64 -lunwind -lelf -llzma -lz -L${DEPS}/lib -L${DEPS}/elfutils/libdwfl/" make --jobs=${JOBS}
+	cd SOURCE/diagnose-tools; make clean; VENDER_LDFLAGS="-static -L${DEPS}/lib -L${DEPS}/elfutils/libdwfl/" make --jobs=${JOBS}
 
 java_agent:
 	cd SOURCE/diagnose-tools/java_agent; make --jobs=${JOBS}

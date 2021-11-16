@@ -1237,3 +1237,13 @@ int __weak memcg_stats_syscall(struct pt_regs *regs, long id)
 {
 	return -ENOSYS;
 }
+
+int __weak activate_memcg_stats(void)
+{
+    return -EINVAL;
+}
+
+int __weak deactivate_memcg_stats(void)
+{
+    return -EINVAL;
+}

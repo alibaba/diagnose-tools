@@ -8,13 +8,18 @@
 #include <linux/slab.h>
 #include <linux/kprobes.h>
 #include <linux/kallsyms.h>
-#include <linux/page_counter.h>
 #include <linux/kernfs.h>
+#include <linux/version.h>
+#if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
+#include <linux/kernfs.h>
+#endif
 #include <asm/delay.h>
 #include "uapi/ali_diagnose.h"
 #include "uapi/memcg_stats.h"
 #include "pub/variant_buffer.h"
 #include "internal.h"
+
+#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 9, 0)
 
 static struct mem_cgroup * (*orig_mem_cgroup_iter)(struct mem_cgroup *,
 		struct mem_cgroup *,
@@ -406,3 +411,4 @@ void diag_memcg_stats_exit(void)
 	destroy_diag_variant_buffer(&memcg_stats_variant_buffer);
 }
 
+#endif

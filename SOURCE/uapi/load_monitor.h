@@ -47,7 +47,7 @@ struct load_monitor_cpu_run {
 	int et_type;
 	unsigned long id;
 	unsigned long cpu;
-	struct timeval tv;
+	struct diag_timespec tv;
 	struct diag_task_detail task;
 	struct diag_kern_stack_detail kern_stack;
 	struct diag_user_stack_detail user_stack;

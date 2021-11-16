@@ -96,7 +96,7 @@ static void load_monitor_ipi(void *ignore)
 	cpu_run->id = get_cycles();
 	cpu_run->et_type = et_load_monitor_cpu_run;
 	cpu_run->cpu = cpu;
-	do_gettimeofday(&cpu_run->tv);
+	do_diag_gettimeofday(&cpu_run->tv);
 
 	diag_task_brief(tsk, &cpu_run->task);
 	diag_task_kern_stack(tsk, &cpu_run->kern_stack);
