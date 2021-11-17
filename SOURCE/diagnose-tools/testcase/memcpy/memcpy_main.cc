@@ -108,7 +108,7 @@ int memcpy_main(int argc, char* argv[])
 	}
 	gettimeofday(&end, NULL);
 
-	total_us = (end.tv_sec - start.tv_sec) * 1000 * 1000 * 1000 + double(end.tv_usec - start.tv_usec);
+	total_us = (end.tv_sec - start.tv_sec) * 1000 * 1000 + double(end.tv_usec - start.tv_usec);
 	total_size = len * loop;
 
 	cout <<"total_size: " << total_size << " \n";
