@@ -10,6 +10,7 @@
 #include <linux/kallsyms.h>
 #include <linux/kernfs.h>
 #include <linux/version.h>
+#include <linux/mount.h>
 #if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
 #include <linux/kernfs.h>
 #endif
@@ -32,6 +33,8 @@ static struct address_space * (*orig_page_mapping)(struct page *page) = NULL;
 static struct pglist_data * (*orig_first_online_pgdat)(void) = NULL;
 
 static struct pglist_data * (*orig_next_online_pgdat)(struct pglist_data *pgdat) = NULL;
+
+seqlock_t * orig_mount_lock = NULL;
 
 static struct diag_variant_buffer memcg_stats_variant_buffer;
 
@@ -112,6 +115,64 @@ static void inode_name(struct inode *ino, char *buf, unsigned int len)
 
     strncpy(buf, name, len - 1);
     kfree(name);
+}
+
+struct mount_diag {
+	struct hlist_node mnt_hash;
+	struct mount_diag *mnt_parent;
+	struct dentry *mnt_mountpoint;
+	struct vfsmount mnt;
+	union {
+		struct rcu_head mnt_rcu;
+		struct llist_node mnt_llist;
+	};
+#ifdef CONFIG_SMP
+	struct mnt_pcp __percpu *mnt_pcp;
+#else
+	int mnt_count;
+	int mnt_writers;
+#endif
+	struct list_head mnt_mounts;    /* list of children, anchored here */
+	struct list_head mnt_child; /* and going through their mnt_child */
+	struct list_head mnt_instance;  /* mount instance on sb->s_mounts */
+};
+
+static void mnt_dir(struct inode *ino, char *buf, unsigned int len)
+{
+	struct mount_diag *mnt = NULL;
+	struct super_block *sb;
+	struct dentry *dentry;
+	char *name;
+
+	buf[0] = '\0';
+	if (!ino || !buf || !len)
+		goto out;
+	sb = ino->i_sb;
+	if (!sb)
+		goto out;
+
+	write_seqlock(orig_mount_lock);
+	if (!list_empty(&sb->s_mounts))
+		mnt = list_first_entry(&sb->s_mounts, struct mount_diag,
+				mnt_instance);
+	write_sequnlock(orig_mount_lock);
+
+	if (!mnt)
+		goto out;
+	dentry = mnt->mnt_mountpoint;
+	if (!dentry)
+		goto out;
+
+	name = __getname();
+	if (!name)
+		goto out;
+
+	__dentry_name(dentry, name);
+	strncpy(buf, name, len - 1);
+	kfree(name);
+
+out:
+	return;
 }
 
 static void diag_memcg_dump_variant_buffer(void * data, unsigned int len)
@@ -225,6 +286,7 @@ static void diag_memcg_build_inode_stats(struct mem_cgroup *memcg,
 					stats->cg_addr = (unsigned long)memcg;
 					stats->dev = inode->i_sb->s_dev;
 					inode_name(inode, stats->name, MEMCG_NAME_LEN);
+					mnt_dir(inode, stats->mnt_dir, MEMCG_NAME_LEN);
 					stats->pages = 1;
 					radix_tree_insert(inode_stats_tree, (unsigned long)inode, stats);
 				} else
@@ -389,6 +451,7 @@ static int lookup_syms(void)
 	LOOKUP_SYMS(page_mapping);
 	LOOKUP_SYMS(first_online_pgdat);
 	LOOKUP_SYMS(next_online_pgdat);
+	LOOKUP_SYMS(mount_lock);
 
 	return 0;
 }

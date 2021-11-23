@@ -172,20 +172,22 @@ static int memcg_stats_extract(void *buf, unsigned int len, void *)
 			break;
 		detail = (struct diag_memcg_stats_detail *)buf;
 		if (debug_mode) {
-			printf("memcg: %p inode: %p major: %u minor: %u ino: %lu pages: %u name: %s\n",
+			printf("memcg: %p inode: %p major: %u minor: %u ino: %lu pages: %u mnt: %s name: %s\n",
 					(void *)detail->cg_addr,
 					(void *)detail->key,
 					MAJOR(detail->dev),
 					MINOR(detail->dev),
 					detail->ino,
 					detail->pages,
+					detail->mnt_dir,
 					detail->name);
 		} else {
-			printf("major: %u minor: %u ino: %lu pages: %u name: %s\n",
+			printf("major: %u minor: %u ino: %lu pages: %u mnt: %s name: %s\n",
 					MAJOR(detail->dev),
 					MINOR(detail->dev),
 					detail->ino,
 					detail->pages,
+					detail->mnt_dir,
 					detail->name);
 		}
 		break;

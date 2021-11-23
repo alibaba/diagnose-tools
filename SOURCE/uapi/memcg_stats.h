@@ -51,6 +51,7 @@ struct diag_memcg_stats_detail {
 	unsigned int dev;
 	unsigned int pages;
 	char name[MEMCG_NAME_LEN];
+	char mnt_dir[MEMCG_NAME_LEN];
 };
 
 #endif /* UAPI_MEMCG_STATS_H */
