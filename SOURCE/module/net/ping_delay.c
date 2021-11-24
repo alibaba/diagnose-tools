@@ -55,11 +55,11 @@
 #include "pub/kprobe.h"
 #include "uapi/ping_delay.h"
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0) && !defined(XBY_UBUNTU_1604) \
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 20, 0) && !defined(XBY_UBUNTU_1604) \
 	&& !defined(CENTOS_3_10_123_9_3) && !defined(UBUNTU_1604) && !defined(CENTOS_8U)
 
 __maybe_unused static atomic64_t diag_nr_running = ATOMIC64_INIT(0);
-struct diag_ping_delay_settings ping_delay_settings;
+static struct diag_ping_delay_settings ping_delay_settings;
 
 static unsigned int ping_delay_alloced;
 
@@ -90,7 +90,9 @@ static struct diag_variant_buffer ping_delay_variant_buffer;
 static struct kprobe kprobe_eth_type_trans;
 static struct kprobe kprobe_napi_gro_receive;
 static struct kprobe kprobe___netif_receive_skb_core;
+static struct kprobe kprobe_ip_rcv;
 static struct kprobe kprobe_icmp_rcv;
+static struct kprobe kprobe_ip_send_skb;
 static struct kprobe kprobe_dev_queue_xmit;
 
 static void trace_events(int action, void *func)
@@ -100,7 +102,7 @@ static void trace_events(int action, void *func)
 		struct ping_delay_event event;
 
 		event.et_type = et_ping_delay_event;
-		do_gettimeofday(&event.tv);
+		do_diag_gettimeofday(&event.tv);
 		event.func = (unsigned long)func;
 		event.action = action;
 
@@ -121,7 +123,6 @@ static void trace_irq_handler_entry_hit(void *ignore, int irq,
 #endif
 {
 	void *func = action->handler;
-
 	trace_events(ping_delay_event_enter_irq, func);
 }
 
@@ -134,7 +135,6 @@ static void trace_irq_handler_exit_hit(void *ignore, int irq,
 #endif
 {
 	void *func = action->handler;
-
 	trace_events(ping_delay_event_exit_irq, func);
 }
 
@@ -184,12 +184,18 @@ static void trace_softirq_exit_hit(void *ignore, unsigned long nr_sirq)
 	trace_events(ping_delay_event_exit_softirq, func);
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
 static int (*orig_ip_local_deliver_finish)(struct net *net,
-	struct sock *sk, struct sk_buff *skb);
+				 struct sock *sk, struct sk_buff *skb);
 
-DEFINE_ORIG_FUNC(int, ip_local_deliver, 1,
-	struct sk_buff *, skb);
+DEFINE_ORIG_FUNC(int, ip_rcv_finish, 3,
+				 struct net *, net,
+				 struct sock *, sk,
+				 struct sk_buff *, skb);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
+static int (*orig_ip_local_deliver_finish)(struct net *net,
+				 struct sock *sk, struct sk_buff *skb);
+
 DEFINE_ORIG_FUNC(int, ip_rcv_finish, 3,
 				 struct net *, net,
 				 struct sock *, sk,
@@ -200,37 +206,17 @@ static int (*orig_ip_local_deliver_finish)(struct sock *sk, struct sk_buff *skb)
 DEFINE_ORIG_FUNC(int, ip_rcv_finish, 2,
 				 struct sock *, sk,
 				 struct sk_buff *, skb);
-DEFINE_ORIG_FUNC(int, ip_local_deliver, 1,
-        struct sk_buff *, skb);
-#else
-static int (*orig_ip_local_deliver_finish)(struct sk_buff *skb);
-
-DEFINE_ORIG_FUNC(int, ip_local_deliver, 1,
-        struct sk_buff *, skb);
+#else // <3.10
+static int (*orig_ip_local_delivdder_finish)(struct sk_buff *skb);
 
 DEFINE_ORIG_FUNC(int, ip_rcv_finish, 1,
 				 struct sk_buff *, skb);
 #endif
 
-DEFINE_ORIG_FUNC(int, ip_rcv, 4,
-				 struct sk_buff *, skb,
-				 struct net_device *, dev,
-				 struct packet_type *, pt,
-				 struct net_device *, orig_dev);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
-DEFINE_ORIG_FUNC(int, ip_send_skb, 2,
-				 struct net *, net,
+DEFINE_ORIG_FUNC(int, ip_local_deliver, 1,
 				 struct sk_buff *, skb);
-#else
-DEFINE_ORIG_FUNC(int, ip_send_skb, 1,
-				 struct sk_buff *, skb);
-static int (*orig_ip_options_rcv_srr)(struct sk_buff *skb);
-static int (*orig_ip_options_compile)(struct net *net,
-	struct ip_options *opt, struct sk_buff *skb);
-#endif
 
 static struct net_protocol **orig_inet_protos;
-
 static struct ip_rt_acct *(*orig_ip_rt_acct);
 
 __maybe_unused static void move_to_list(struct list_head *skb_list)
@@ -326,7 +312,7 @@ __maybe_unused static struct skb_info *find_alloc_desc(const struct sk_buff *skb
 	return info;
 }
 
-static void inspect_packet(const struct sk_buff *skb, const struct iphdr *iphdr, enum ping_delay_packet_step step)
+static noinline void inspect_packet(const struct sk_buff *skb, const struct iphdr *iphdr, enum ping_delay_packet_step step)
 {
 	int source = 0;
 	int dest = 0;
@@ -335,14 +321,16 @@ static void inspect_packet(const struct sk_buff *skb, const struct iphdr *iphdr,
 
 	if (step >= PD_TRACK_COUNT)
 		return;
-
-	if (iphdr->protocol == IPPROTO_ICMP) {
-
-		icmph = (void *)iphdr + iphdr->ihl * 4;
-		source = iphdr->saddr;
-		dest = iphdr->daddr;
-	} else
+	if (skb->len < sizeof(struct iphdr) || !iphdr
+        || iphdr->ihl * 4 < sizeof(struct iphdr))
 		return;
+
+	if (iphdr->protocol != IPPROTO_ICMP)
+		return;
+
+	icmph = (void *)iphdr + iphdr->ihl * 4;
+	source = iphdr->saddr;
+	dest = iphdr->daddr;
 
 	if (ping_delay_settings.addr) {
 	 	if (be32_to_cpu(source) != ping_delay_settings.addr && be32_to_cpu(dest) != ping_delay_settings.addr)
@@ -354,7 +342,7 @@ static void inspect_packet(const struct sk_buff *skb, const struct iphdr *iphdr,
 		struct ping_delay_detail detail;
 
 		detail.et_type = et_ping_delay_detail;
-		do_gettimeofday(&detail.tv);
+		do_diag_gettimeofday(&detail.tv);
 		detail.saddr = source;
 		detail.daddr = dest;
 		detail.echo_id = be16_to_cpu(icmph->un.echo.id);
@@ -370,15 +358,17 @@ static void inspect_packet(const struct sk_buff *skb, const struct iphdr *iphdr,
 	if (step > PD_TRACK_COUNT)
 		return;
 	skb_info = find_alloc_desc(skb, source, dest,
-		be16_to_cpu(icmph->un.echo.id),
-		be16_to_cpu(icmph->un.echo.sequence));
+				   be16_to_cpu(icmph->un.echo.id),
+				   be16_to_cpu(icmph->un.echo.sequence));
 	if (!skb_info)
 		return;
 
 	skb_info->time_stamp[step] = sched_clock();
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
+
 /*
  * 	Deliver IP Packets to the higher protocol layers.
  */
@@ -388,9 +378,8 @@ static int diag_ip_local_deliver(struct sk_buff *skb)
 	 *	Reassemble IP fragments.
 	 */
 	struct net *net = dev_net(skb->dev);
-	const struct iphdr *iph;
+	const struct iphdr *iph = ip_hdr(skb);
 
-	iph = ip_hdr(skb);
 	inspect_packet(skb, iph, PD_LOCAL_DELIVER);
 
 	if (ip_is_fragment(ip_hdr(skb))) {
@@ -405,102 +394,194 @@ static int diag_ip_local_deliver(struct sk_buff *skb)
 		       orig_ip_local_deliver_finish);
 }
 
-static int diag_ip_rcv(struct sk_buff *skb, struct net_device *dev, struct packet_type *pt, struct net_device *orig_dev)
+static inline bool ip_rcv_options(struct sk_buff *skb, struct net_device *dev)
 {
+	struct ip_options *opt;
 	const struct iphdr *iph;
-	struct net *net;
-	u32 len;
 
-	/* When the interface is in promisc. mode, drop all the crap
-	 * that it receives, do not try to analyse it.
-	 */
-	if (skb->pkt_type == PACKET_OTHERHOST)
+	/* It looks as overkill, because not all
+	   IP options require packet mangling.
+	   But it is the easiest for now, especially taking
+	   into account that combination of IP options
+	   and running sniffer is extremely rare condition.
+   					      --ANK (980813)
+	*/
+	if (skb_cow(skb, skb_headroom(skb))) {
+		__IP_INC_STATS(dev_net(dev), IPSTATS_MIB_INDISCARDS);
 		goto drop;
-
-	net = dev_net(dev);
-	__IP_UPD_PO_STATS(net, IPSTATS_MIB_IN, skb->len);
-
-	skb = skb_share_check(skb, GFP_ATOMIC);
-	if (!skb)
-	{
-		__IP_INC_STATS(net, IPSTATS_MIB_INDISCARDS);
-		goto out;
 	}
 
-	if (!pskb_may_pull(skb, sizeof(struct iphdr)))
-		goto inhdr_error;
-
 	iph = ip_hdr(skb);
+	opt = &(IPCB(skb)->opt);
+	opt->optlen = iph->ihl*4 - sizeof(struct iphdr);
+
+	if (ip_options_compile(dev_net(dev), opt, skb)) {
+		__IP_INC_STATS(dev_net(dev), IPSTATS_MIB_INHDRERRORS);
+		goto drop;
+	}
+
+	if (unlikely(opt->srr)) {
+		struct in_device *in_dev = __in_dev_get_rcu(dev);
+
+		if (in_dev) {
+			if (!IN_DEV_SOURCE_ROUTE(in_dev)) {
+				if (IN_DEV_LOG_MARTIANS(in_dev))
+					net_info_ratelimited("source route option %pI4 -> %pI4\n",
+							     &iph->saddr,
+							     &iph->daddr);
+				goto drop;
+			}
+		}
+
+		if (ip_options_rcv_srr(skb, dev))
+			goto drop;
+	}
+
+	return false;
+drop:
+	return true;
+}
+
+static int ip_rcv_finish_core(struct net *net, struct sock *sk,
+			      struct sk_buff *skb, struct net_device *dev)
+{
+	const struct iphdr *iph = ip_hdr(skb);
+	int (*edemux)(struct sk_buff *skb);
+	struct rtable *rt;
+	int err;
+
+	if (net->ipv4.sysctl_ip_early_demux &&
+	    !skb_dst(skb) &&
+	    !skb->sk &&
+	    !ip_is_fragment(iph)) {
+		const struct net_protocol *ipprot;
+		int protocol = iph->protocol;
+
+		ipprot = rcu_dereference(orig_inet_protos[protocol]);
+		if (ipprot && (edemux = READ_ONCE(ipprot->early_demux))) {
+			err = edemux(skb);
+			if (unlikely(err))
+				goto drop_error;
+			/* must reload iph, skb->head might have changed */
+			iph = ip_hdr(skb);
+		}
+	}
 
 	/*
-	 *	RFC1122: 3.2.1.2 MUST silently discard any IP frame that fails the checksum.
-	 *
-	 *	Is the datagram acceptable?
-	 *
-	 *	1.	Length at least the size of an ip header
-	 *	2.	Version of 4
-	 *	3.	Checksums correctly. [Speed optimisation for later, skip loopback checksums]
-	 *	4.	Doesn't have a bogus length
+	 *	Initialise the virtual path cache for the packet. It describes
+	 *	how the packet travels inside Linux networking.
 	 */
-
-	if (iph->ihl < 5 || iph->version != 4)
-		goto inhdr_error;
-
-	BUILD_BUG_ON(IPSTATS_MIB_ECT1PKTS != IPSTATS_MIB_NOECTPKTS + INET_ECN_ECT_1);
-	BUILD_BUG_ON(IPSTATS_MIB_ECT0PKTS != IPSTATS_MIB_NOECTPKTS + INET_ECN_ECT_0);
-	BUILD_BUG_ON(IPSTATS_MIB_CEPKTS != IPSTATS_MIB_NOECTPKTS + INET_ECN_CE);
-	__IP_ADD_STATS(net,
-				   IPSTATS_MIB_NOECTPKTS + (iph->tos & INET_ECN_MASK),
-				   max_t(unsigned short, 1, skb_shinfo(skb)->gso_segs));
-
-	if (!pskb_may_pull(skb, iph->ihl * 4))
-		goto inhdr_error;
-
-	iph = ip_hdr(skb);
-
-	if (unlikely(ip_fast_csum((u8 *)iph, iph->ihl)))
-		goto csum_error;
-
-	len = ntohs(iph->tot_len);
-	if (skb->len < len)
-	{
-		__IP_INC_STATS(net, IPSTATS_MIB_INTRUNCATEDPKTS);
-		goto drop;
-	}
-	else if (len < (iph->ihl * 4))
-		goto inhdr_error;
-
-	/* Our transport medium may have padded the buffer out. Now we know it
-	 * is IP we can trim to the true length of the frame.
-	 * Note this now means skb->len holds ntohs(iph->tot_len).
-	 */
-	if (pskb_trim_rcsum(skb, len))
-	{
-		__IP_INC_STATS(net, IPSTATS_MIB_INDISCARDS);
-		goto drop;
+	if (!skb_valid_dst(skb)) {
+		err = ip_route_input_noref(skb, iph->daddr, iph->saddr,
+					   iph->tos, dev);
+		if (unlikely(err))
+			goto drop_error;
 	}
 
-	skb->transport_header = skb->network_header + iph->ihl * 4;
+#ifdef CONFIG_IP_ROUTE_CLASSID
+	if (unlikely(skb_dst(skb)->tclassid)) {
+		struct ip_rt_acct *st = this_cpu_ptr(*orig_ip_rt_acct);
+		u32 idx = skb_dst(skb)->tclassid;
+		st[idx&0xFF].o_packets++;
+		st[idx&0xFF].o_bytes += skb->len;
+		st[(idx>>16)&0xFF].i_packets++;
+		st[(idx>>16)&0xFF].i_bytes += skb->len;
+	}
+#endif
 
-	/* Remove any debris in the socket control block */
-	memset(IPCB(skb), 0, sizeof(struct inet_skb_parm));
-	IPCB(skb)->iif = skb->skb_iif;
+	if (iph->ihl > 5 && ip_rcv_options(skb, dev))
+		goto drop;
 
-	/* Must drop socket now because of tproxy. */
-	skb_orphan(skb);
+	rt = skb_rtable(skb);
+	if (rt->rt_type == RTN_MULTICAST) {
+		__IP_UPD_PO_STATS(net, IPSTATS_MIB_INMCAST, skb->len);
+	} else if (rt->rt_type == RTN_BROADCAST) {
+		__IP_UPD_PO_STATS(net, IPSTATS_MIB_INBCAST, skb->len);
+	} else if (skb->pkt_type == PACKET_BROADCAST ||
+		   skb->pkt_type == PACKET_MULTICAST) {
+		struct in_device *in_dev = __in_dev_get_rcu(dev);
 
-	return NF_HOOK(NFPROTO_IPV4, NF_INET_PRE_ROUTING,
-				   net, NULL, skb, dev, NULL,
-				   orig_ip_rcv_finish);
+		/* RFC 1122 3.3.6:
+		 *
+		 *   When a host sends a datagram to a link-layer broadcast
+		 *   address, the IP destination address MUST be a legal IP
+		 *   broadcast or IP multicast address.
+		 *
+		 *   A host SHOULD silently discard a datagram that is received
+		 *   via a link-layer broadcast (see Section 2.4) but does not
+		 *   specify an IP multicast or broadcast destination address.
+		 *
+		 * This doesn't explicitly say L2 *broadcast*, but broadcast is
+		 * in a way a form of multicast and the most common use case for
+		 * this is 802.11 protecting against cross-station spoofing (the
+		 * so-called "hole-196" attack) so do it for both.
+		 */
+		if (in_dev &&
+		    IN_DEV_ORCONF(in_dev, DROP_UNICAST_IN_L2_MULTICAST))
+			goto drop;
+	}
 
-csum_error:
-	__IP_INC_STATS(net, IPSTATS_MIB_CSUMERRORS);
-inhdr_error:
-	__IP_INC_STATS(net, IPSTATS_MIB_INHDRERRORS);
+	return NET_RX_SUCCESS;
+
 drop:
 	kfree_skb(skb);
-out:
 	return NET_RX_DROP;
+
+drop_error:
+	if (err == -EXDEV)
+		__NET_INC_STATS(net, LINUX_MIB_IPRPFILTER);
+	goto drop;
+}
+
+static int diag_ip_rcv_finish(struct net *net, struct sock *sk, struct sk_buff *skb)
+{
+	struct net_device *dev = skb->dev;
+	const struct iphdr *iph = ip_hdr(skb);
+	int ret;
+
+	inspect_packet(skb, iph, PD_IP_RCV_FINISH);
+
+	/* if ingress device is enslaved to an L3 master device pass the
+	 * skb to its handler for processing
+	 */
+	skb = l3mdev_ip_rcv(skb);
+	if (!skb)
+		return NET_RX_SUCCESS;
+
+	ret = ip_rcv_finish_core(net, sk, skb, dev);
+
+	inspect_packet(skb, iph, PD_DST_INPUT);
+
+	if (ret != NET_RX_DROP)
+		ret = dst_input(skb);
+	return ret;
+}
+
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
+
+/*
+ * 	Deliver IP Packets to the higher protocol layers.
+ */
+static int diag_ip_local_deliver(struct sk_buff *skb)
+{
+	/*
+	 *	Reassemble IP fragments.
+	 */
+	struct net *net = dev_net(skb->dev);
+	const struct iphdr *iph = ip_hdr(skb);
+
+	inspect_packet(skb, iph, PD_LOCAL_DELIVER);
+
+	if (ip_is_fragment(ip_hdr(skb))) {
+		if (ip_defrag(net, skb, IP_DEFRAG_LOCAL_DELIVER))
+			return 0;
+	}
+
+	inspect_packet(skb, iph, PD_LOCAL_DELIVER_FINISH);
+
+	return NF_HOOK(NFPROTO_IPV4, NF_INET_LOCAL_IN,
+		       net, NULL, skb, skb->dev, NULL,
+		       orig_ip_local_deliver_finish);
 }
 
 static inline bool ip_rcv_options(struct sk_buff *skb)
@@ -563,6 +644,8 @@ static int diag_ip_rcv_finish(struct net *net, struct sock *sk, struct sk_buff *
 	struct rtable *rt;
 	struct net_device *dev = skb->dev;
 
+	inspect_packet(skb, iph, PD_IP_RCV_FINISH);
+
 	/* if ingress device is enslaved to an L3 master device pass the
 	 * skb to its handler for processing
 	 */
@@ -594,7 +677,7 @@ static int diag_ip_rcv_finish(struct net *net, struct sock *sk, struct sk_buff *
 	if (!skb_valid_dst(skb))
 	{
 		int err = ip_route_input_noref(skb, iph->daddr, iph->saddr,
-									   iph->tos, dev);
+					       iph->tos, dev);
 		if (unlikely(err))
 		{
 			if (err == -EXDEV)
@@ -628,7 +711,7 @@ static int diag_ip_rcv_finish(struct net *net, struct sock *sk, struct sk_buff *
 		__IP_UPD_PO_STATS(net, IPSTATS_MIB_INBCAST, skb->len);
 	}
 	else if (skb->pkt_type == PACKET_BROADCAST ||
-			 skb->pkt_type == PACKET_MULTICAST)
+		 skb->pkt_type == PACKET_MULTICAST)
 	{
 		struct in_device *in_dev = __in_dev_get_rcu(dev);
 
@@ -648,7 +731,7 @@ static int diag_ip_rcv_finish(struct net *net, struct sock *sk, struct sk_buff *
 		 * so-called "hole-196" attack) so do it for both.
 		 */
 		if (in_dev &&
-			IN_DEV_ORCONF(in_dev, DROP_UNICAST_IN_L2_MULTICAST))
+		    IN_DEV_ORCONF(in_dev, DROP_UNICAST_IN_L2_MULTICAST))
 			goto drop;
 	}
 
@@ -661,31 +744,17 @@ drop:
 	return NET_RX_DROP;
 }
 
-static int diag_ip_send_skb(struct net *net, struct sk_buff *skb)
-{
-	int err;
-	const struct iphdr *iph;
-
-	err = ip_local_out(net, skb->sk, skb);
-	if (err)
-	{
-		if (err > 0)
-			err = net_xmit_errno(err);
-		if (err)
-			IP_INC_STATS(net, IPSTATS_MIB_OUTDISCARDS);
-	}
-
-	iph = ip_hdr(skb);
-	inspect_packet(skb, iph, PD_SEND_SKB);
-
-	return err;
-}
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
+
 /*
  * 	Deliver IP Packets to the higher protocol layers.
  */
 static int diag_ip_local_deliver(struct sk_buff *skb)
 {
+	const struct iphdr *iph = ip_hdr(skb);
+
+	inspect_packet(skb, iph, PD_LOCAL_DELIVER);
+
 	/*
 	 *	Reassemble IP fragments.
 	 */
@@ -695,106 +764,11 @@ static int diag_ip_local_deliver(struct sk_buff *skb)
 			return 0;
 	}
 
+	inspect_packet(skb, iph, PD_LOCAL_DELIVER_FINISH);
+
 	return NF_HOOK(NFPROTO_IPV4, NF_INET_LOCAL_IN, NULL, skb,
 		       skb->dev, NULL,
 		       orig_ip_local_deliver_finish);
-}
-
-/*
- * 	Main IP Receive routine.
- */
-static int diag_ip_rcv(struct sk_buff *skb, struct net_device *dev, struct packet_type *pt, struct net_device *orig_dev)
-{
-	const struct iphdr *iph;
-	u32 len;
-
-	/* When the interface is in promisc. mode, drop all the crap
-	 * that it receives, do not try to analyse it.
-	 */
-	if (skb->pkt_type == PACKET_OTHERHOST)
-		goto drop;
-
-	IP_UPD_PO_STATS_BH(dev_net(dev), IPSTATS_MIB_IN, skb->len);
-
-	if ((skb = skb_share_check(skb, GFP_ATOMIC)) == NULL)
-	{
-		IP_INC_STATS_BH(dev_net(dev), IPSTATS_MIB_INDISCARDS);
-		goto out;
-	}
-
-	if (!pskb_may_pull(skb, sizeof(struct iphdr)))
-		goto inhdr_error;
-
-	iph = ip_hdr(skb);
-
-	/*
-	 *	RFC1122: 3.2.1.2 MUST silently discard any IP frame that fails the checksum.
-	 *
-	 *	Is the datagram acceptable?
-	 *
-	 *	1.	Length at least the size of an ip header
-	 *	2.	Version of 4
-	 *	3.	Checksums correctly. [Speed optimisation for later, skip loopback checksums]
-	 *	4.	Doesn't have a bogus length
-	 */
-
-	if (iph->ihl < 5 || iph->version != 4)
-		goto inhdr_error;
-
-	BUILD_BUG_ON(IPSTATS_MIB_ECT1PKTS != IPSTATS_MIB_NOECTPKTS + INET_ECN_ECT_1);
-	BUILD_BUG_ON(IPSTATS_MIB_ECT0PKTS != IPSTATS_MIB_NOECTPKTS + INET_ECN_ECT_0);
-	BUILD_BUG_ON(IPSTATS_MIB_CEPKTS != IPSTATS_MIB_NOECTPKTS + INET_ECN_CE);
-	IP_ADD_STATS_BH(dev_net(dev),
-					IPSTATS_MIB_NOECTPKTS + (iph->tos & INET_ECN_MASK),
-					max_t(unsigned short, 1, skb_shinfo(skb)->gso_segs));
-
-	if (!pskb_may_pull(skb, iph->ihl * 4))
-		goto inhdr_error;
-
-	iph = ip_hdr(skb);
-
-	if (unlikely(ip_fast_csum((u8 *)iph, iph->ihl)))
-		goto csum_error;
-
-	len = ntohs(iph->tot_len);
-	if (skb->len < len)
-	{
-		IP_INC_STATS_BH(dev_net(dev), IPSTATS_MIB_INTRUNCATEDPKTS);
-		goto drop;
-	}
-	else if (len < (iph->ihl * 4))
-		goto inhdr_error;
-
-	/* Our transport medium may have padded the buffer out. Now we know it
-	 * is IP we can trim to the true length of the frame.
-	 * Note this now means skb->len holds ntohs(iph->tot_len).
-	 */
-	if (pskb_trim_rcsum(skb, len))
-	{
-		IP_INC_STATS_BH(dev_net(dev), IPSTATS_MIB_INDISCARDS);
-		goto drop;
-	}
-
-	skb->transport_header = skb->network_header + iph->ihl * 4;
-
-	/* Remove any debris in the socket control block */
-	memset(IPCB(skb), 0, sizeof(struct inet_skb_parm));
-
-	/* Must drop socket now because of tproxy. */
-	skb_orphan(skb);
-
-	return NF_HOOK(NFPROTO_IPV4, NF_INET_PRE_ROUTING, NULL, skb,
-				   dev, NULL,
-				   orig_ip_rcv_finish);
-
-csum_error:
-	IP_INC_STATS_BH(dev_net(dev), IPSTATS_MIB_CSUMERRORS);
-inhdr_error:
-	IP_INC_STATS_BH(dev_net(dev), IPSTATS_MIB_INHDRERRORS);
-drop:
-	kfree_skb(skb);
-out:
-	return NET_RX_DROP;
 }
 
 static inline bool ip_rcv_options(struct sk_buff *skb)
@@ -856,6 +830,8 @@ static int diag_ip_rcv_finish(struct sock *sk, struct sk_buff *skb)
 	const struct iphdr *iph = ip_hdr(skb);
 	struct rtable *rt;
 
+	inspect_packet(skb, iph, PD_IP_RCV_FINISH);
+
 	if (sysctl_ip_early_demux && !skb_dst(skb) && skb->sk == NULL)
 	{
 		const struct net_protocol *ipprot;
@@ -877,12 +853,12 @@ static int diag_ip_rcv_finish(struct sock *sk, struct sk_buff *skb)
 	if (!skb_dst(skb))
 	{
 		int err = ip_route_input_noref(skb, iph->daddr, iph->saddr,
-									   iph->tos, skb->dev);
+					       iph->tos, skb->dev);
 		if (unlikely(err))
 		{
 			if (err == -EXDEV)
 				NET_INC_STATS_BH(dev_net(skb->dev),
-								 LINUX_MIB_IPRPFILTER);
+						 LINUX_MIB_IPRPFILTER);
 			goto drop;
 		}
 	}
@@ -906,11 +882,11 @@ static int diag_ip_rcv_finish(struct sock *sk, struct sk_buff *skb)
 	if (rt->rt_type == RTN_MULTICAST)
 	{
 		IP_UPD_PO_STATS_BH(dev_net(rt->dst.dev), IPSTATS_MIB_INMCAST,
-						   skb->len);
+				   skb->len);
 	}
 	else if (rt->rt_type == RTN_BROADCAST)
 		IP_UPD_PO_STATS_BH(dev_net(rt->dst.dev), IPSTATS_MIB_INBCAST,
-						   skb->len);
+				   skb->len);
 
 	inspect_packet(skb, iph, PD_DST_INPUT);
 
@@ -921,31 +897,22 @@ drop:
 	return NET_RX_DROP;
 }
 
-static int diag_ip_send_skb(struct net *net, struct sk_buff *skb)
-{
-	int err;
-	const struct iphdr *iph;
+#else // < 3.10
 
-	err = ip_local_out(skb);
-	if (err)
-	{
-		if (err > 0)
-			err = net_xmit_errno(err);
-		if (err)
-			IP_INC_STATS(net, IPSTATS_MIB_OUTDISCARDS);
-	}
+static int (*orig_ip_options_rcv_srr)(struct sk_buff *skb);
 
-	iph = ip_hdr(skb);
-	inspect_packet(skb, iph, PD_SEND_SKB);
+static int (*orig_ip_options_compile)(struct net *net,
+	struct ip_options *opt, struct sk_buff *skb);
 
-	return err;
-}
-#else
 /*
  * 	Deliver IP Packets to the higher protocol layers.
  */
 static int diag_ip_local_deliver(struct sk_buff *skb)
 {
+	const struct iphdr *iph = ip_hdr(skb);
+
+	inspect_packet(skb, iph, PD_LOCAL_DELIVER);
+
 	/*
 	 *	Reassemble IP fragments.
 	 */
@@ -955,89 +922,10 @@ static int diag_ip_local_deliver(struct sk_buff *skb)
 			return 0;
 	}
 
+	inspect_packet(skb, iph, PD_LOCAL_DELIVER_FINISH);
+
 	return NF_HOOK(PF_INET, NF_INET_LOCAL_IN, skb, skb->dev, NULL,
 		       orig_ip_local_deliver_finish);
-}
-
-static int diag_ip_rcv(struct sk_buff *skb, struct net_device *dev, struct packet_type *pt, struct net_device *orig_dev)
-{
-	struct iphdr *iph;
-	u32 len;
-
-	/* When the interface is in promisc. mode, drop all the crap
-	 * that it receives, do not try to analyse it.
-	 */
-	if (skb->pkt_type == PACKET_OTHERHOST)
-		goto drop;
-
-	IP_UPD_PO_STATS_BH(dev_net(dev), IPSTATS_MIB_IN, skb->len);
-
-	if ((skb = skb_share_check(skb, GFP_ATOMIC)) == NULL)
-	{
-		IP_INC_STATS_BH(dev_net(dev), IPSTATS_MIB_INDISCARDS);
-		goto out;
-	}
-
-	if (!pskb_may_pull(skb, sizeof(struct iphdr)))
-		goto inhdr_error;
-
-	iph = ip_hdr(skb);
-
-	/*
-	 *	RFC1122: 3.2.1.2 MUST silently discard any IP frame that fails the checksum.
-	 *
-	 *	Is the datagram acceptable?
-	 *
-	 *	1.	Length at least the size of an ip header
-	 *	2.	Version of 4
-	 *	3.	Checksums correctly. [Speed optimisation for later, skip loopback checksums]
-	 *	4.	Doesn't have a bogus length
-	 */
-	if (iph->ihl < 5 || iph->version != 4)
-		goto inhdr_error;
-
-	if (!pskb_may_pull(skb, iph->ihl * 4))
-		goto inhdr_error;
-
-	iph = ip_hdr(skb);
-
-	if (unlikely(ip_fast_csum((u8 *)iph, iph->ihl)))
-		goto inhdr_error;
-
-	len = ntohs(iph->tot_len);
-	if (skb->len < len)
-	{
-		IP_INC_STATS_BH(dev_net(dev), IPSTATS_MIB_INTRUNCATEDPKTS);
-		goto drop;
-	}
-	else if (len < (iph->ihl * 4))
-		goto inhdr_error;
-
-	/* Our transport medium may have padded the buffer out. Now we know it
-	 * is IP we can trim to the true length of the frame.
-	 * Note this now means skb->len holds ntohs(iph->tot_len).
-	 */
-	if (pskb_trim_rcsum(skb, len))
-	{
-		IP_INC_STATS_BH(dev_net(dev), IPSTATS_MIB_INDISCARDS);
-		goto drop;
-	}
-
-	/* Remove any debris in the socket control block */
-	memset(IPCB(skb), 0, sizeof(struct inet_skb_parm));
-
-	/* Must drop socket now because of tproxy. */
-	skb_orphan(skb);
-
-	return NF_HOOK(PF_INET, NF_INET_PRE_ROUTING, skb, dev, NULL,
-				   orig_ip_rcv_finish);
-
-inhdr_error:
-	IP_INC_STATS_BH(dev_net(dev), IPSTATS_MIB_INHDRERRORS);
-drop:
-	kfree_skb(skb);
-out:
-	return NET_RX_DROP;
 }
 
 static inline int ip_rcv_options(struct sk_buff *skb)
@@ -1101,6 +989,8 @@ static int diag_ip_rcv_finish(struct sk_buff *skb)
 	const struct iphdr *iph = ip_hdr(skb);
 	struct rtable *rt;
 
+	inspect_packet(skb, iph, PD_IP_RCV_FINISH);
+
 	/*
 	 *	Initialise the virtual path cache for the packet. It describes
 	 *	how the packet travels inside Linux networking.
@@ -1108,15 +998,15 @@ static int diag_ip_rcv_finish(struct sk_buff *skb)
 	if (skb_dst(skb) == NULL)
 	{
 		int err = ip_route_input(skb, iph->daddr, iph->saddr, iph->tos,
-								 skb->dev);
+					 skb->dev);
 		if (unlikely(err))
 		{
 			if (err == -EHOSTUNREACH)
 				IP_INC_STATS_BH(dev_net(skb->dev),
-								IPSTATS_MIB_INADDRERRORS);
+						IPSTATS_MIB_INADDRERRORS);
 			else if (err == -ENETUNREACH)
 				IP_INC_STATS_BH(dev_net(skb->dev),
-								IPSTATS_MIB_INNOROUTES);
+						IPSTATS_MIB_INNOROUTES);
 			goto drop;
 		}
 	}
@@ -1140,11 +1030,11 @@ static int diag_ip_rcv_finish(struct sk_buff *skb)
 	if (rt->rt_type == RTN_MULTICAST)
 	{
 		IP_UPD_PO_STATS_BH(dev_net(rt->u.dst.dev), IPSTATS_MIB_INMCAST,
-						   skb->len);
+				   skb->len);
 	}
 	else if (rt->rt_type == RTN_BROADCAST)
 		IP_UPD_PO_STATS_BH(dev_net(rt->u.dst.dev), IPSTATS_MIB_INBCAST,
-						   skb->len);
+				   skb->len);
 
 	inspect_packet(skb, iph, PD_DST_INPUT);
 
@@ -1155,25 +1045,6 @@ drop:
 	return NET_RX_DROP;
 }
 
-static int diag_ip_send_skb(struct sk_buff *skb)
-{
-	struct net *net = sock_net(skb->sk);
-	int err;
-	const struct iphdr *iph = ip_hdr(skb);
-
-	err = ip_local_out(skb);
-	if (err)
-	{
-		if (err > 0)
-			err = net_xmit_errno(err);
-		if (err)
-			IP_INC_STATS(net, IPSTATS_MIB_OUTDISCARDS);
-	}
-
-	inspect_packet(skb, iph, PD_SEND_SKB);
-
-	return err;
-}
 #endif
 
 static int new_ip_local_deliver(struct sk_buff *skb)
@@ -1182,17 +1053,6 @@ static int new_ip_local_deliver(struct sk_buff *skb)
 
 	atomic64_inc_return(&diag_nr_running);
 	ret = diag_ip_local_deliver(skb);
-	atomic64_dec_return(&diag_nr_running);
-
-	return ret;
-}
-
-int new_ip_rcv(struct sk_buff *skb, struct net_device *dev, struct packet_type *pt, struct net_device *orig_dev)
-{
-	int ret;
-
-	atomic64_inc_return(&diag_nr_running);
-	ret = diag_ip_rcv(skb, dev, pt, orig_dev);
 	atomic64_dec_return(&diag_nr_running);
 
 	return ret;
@@ -1221,26 +1081,13 @@ int new_ip_rcv_finish(struct sk_buff *skb)
 	return ret;
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
-int new_ip_send_skb(struct net *net, struct sk_buff *skb)
+#if KERNEL_VERSION(3, 10, 0) <= LINUX_VERSION_CODE
+__maybe_unused static void trace_net_dev_xmit_hit(void *ignore, struct sk_buff *skb,
+						  int rc, struct net_device *dev, unsigned int skb_len)
 #else
-int new_ip_send_skb(struct sk_buff *skb)
+__maybe_unused static void trace_net_dev_xmit_hit(struct sk_buff *skb,
+						  int rc, struct net_device *dev, unsigned int skb_len)
 #endif
-{
-	int ret;
-
-	atomic64_inc_return(&diag_nr_running);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
-	ret = diag_ip_send_skb(net, skb);
-#else
-	ret = diag_ip_send_skb(skb);
-#endif
-	atomic64_dec_return(&diag_nr_running);
-
-	return ret;
-}
-static void trace_net_dev_xmit_hit(void *ignore, struct sk_buff *skb,
-								   int rc, struct net_device *dev, unsigned int skb_len)
 {
 	struct iphdr *iphdr;
 
@@ -1250,16 +1097,42 @@ static void trace_net_dev_xmit_hit(void *ignore, struct sk_buff *skb,
 	if (rc != NETDEV_TX_OK)
 		return;
 
+	if (skb->protocol != cpu_to_be16(ETH_P_IP))
+		return;
+
 	iphdr = ip_hdr(skb);
-	inspect_packet(skb, iphdr, PD_SEND_SKB);
+	if (virt_addr_valid(iphdr)) {
+		inspect_packet(skb, iphdr, PD_DEV_XMIT);
+	}
 }
+
+#if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
+__maybe_unused static void trace_net_dev_start_xmit_hit(void *ignore, struct sk_buff *skb, struct net_device *dev)
+{
+	struct iphdr *iphdr;
+
+	if (!ping_delay_settings.activated)
+		return;
+
+	if (skb->protocol != cpu_to_be16(ETH_P_IP))
+		return;
+
+	iphdr = ip_hdr(skb);
+	inspect_packet(skb, iphdr, PD_DEV_XMIT);
+}
+#endif
 
 static int kprobe_eth_type_trans_pre(struct kprobe *p, struct pt_regs *regs)
 {
 	struct sk_buff *skb = (void *)ORIG_PARAM1(regs);
+	struct ethhdr *eth;
 	struct iphdr *iphdr;
 
 	if (!ping_delay_settings.activated)
+		return 0;
+
+	eth = (struct ethhdr *)skb->data;
+	if (eth->h_proto != cpu_to_be16(ETH_P_IP))
 		return 0;
 
 	iphdr = (struct iphdr *)(skb->data + ETH_HLEN);
@@ -1285,12 +1158,15 @@ static int kprobe_napi_gro_receive_pre(struct kprobe *p, struct pt_regs *regs)
 	return 0;
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
-#define PTYPE_HASH_SIZE	(16)
-#define PTYPE_HASH_MASK	(PTYPE_HASH_SIZE - 1)
-static struct list_head (*orig_ptype_base);
+static struct list_head (*orig_offload_base);
+
 DEFINE_ORIG_FUNC(int, napi_gro_complete, 1,
         struct sk_buff *, skb);
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
+
+#define PTYPE_HASH_SIZE	(16)
+#define PTYPE_HASH_MASK	(PTYPE_HASH_SIZE - 1)
 
 static int diag_napi_gro_complete(struct sk_buff *skb)
 {
@@ -1315,12 +1191,12 @@ static int diag_napi_gro_complete(struct sk_buff *skb)
 	rcu_read_unlock();
 
 	if (err) {
-		struct iphdr *iphdr;
-
 		WARN_ON(&ptype->list == head);
 
-		iphdr = (struct iphdr *)skb->data;
-		inspect_packet(skb, iphdr, PD_GRO_RECV_ERR);
+		if (type == cpu_to_be16(ETH_P_IP)) {
+			struct iphdr *iphdr = (struct iphdr *)skb->data;
+			inspect_packet(skb, iphdr, PD_GRO_RECV_ERR);
+		}
 
 		kfree_skb(skb);
 		return NET_RX_SUCCESS;
@@ -1328,23 +1204,9 @@ static int diag_napi_gro_complete(struct sk_buff *skb)
 
 out:
 	return netif_receive_skb(skb);
-}
-
-static int new_napi_gro_complete(struct sk_buff *skb)
-{
-	int ret;
-
-	atomic64_inc_return(&diag_nr_running);
-	ret = diag_napi_gro_complete(skb);
-	atomic64_dec_return(&diag_nr_running);
-
-	return ret;
 }
 
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0)
-static struct list_head *orig_offload_base;
-DEFINE_ORIG_FUNC(int, napi_gro_complete, 1,
-	struct sk_buff *, skb);
 
 static int diag_napi_gro_complete(struct sk_buff *skb)
 {
@@ -1371,12 +1233,12 @@ static int diag_napi_gro_complete(struct sk_buff *skb)
 	rcu_read_unlock();
 
 	if (err) {
-		struct iphdr *iphdr;
-
 		WARN_ON(&ptype->list == head);
 
-		iphdr = (struct iphdr *)skb->data;
-		inspect_packet(skb, iphdr, PD_GRO_RECV_ERR);
+		if (type == cpu_to_be16(ETH_P_IP)) {
+			struct iphdr *iphdr = (struct iphdr *)skb->data;
+			inspect_packet(skb, iphdr, PD_GRO_RECV_ERR);
+		}
 
 		kfree_skb(skb);
 		return NET_RX_SUCCESS;
@@ -1386,21 +1248,9 @@ out:
 	return netif_receive_skb(skb);
 }
 
-static int new_napi_gro_complete(struct sk_buff *skb)
-{
-	int ret;
-
-	atomic64_inc_return(&diag_nr_running);
-	ret = diag_napi_gro_complete(skb);
-	atomic64_dec_return(&diag_nr_running);
-
-	return ret;
-}
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
-static struct list_head *orig_offload_base;
+
 static int (*orig_netif_receive_skb_internal)(struct sk_buff *skb);
-DEFINE_ORIG_FUNC(int, napi_gro_complete, 1,
-	struct sk_buff *, skb);
 
 static int diag_napi_gro_complete(struct sk_buff *skb)
 {
@@ -1427,12 +1277,12 @@ static int diag_napi_gro_complete(struct sk_buff *skb)
 	rcu_read_unlock();
 
 	if (err) {
-		struct iphdr *iphdr;
-
 		WARN_ON(&ptype->list == head);
 
-		iphdr = (struct iphdr *)skb->data;
-		inspect_packet(skb, iphdr, PD_GRO_RECV_ERR);
+		if (type == cpu_to_be16(ETH_P_IP)) {
+			struct iphdr *iphdr = (struct iphdr *)skb->data;
+			inspect_packet(skb, iphdr, PD_GRO_RECV_ERR);
+		}
 
 		kfree_skb(skb);
 		return NET_RX_SUCCESS;
@@ -1442,22 +1292,15 @@ out:
 	return orig_netif_receive_skb_internal(skb);
 }
 
-static int new_napi_gro_complete(struct sk_buff *skb)
-{
-	int ret;
-
-	atomic64_inc_return(&diag_nr_running);
-	ret = diag_napi_gro_complete(skb);
-	atomic64_dec_return(&diag_nr_running);
-
-	return ret;
-}
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 20, 0)
+
+static int (*orig_netif_receive_skb_internal)(struct sk_buff *skb);
+
 static int diag_napi_gro_complete(struct sk_buff *skb)
 {
     struct packet_offload *ptype;
     __be16 type = skb->protocol;
-    struct list_head *head = &offload_base;
+    struct list_head *head = orig_offload_base;
     int err = -ENOENT;
 
     BUILD_BUG_ON(sizeof(struct napi_gro_cb) > sizeof(skb->cb));
@@ -1478,20 +1321,22 @@ static int diag_napi_gro_complete(struct sk_buff *skb)
     rcu_read_unlock();
 
     if (err) {
-	struct iphdr *iphdr;
-
         WARN_ON(&ptype->list == head);
 
-	iphdr = (struct iphdr *)skb->data;
-	inspect_packet(skb, iphdr, PD_GRO_RECV_ERR);
+	if (type == cpu_to_be16(ETH_P_IP)) {
+		struct iphdr *iphdr = (struct iphdr *)skb->data;
+		inspect_packet(skb, iphdr, PD_GRO_RECV_ERR);
+	}
 
         kfree_skb(skb);
         return NET_RX_SUCCESS;
     }
 
 out:
-    return netif_receive_skb_internal(skb);
+    return orig_netif_receive_skb_internal(skb);
 }
+
+#endif
 
 static int new_napi_gro_complete(struct sk_buff *skb)
 {
@@ -1503,9 +1348,9 @@ static int new_napi_gro_complete(struct sk_buff *skb)
 
 	return ret;
 }
-#endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
+
 static int (*orig_get_rps_cpu)(struct net_device *dev, struct sk_buff *skb,
 		       struct rps_dev_flow **rflowp);
 static int (*orig___netif_receive_skb)(struct sk_buff *skb);
@@ -1526,10 +1371,10 @@ static int diag_netif_receive_skb(struct sk_buff *skb)
 		ret = orig___netif_receive_skb(skb);
 
 	if (ret == NET_RX_DROP) {
-		struct iphdr *iphdr;
-
-		iphdr = (struct iphdr *)skb->data;
-		inspect_packet(skb, iphdr, PD_RECV_SKB_DROP);
+		if (skb->protocol == cpu_to_be16(ETH_P_IP)) {
+			struct iphdr *iphdr = (struct iphdr *)skb->data;
+			inspect_packet(skb, iphdr, PD_RECV_SKB_DROP);
+		}
 	}
 
 	return ret;
@@ -1545,11 +1390,13 @@ static int new_netif_receive_skb(struct sk_buff *skb)
 
 	return ret;
 }
+
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0)
+
 static int (*orig___netif_receive_skb_core)(struct sk_buff *skb, bool pfmemalloc);
 DEFINE_ORIG_FUNC(int, __netif_receive_skb, 1, struct sk_buff *, skb);
 
-static int diag__netif_receive_skb(struct sk_buff *skb)
+static int diag___netif_receive_skb(struct sk_buff *skb)
 {
 	int ret;
 
@@ -1572,10 +1419,10 @@ static int diag__netif_receive_skb(struct sk_buff *skb)
 		ret = orig___netif_receive_skb_core(skb, false);
 
 	if (ret == NET_RX_DROP) {
-		struct iphdr *iphdr;
-
-		iphdr = (struct iphdr *)skb->data;
-		inspect_packet(skb, iphdr, PD_RECV_SKB_DROP);
+		if (skb->protocol == cpu_to_be16(ETH_P_IP)) {
+			struct iphdr *iphdr = (struct iphdr *)skb->data;
+			inspect_packet(skb, iphdr, PD_RECV_SKB_DROP);
+		}
 	}
 
 	return ret;
@@ -1586,16 +1433,18 @@ static int new___netif_receive_skb(struct sk_buff *skb)
 	int ret;
 
 	atomic64_inc_return(&diag_nr_running);
-	ret = diag__netif_receive_skb(skb);
+	ret = diag___netif_receive_skb(skb);
 	atomic64_dec_return(&diag_nr_running);
 
 	return ret;
 }
+
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
+
 static int (*orig___netif_receive_skb_core)(struct sk_buff *skb, bool pfmemalloc);
 DEFINE_ORIG_FUNC(int, __netif_receive_skb, 1, struct sk_buff *, skb);
 
-static int diag__netif_receive_skb(struct sk_buff *skb)
+static int diag___netif_receive_skb(struct sk_buff *skb)
 {
 	int ret;
 
@@ -1618,10 +1467,10 @@ static int diag__netif_receive_skb(struct sk_buff *skb)
 		ret = orig___netif_receive_skb_core(skb, false);
 
 	if (ret == NET_RX_DROP) {
-		struct iphdr *iphdr;
-
-		iphdr = (struct iphdr *)skb->data;
-		inspect_packet(skb, iphdr, PD_RECV_SKB_DROP);
+		if (skb->protocol == cpu_to_be16(ETH_P_IP)) {
+			struct iphdr *iphdr = (struct iphdr *)skb->data;
+			inspect_packet(skb, iphdr, PD_RECV_SKB_DROP);
+		}
 	}
 
 	return ret;
@@ -1632,16 +1481,30 @@ static int new___netif_receive_skb(struct sk_buff *skb)
 	int ret;
 
 	atomic64_inc_return(&diag_nr_running);
-	ret = diag__netif_receive_skb(skb);
+	ret = diag___netif_receive_skb(skb);
 	atomic64_dec_return(&diag_nr_running);
 
 	return ret;
 }
+
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 20, 0)
+
 static int (*orig___netif_receive_skb_one_core)(struct sk_buff *skb, bool pfmemalloc);
 DEFINE_ORIG_FUNC(int, __netif_receive_skb, 1, struct sk_buff *, skb);
 
-static int diag__netif_receive_skb(struct sk_buff *skb)
+static inline unsigned int memalloc_noreclaim_save(void)
+{
+	unsigned int flags = current->flags & PF_MEMALLOC;
+	current->flags |= PF_MEMALLOC;
+	return flags;
+}
+
+static inline void memalloc_noreclaim_restore(unsigned int flags)
+{
+	current->flags = (current->flags & ~PF_MEMALLOC) | flags;
+}
+
+static int diag___netif_receive_skb(struct sk_buff *skb)
 {
 	int ret;
 
@@ -1664,10 +1527,10 @@ static int diag__netif_receive_skb(struct sk_buff *skb)
 		ret = orig___netif_receive_skb_one_core(skb, false);
 
 	if (ret == NET_RX_DROP) {
-		struct iphdr *iphdr;
-
-		iphdr = (struct iphdr *)skb->data;
-		inspect_packet(skb, iphdr, PD_RECV_SKB_DROP);
+		if (skb->protocol == cpu_to_be16(ETH_P_IP)) {
+			struct iphdr *iphdr = (struct iphdr *)skb->data;
+			inspect_packet(skb, iphdr, PD_RECV_SKB_DROP);
+		}
 	}
 
 	return ret;
@@ -1678,11 +1541,12 @@ static int new___netif_receive_skb(struct sk_buff *skb)
 	int ret;
 
 	atomic64_inc_return(&diag_nr_running);
-	ret = diag__netif_receive_skb(skb);
+	ret = diag___netif_receive_skb(skb);
 	atomic64_dec_return(&diag_nr_running);
 
 	return ret;
 }
+
 #endif
 
 static int kprobe___netif_receive_skb_core_pre(struct kprobe *p, struct pt_regs *regs)
@@ -1702,23 +1566,19 @@ static int kprobe___netif_receive_skb_core_pre(struct kprobe *p, struct pt_regs 
 	return 0;
 }
 
-__maybe_unused static int kprobe_ip_rcv_finish_pre(struct kprobe *p, struct pt_regs *regs)
+static int kprobe_ip_rcv_pre(struct kprobe *p, struct pt_regs *regs)
 {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0)
-	struct sk_buff *skb = (void *)ORIG_PARAM2(regs);
-#else
-	struct sk_buff *skb = (void *)ORIG_PARAM3(regs);
-#endif
-	struct iphdr *iphdr;
+	struct sk_buff *skb = (void *)ORIG_PARAM1(regs);
+	struct iphdr *iph;
 
-	if (!ping_delay_settings.activated)
-		return 0;
+        if (!ping_delay_settings.activated)
+                return 0;
 
-	if (skb->protocol != cpu_to_be16(ETH_P_IP))
-		return 0;
+        if (skb->pkt_type == PACKET_OTHERHOST)
+                return 0;
 
-	iphdr = ip_hdr(skb);
-	inspect_packet(skb, iphdr, PD_IP_RCV_FINISH);
+        iph = ip_hdr(skb);
+        inspect_packet(skb, iph, PD_IP_RCV);
 
 	return 0;
 }
@@ -1731,11 +1591,26 @@ static int kprobe_icmp_rcv_pre(struct kprobe *p, struct pt_regs *regs)
 	if (!ping_delay_settings.activated)
 		return 0;
 
-	if (skb->protocol != cpu_to_be16(ETH_P_IP))
+	iphdr = ip_hdr(skb);
+	inspect_packet(skb, iphdr, PD_ICMP_RCV);
+
+	return 0;
+}
+
+static int kprobe_ip_send_skb_pre(struct kprobe *p, struct pt_regs *regs)
+{
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
+	struct sk_buff *skb = (void *)ORIG_PARAM1(regs);
+#else
+	struct sk_buff *skb = (void *)ORIG_PARAM2(regs);
+#endif
+	struct iphdr *iphdr;
+
+	if (!ping_delay_settings.activated)
 		return 0;
 
 	iphdr = ip_hdr(skb);
-	inspect_packet(skb, iphdr, PD_ICMP_RCV);
+	inspect_packet(skb, iphdr, PD_IP_SEND);
 
 	return 0;
 }
@@ -1748,11 +1623,11 @@ static int kprobe_dev_queue_xmit_pre(struct kprobe *p, struct pt_regs *regs)
 	if (!ping_delay_settings.activated)
 		return 0;
 
-	iphdr = ip_hdr(skb);
-	if (iphdr->protocol != IPPROTO_ICMP)
+	if (skb->protocol != cpu_to_be16(ETH_P_IP))
 		return 0;
 
-	inspect_packet(skb, iphdr, PD_SEND_SKB);
+	iphdr = ip_hdr(skb);
+	inspect_packet(skb, iphdr, PD_QUEUE_XMIT);
 
 	return 0;
 }
@@ -1767,24 +1642,22 @@ static int __activate_ping_delay(void)
 	ping_delay_alloced = 1;
 
 	JUMP_CHECK(ip_local_deliver);
-	JUMP_CHECK(ip_rcv);
 	JUMP_CHECK(ip_rcv_finish);
-	JUMP_CHECK(ip_send_skb);
+	JUMP_CHECK(napi_gro_complete);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
-	JUMP_CHECK(napi_gro_complete);
 	JUMP_CHECK(netif_receive_skb);
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0)
-	JUMP_CHECK(napi_gro_complete);
+#else
 	JUMP_CHECK(__netif_receive_skb);
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
-	JUMP_CHECK(napi_gro_complete);
-	JUMP_CHECK(__netif_receive_skb);
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 20, 0)
 #endif
 
 	clean_data();
 
+#if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
+	hook_tracepoint("net_dev_start_xmit", trace_net_dev_start_xmit_hit, NULL);
+#else
 	hook_tracepoint("net_dev_xmit", trace_net_dev_xmit_hit, NULL);
+#endif
+
 	hook_kprobe(&kprobe_dev_queue_xmit, "dev_queue_xmit",
 				kprobe_dev_queue_xmit_pre, NULL);
 	hook_kprobe(&kprobe_eth_type_trans, "eth_type_trans",
@@ -1793,8 +1666,12 @@ static int __activate_ping_delay(void)
 				kprobe_napi_gro_receive_pre, NULL);
 	hook_kprobe(&kprobe___netif_receive_skb_core, "__netif_receive_skb_core",
 				kprobe___netif_receive_skb_core_pre, NULL);
+	hook_kprobe(&kprobe_ip_rcv, "ip_rcv",
+				kprobe_ip_rcv_pre, NULL);
 	hook_kprobe(&kprobe_icmp_rcv, "icmp_rcv",
 				kprobe_icmp_rcv_pre, NULL);
+	hook_kprobe(&kprobe_ip_send_skb, "ip_send_skb",
+				kprobe_ip_send_skb_pre, NULL);
 
 	hook_tracepoint("irq_handler_entry", trace_irq_handler_entry_hit, NULL);
 	hook_tracepoint("irq_handler_exit", trace_irq_handler_exit_hit, NULL);
@@ -1804,19 +1681,12 @@ static int __activate_ping_delay(void)
 	get_online_cpus();
 	mutex_lock(orig_text_mutex);
 	JUMP_INSTALL(ip_local_deliver);
-	JUMP_INSTALL(ip_rcv);
 	JUMP_INSTALL(ip_rcv_finish);
-	JUMP_INSTALL(ip_send_skb);
+	JUMP_INSTALL(napi_gro_complete);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
-	JUMP_INSTALL(napi_gro_complete);
 	JUMP_INSTALL(netif_receive_skb);
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0)
-	JUMP_INSTALL(napi_gro_complete);
+#else
 	JUMP_INSTALL(__netif_receive_skb);
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
-	JUMP_INSTALL(napi_gro_complete);
-	JUMP_INSTALL(__netif_receive_skb);
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 20, 0)
 #endif
 	mutex_unlock(orig_text_mutex);
 	put_online_cpus();
@@ -1829,12 +1699,19 @@ out_variant_buffer:
 
 static void __deactivate_ping_delay(void)
 {
+#if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
+	unhook_tracepoint("net_dev_start_xmit", trace_net_dev_start_xmit_hit, NULL);
+#else
 	unhook_tracepoint("net_dev_xmit", trace_net_dev_xmit_hit, NULL);
+#endif
+
 	unhook_kprobe(&kprobe_dev_queue_xmit);
 	unhook_kprobe(&kprobe_eth_type_trans);
 	unhook_kprobe(&kprobe_napi_gro_receive);
 	unhook_kprobe(&kprobe___netif_receive_skb_core);
+	unhook_kprobe(&kprobe_ip_rcv);
 	unhook_kprobe(&kprobe_icmp_rcv);
+	unhook_kprobe(&kprobe_ip_send_skb);
 
 	unhook_tracepoint("irq_handler_entry", trace_irq_handler_entry_hit, NULL);
 	unhook_tracepoint("irq_handler_exit", trace_irq_handler_exit_hit, NULL);
@@ -1844,19 +1721,12 @@ static void __deactivate_ping_delay(void)
 	get_online_cpus();
 	mutex_lock(orig_text_mutex);
 	JUMP_REMOVE(ip_local_deliver);
-	JUMP_REMOVE(ip_rcv);
 	JUMP_REMOVE(ip_rcv_finish);
-	JUMP_REMOVE(ip_send_skb);
+	JUMP_REMOVE(napi_gro_complete);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
-	JUMP_REMOVE(napi_gro_complete);
 	JUMP_REMOVE(netif_receive_skb);
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0)
-	JUMP_REMOVE(napi_gro_complete);
+#else
 	JUMP_REMOVE(__netif_receive_skb);
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
-	JUMP_REMOVE(napi_gro_complete);
-	JUMP_REMOVE(__netif_receive_skb);
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 20, 0)
 #endif
 	mutex_unlock(orig_text_mutex);
 	put_online_cpus();
@@ -1891,33 +1761,27 @@ static int lookup_syms(void)
 {
 	LOOKUP_SYMS(inet_protos);
 	LOOKUP_SYMS(ip_rcv_finish);
-	LOOKUP_SYMS(ip_rcv);
-	LOOKUP_SYMS(ip_rcv_finish);
-	LOOKUP_SYMS(ip_send_skb);
 	LOOKUP_SYMS(ip_local_deliver_finish);
 	LOOKUP_SYMS(ip_local_deliver);
+	LOOKUP_SYMS(napi_gro_complete);
+	LOOKUP_SYMS(__netif_receive_skb);
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(2, 6, 32)
 	LOOKUP_SYMS(ip_options_rcv_srr);
 	LOOKUP_SYMS(ip_options_compile);
 	LOOKUP_SYMS(ptype_base);
-	LOOKUP_SYMS(napi_gro_complete);
 	LOOKUP_SYMS(get_rps_cpu);
-	LOOKUP_SYMS(__netif_receive_skb);
 	LOOKUP_SYMS(enqueue_to_backlog);
 	LOOKUP_SYMS(netif_receive_skb);
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0)
 	LOOKUP_SYMS(offload_base);
-	LOOKUP_SYMS(napi_gro_complete);
-	LOOKUP_SYMS(__netif_receive_skb);
 	LOOKUP_SYMS(__netif_receive_skb_core);
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
 	LOOKUP_SYMS(offload_base);
 	LOOKUP_SYMS(netif_receive_skb_internal);
-	LOOKUP_SYMS(napi_gro_complete);
-	LOOKUP_SYMS(__netif_receive_skb);
 	LOOKUP_SYMS(__netif_receive_skb_core);
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 20, 0)
-	LOOKUP_SYMS(__netif_receive_skb);
+	LOOKUP_SYMS(offload_base);
+	LOOKUP_SYMS(netif_receive_skb_internal);
 	LOOKUP_SYMS(__netif_receive_skb_one_core);
 #endif
 	LOOKUP_SYMS(softirq_vec);
@@ -1927,19 +1791,12 @@ static int lookup_syms(void)
 static void jump_init(void)
 {
 	JUMP_INIT(ip_local_deliver);
-	JUMP_INIT(ip_rcv);
 	JUMP_INIT(ip_rcv_finish);
-	JUMP_INIT(ip_send_skb);
+	JUMP_INIT(napi_gro_complete);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
-	JUMP_INIT(napi_gro_complete);
 	JUMP_INIT(netif_receive_skb);
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0)
-	JUMP_INIT(napi_gro_complete);
+#else
 	JUMP_INIT(__netif_receive_skb);
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
-	JUMP_INIT(napi_gro_complete);
-	JUMP_INIT(__netif_receive_skb);
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 20, 0)
 #endif
 }
 
@@ -1955,7 +1812,7 @@ static ssize_t dump_data(void)
 
 	list_for_each_entry(this, &header, list) {
 		summary.et_type = et_ping_delay_summary;
-		do_gettimeofday(&summary.tv);
+		do_diag_gettimeofday(&summary.tv);
 		summary.saddr = this->saddr;
 		summary.daddr = this->daddr;
 		summary.echo_id = this->echo_id;
@@ -2101,7 +1958,9 @@ void diag_net_ping_delay_exit(void)
 
 	return;
 }
-#else
+
+#else  // > 5.10.0
+
 int diag_net_ping_delay_init(void)
 {
 	return 0;
@@ -2109,6 +1968,7 @@ int diag_net_ping_delay_init(void)
 
 void diag_net_ping_delay_exit(void)
 {
-	//
 }
+
 #endif
+

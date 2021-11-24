@@ -19,8 +19,8 @@ struct event_common_header {
 	int seq;
 	unsigned long id;
 	unsigned long delta_ns;
-	struct timeval start_tv;
-	struct timeval tv;
+	struct diag_timespec start_tv;
+	struct diag_timespec tv;
 	struct diag_task_detail task;
 };
 

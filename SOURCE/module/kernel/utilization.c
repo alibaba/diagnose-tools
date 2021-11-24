@@ -42,7 +42,7 @@
 
 #include "uapi/utilization.h"
 
-#if !defined(ALIOS_7U)
+#if !defined(ALIOS_7U) || defined(ALIOS_4000)
 /**
  * 只支持7u
  */
@@ -115,7 +115,7 @@ static void dump_task_info(struct task_struct *tsk)
 		return;
 
 	detail->et_type = et_utilization_detail;
-	do_gettimeofday(&detail->tv);
+	do_diag_gettimeofday(&detail->tv);
 	diag_task_brief(tsk, &detail->task);
 		if (utilization_settings.style == 2) {
 		dump_proc_chains_simple(tsk, &detail->proc_chains);
@@ -220,7 +220,9 @@ __maybe_unused static void trace_sched_process_exit_hit(struct task_struct *tsk)
 	if (!tsk)
 		return;
 
-	dump_task_info(tsk);
+	if (thread_group_leader(tsk)) {
+		dump_task_info(tsk);
+	}
 
 	if (utilization_settings.style == 1) {
 		diag_hook_process_exit_exec(tsk, &mm_tree);
@@ -438,7 +440,7 @@ int utilization_syscall(struct pt_regs *regs, long id)
 			char *isolate = per_cpu(isolate_cgroup_name, cpu);
 			struct cpuacct *cpuacct;
 			struct cgroup *cgroup;
-			
+
 			ret = copy_from_user(isolate, user_buf, user_buf_len);
 			isolate[CGROUP_NAME_LEN - 1] = 0;
 
@@ -498,7 +500,7 @@ long diag_ioctl_utilization(unsigned int cmd, unsigned long arg)
 		break;
 	case CMD_UTILIZATION_ISOLATE:
 		ret = copy_from_user(&isolate_param, (void *)arg, sizeof(struct diag_ioctl_utilization_isolate));
-		
+
 		if (!ret) {
 			if (isolate_param.user_buf_len >= CGROUP_NAME_LEN)
 				isolate_param.user_buf_len = CGROUP_NAME_LEN - 1;
@@ -508,7 +510,7 @@ long diag_ioctl_utilization(unsigned int cmd, unsigned long arg)
 				char *isolate = per_cpu(isolate_cgroup_name, isolate_param.cpu);
 				struct cpuacct *cpuacct;
 				struct cgroup *cgroup;
-				
+
 				ret = copy_from_user(isolate, isolate_param.user_buf, isolate_param.user_buf_len);
 				isolate[CGROUP_NAME_LEN - 1] = 0;
 

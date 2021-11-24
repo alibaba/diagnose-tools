@@ -2,6 +2,7 @@
 CWD = $(shell pwd)
 ARCH := $(shell uname -i)
 UNAME_A := $(shell uname -a)
+DEPS := $(shell pwd)/deps/
 
 ifeq ($(JOBS),)
 	JOBS := $(shell grep -c ^processor /proc/cpuinfo 2>/dev/null)
@@ -16,13 +17,13 @@ ifneq ($(findstring Ubuntu,$(UNAME_A) $(shell test -e /etc/os-release && head -1
 	cd rpmbuild; sudo dpkg -i diagnose-tools*.deb
 else
 	yum remove -y diagnose-tools
-	yum install -y rpmbuild/RPMS/x86_64/diagnose-tools-*.rpm
+	yum localinstall -y rpmbuild/RPMS/${ARCH}/diagnose-tools-*.rpm
 	diagnose-tools -v
 endif
 
 devel:
 ifneq ($(findstring Ubuntu,$(UNAME_A) $(shell test -e /etc/os-release && head -1 /etc/os-release)),)
-	apt update
+	#apt update
 	apt -y install gcc
 	apt -y install g++
 	apt -y install libunwind8-dev
@@ -42,18 +43,28 @@ else
 	yum install -y libunwind
 	yum install -y libunwind-devel
 	yum install -y elfutils-libelf-devel
-	yum install -y java-1.7.0-openjdk-devel
+	yum install -y java-1.8.0-openjdk-devel
 	yum install -y rpm-build
 	yum install -y xz-libs
 	yum install -y xz-devel
+	yum install -y gettext*
+	yum install -y autoconf
+	yum install -y libtool
+	yum install -y flex
+	yum install -y bison
+	yum install -y openssl-static
 endif
 	sh ./vender/devel.sh
 
+#ARM静态编译参数：-static-libgcc -static-libstdc++ -L`pwd` -L/usr/lib64 -lunwind-aarch64 -lunwind -lelf -llzma -lz
+
 deps:
-	#cd SOURCE/diagnose-tools/elfutils; autoreconf -ivf; ./configure CFLAGS="-g -O2" --disable-debuginfod --enable-maintainer-mode --prefix=$(PWD)/SOURCE/diagnose-tools/deps; make install
-	#cd SOURCE/diagnose-tools/libunwind; ./autogen.sh; ./configure CFLAGS="-g -O2" --prefix=$(PWD)/SOURCE/diagnose-tools/deps; make install
-	#cd SOURCE/diagnose-tools/xz; ./autogen.sh; ./configure CFLAGS="-g -O2" --prefix=$(PWD)/SOURCE/diagnose-tools/deps; make install
-	#cd SOURCE/diagnose-tools/zlib; ./configure --prefix=$(PWD)/SOURCE/diagnose-tools/deps; make install
+	cd $(DEPS)/elfutils; autoreconf -ivf; ./configure CFLAGS="-g -O2" --disable-debuginfod --enable-maintainer-mode --prefix=${DEPS}/; make install
+	cd $(DEPS)/libunwind; ./autogen.sh; ./configure CFLAGS="-g -O2" --prefix=${DEPS}/; make install
+	cd $(DEPS)/xz; ./autogen.sh; ./configure CFLAGS="-g -O2" --prefix=${DEPS}/; make install
+	cd $(DEPS)/zlib; ./configure --prefix=${DEPS}/; make install
+	cd $(DEPS)/libssh2; ./configure --prefix=${DEPS}/; make install
+
 	cd SOURCE/diagnose-tools/java_agent; make
 	sh ./vender/deps.sh
 
@@ -65,7 +76,7 @@ module:
 	/bin/cp -f SOURCE/module/diagnose.ko build/lib/`uname -r`/
 
 tools:
-	cd SOURCE/diagnose-tools; make clean; VENDER_LDFLAGS="${VENDER_LDFLAGS}" make --jobs=${JOBS}
+	cd SOURCE/diagnose-tools; make clean; VENDER_LDFLAGS="-static -L${DEPS}/lib -L${DEPS}/elfutils/libdwfl/" make --jobs=${JOBS}
 
 java_agent:
 	cd SOURCE/diagnose-tools/java_agent; make --jobs=${JOBS}

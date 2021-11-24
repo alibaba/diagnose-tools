@@ -49,10 +49,10 @@ void usage_load_monitor(void)
 	printf("            verbose VERBOSE\n");
 	printf("            style dump style: 0 - common, 1 - process chains\n");
 	printf("            mass dump all data if mass=1\n");
-	printf("            load threshold for load(ms)\n");
-	printf("            load.r threshold for load.r(ms)\n");
-	printf("            load.d threshold for load.d(ms)\n");
-	printf("            task.d threshold for task.d(ms)\n");
+	printf("            load threshold for load, default 1000\n");
+	printf("            load.r threshold for load.r, default 500\n");
+	printf("            load.d threshold for load.d, default 100\n");
+	printf("            task.d threshold for task.d\n");
 	printf("        --settings print settings.\n");
 	printf("        --deactivate\n");
 	printf("        --report dump log with text.\n");
@@ -67,13 +67,14 @@ static void do_activate(const char *arg)
 
 	memset(&settings, 0, sizeof(struct diag_load_monitor_settings));
 	
-	settings.threshold_load = parse.int_value("load");
-	settings.threshold_load_r = parse.int_value("load-r");
-	settings.threshold_load_d = parse.int_value("load-d");
-	settings.threshold_task_d = parse.int_value("task-d");
+	settings.threshold_load = parse.int_value("load", 1000);
+	settings.threshold_load_r = parse.int_value("load.r", 500);
+	settings.threshold_load_d = parse.int_value("load.d", 100);
+	settings.threshold_task_d = parse.int_value("task.d");
 	settings.verbose = parse.int_value("verbose");
 	settings.style = parse.int_value("style");
 	settings.mass = parse.int_value("mass");
+	settings.cpu_run = parse.int_value("cpu.run");
 
 	if (run_in_host) {
 		ret = diag_call_ioctl(DIAG_IOCTL_LOAD_MONITOR_SET, (long)&settings);
@@ -180,6 +181,7 @@ static int load_monitor_extract(void *buf, unsigned int len, void *)
 	int *et_type;
 	struct load_monitor_detail *detail;
 	struct load_monitor_task *tsk_info;
+	struct load_monitor_cpu_run *cpu_run;
 	static int seq = 0;
 
 	if (len == 0)
@@ -227,6 +229,30 @@ static int load_monitor_extract(void *buf, unsigned int len, void *)
 		printf("##\n");
 
 		tsk_info++;
+
+		break;
+	case et_load_monitor_cpu_run:
+		if (len < sizeof(struct load_monitor_cpu_run))
+			break;
+		cpu_run = (struct load_monitor_cpu_run *)buf;
+		printf("输出各CPU当前运行任务: CPU:%lu task:%s(%u)\n",
+			cpu_run->cpu, cpu_run->task.comm, cpu_run->task.pid);
+
+		printf("##CGROUP:[%s]  %u      [%03d]  采样命中[%s]\n",
+				cpu_run->task.cgroup_buf,
+				cpu_run->task.pid,
+				seq,
+				cpu_run->task.state == 0 ? "R" : "D");
+
+		diag_printf_kern_stack(&cpu_run->kern_stack);
+		diag_printf_user_stack(cpu_run->task.tgid,
+				       cpu_run->task.container_tgid,
+				       cpu_run->task.comm,
+				       &cpu_run->user_stack);
+		printf("#*        0xffffffffffffff %s (UNKNOWN)\n",
+			cpu_run->task.comm);
+		printf("#*        0xffffffffffffff cpu:%lu (UNKNOWN)\n", cpu_run->cpu);
+		printf("##\n");
 
 		break;
 	default:
@@ -436,6 +462,9 @@ static void do_dump(const char *arg)
 	out_json = parse.int_value("json", 0);
 	out_flame = parse.int_value("flame", 1);
 
+	g_symbol_parser.java_only = parse.int_value("java-only", 0);
+	g_symbol_parser.user_symbol = parse.int_value("user-symbol", 1);
+
 	if (run_in_host) {
 		ret = diag_call_ioctl(DIAG_IOCTL_LOAD_MONITOR_DUMP, (long)&dump_param);
 	} else {
@@ -508,7 +537,7 @@ int load_monitor_main(int argc, char **argv)
 		case 0:
 			usage_load_monitor();
 			break;
-	  case 1:
+		case 1:
 			do_activate(optarg ? optarg : "");
 			break;
 		case 2:

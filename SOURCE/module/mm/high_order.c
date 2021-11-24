@@ -97,7 +97,7 @@ static void trace_mm_page_alloc_hit(struct page *page,
 		detail->et_type = et_high_order_detail;
 		detail->id = high_order_id;
 		detail->seq = high_order_seq;
-		do_gettimeofday(&detail->tv);
+		do_diag_gettimeofday(&detail->tv);
 		detail->order = order;
 		diag_task_brief(current, &detail->task);
 		diag_task_kern_stack(current, &detail->kern_stack);

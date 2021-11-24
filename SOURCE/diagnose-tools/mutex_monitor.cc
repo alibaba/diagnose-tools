@@ -36,8 +36,8 @@ void usage_mutex_monitor(void)
 	printf("        --help mutex-monitor help info\n");
 	printf("        --activate\n");
 	printf("            verbose VERBOSE\n");
-	printf("            threshold threshold(ms)\n");
 	printf("            style dump style: 0 - common, 1 - process chains\n");
+	printf("            threshold set the threshold for mutex(ms)\n");
 	printf("        --deactivate\n");
 	printf("        --settings dump settings with text.\n");
 	printf("        --report dump log with text.\n");
@@ -57,12 +57,7 @@ static void do_activate(const char *arg)
 	
 	settings.verbose = parse.int_value("verbose");
 	settings.style = parse.int_value("style");
-	settings.threshold = parse.int_value("threshold");
-
-	if (0 == settings.threshold)
-	{
-		settings.threshold = 1000;
-	}
+	settings.threshold = parse.int_value("threshold", 1000);
 
 	if (run_in_host) {
 		ret = diag_call_ioctl(DIAG_IOCTL_MUTEX_MONITOR_SET, (long)&settings);
@@ -106,7 +101,7 @@ static void print_settings_in_json(struct diag_mutex_monitor_settings *settings,
 
 	if (ret == 0) {
 		root["activated"] = Json::Value(settings->activated);
-		root["threshold_ms"] = Json::Value(settings->threshold);
+		root["threshold"] = Json::Value(settings->threshold);
 		root["verbose"] = Json::Value(settings->verbose);
 		root["STYLE"] = Json::Value(settings->style);
 	} else {

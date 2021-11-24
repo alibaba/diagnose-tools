@@ -53,14 +53,16 @@ static inline void __percpu_counter_add(struct percpu_counter *fbc,
 #include "uapi/utilization.h"
 #include "uapi/sig_info.h"
 #include "uapi/task_monitor.h"
+#include "uapi/rw_sem.h"
+#include "uapi/rss_monitor.h"
 #include "pub/variant_buffer.h"
 #include "pub/stack.h"
-
+#include "uapi/throttle_delay.h"
 /**
  * 手工替换函数相关的宏
  */
 #define LOOKUP_SYMS(name) do {					\
-		orig_##name = (void *)__kallsyms_lookup_name(#name);		\
+		orig_##name = (void *)diag_kallsyms_lookup_name(#name);		\
 		if (!orig_##name) {						\
 			pr_err("kallsyms_lookup_name: %s\n", #name);		\
 			return -EINVAL;						\
@@ -68,7 +70,7 @@ static inline void __percpu_counter_add(struct percpu_counter *fbc,
 	} while (0)
 
 #define LOOKUP_SYMS_NORET(name) do {							\
-		orig_##name = (void *)__kallsyms_lookup_name(#name);		\
+		orig_##name = (void *)diag_kallsyms_lookup_name(#name);		\
 		if (!orig_##name)						\
 			pr_err("kallsyms_lookup_name: %s\n", #name);		\
 	} while (0)
@@ -427,6 +429,7 @@ struct diag_percpu_context {
 	struct event_run_trace_raw event_run_trace_raw;
 	struct sys_delay_detail sys_delay_detail;
 	struct sched_delay_dither sched_delay_dither;
+	struct throttle_delay_dither throttle_delay_dither;
 
 	struct {
 		struct uprobe_detail uprobe_detail;
@@ -470,6 +473,11 @@ struct diag_percpu_context {
 	struct {
 		struct task_monitor_detail detail;
 	} task_monitor_info;
+
+	struct {
+		struct rss_monitor_detail rss_monitor_detail;
+		struct rss_monitor_raw_stack_detail rss_monitor_raw_stack_detail;
+	} rss_monitor;
 };
 
 extern struct diag_percpu_context *diag_percpu_context[NR_CPUS];
@@ -725,14 +733,34 @@ int diag_copy_stack_frame(struct task_struct *tsk,
 #define synchronize_sched synchronize_rcu
 #endif
 
-#if KERNEL_VERSION(5, 0, 0) <= LINUX_VERSION_CODE
-static inline void do_gettimeofday(struct timeval *tv)
+#ifdef ALIOS_5000
+#define  ali_reserved1    ck_reserved1
+#define  ali_reserved2    ck_reserved2
+#define  ali_reserved3    ck_reserved3
+#define  ali_reserved4    ck_reserved4
+#define  ali_reserved5    ck_reserved5
+#define  ali_reserved6    ck_reserved6
+#define  ali_reserved7    ck_reserved7
+#define  ali_reserved8    ck_reserved8
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 0)
+static inline void do_diag_gettimeofday(struct diag_timespec *tv)
+{
+	struct timespec ts;
+	ktime_get_real_ts(&ts);
+
+	tv->tv_sec = ts.tv_sec;
+	tv->tv_usec = ts.tv_nsec / 1000;
+}
+#else
+static inline void do_diag_gettimeofday(struct diag_timespec *tv)
 {
 	struct timespec64 ts;
-
 	ktime_get_real_ts64(&ts);
+
 	tv->tv_sec = ts.tv_sec;
-	tv->tv_usec = ts.tv_nsec/1000;
+	tv->tv_usec = ts.tv_nsec / 1000;
 }
 #endif
 
@@ -750,6 +778,8 @@ int activate_tcp_retrans(void);
 int deactivate_tcp_retrans(void);
 int activate_sys_delay(void);
 int deactivate_sys_delay(void);
+int activate_throttle_delay(void);
+int deactivate_throttle_delay(void);
 int activate_irq_delay(void);
 int deactivate_irq_delay(void);
 int activate_mutex_monitor(void);
@@ -807,6 +837,12 @@ int ping_delay_syscall(struct pt_regs *regs, long id);
 int diag_ping_delay_init(void);
 void diag_ping_delay_exit(void);
 
+int activate_ping_delay6(void);
+int deactivate_ping_delay6(void);
+int ping_delay6_syscall(struct pt_regs *regs, long id);
+int diag_ping_delay6_init(void);
+void diag_ping_delay6_exit(void);
+
 int activate_uprobe(void);
 int deactivate_uprobe(void);
 int diag_uprobe_init(void);
@@ -837,6 +873,20 @@ void diag_sig_info_exit(void);
 
 int activate_task_monitor(void);
 int deactivate_task_monitor(void);
+
+int activate_rw_sem(void);
+int deactivate_rw_sem(void);
+int diag_rw_sem_init(void);
+void diag_rw_sem_exit(void);
+int activate_rss_monitor(void);
+int deactivate_rss_monitor(void);
+int diag_rss_monitor_init(void);
+void diag_rss_monitor_exit(void);
+
+int activate_memcg_stats(void);
+int deactivate_memcg_stats(void);
+int diag_memcg_stats_init(void);
+void diag_memcg_stats_exit(void);
 
 int diag_dev_init(void);
 void diag_dev_cleanup(void);

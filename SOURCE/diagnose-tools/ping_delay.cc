@@ -39,7 +39,7 @@ void usage_ping_delay(void)
 	printf("        --help ping_delay help info\n");
 	printf("        --activate\n");
 	printf("          verbose VERBOSE\n");
-	printf("          addr filtered ip address.\n");
+	printf("          addr filtered ipv4 address.\n");
 	printf("        --deactivate\n");
 	printf("        --settings dump settings\n");
 	printf("        --report dump log with text.\n");

@@ -42,6 +42,7 @@
 #ifdef CENTOS_7U
 #include <linux/rhashtable.h>
 #endif
+#include <linux/delay.h>
 
 #include <asm/kdebug.h>
 
@@ -511,6 +512,67 @@ static void show_netlinks(void)
 #endif
 #endif
 
+#if defined(EXPERIENTIAL) && !defined(XBY_UBUNTU_1604)
+static unsigned long test_hrtimer_ms;
+__maybe_unused static enum hrtimer_restart test_hrtimer_handler(struct hrtimer *hrtimer)
+{
+	enum hrtimer_restart ret = HRTIMER_NORESTART;
+	unsigned long ms = test_hrtimer_ms;
+
+	if (ms >=1000)
+		ms = 1000;
+	mdelay(ms);
+
+	return ret;
+}
+
+static void test_raise_timer(void *info)
+{
+	static struct hrtimer  timer[255];
+	unsigned long ms = *(int *)info;
+
+	test_hrtimer_ms = ms;
+	hrtimer_init(&timer[smp_processor_id()], CLOCK_MONOTONIC, HRTIMER_MODE_PINNED);
+	timer[smp_processor_id()].function = test_hrtimer_handler;
+	hrtimer_start_range_ns(&timer[smp_processor_id()],
+			__ms_to_ktime(0),
+			0,
+			HRTIMER_MODE_REL_PINNED /*HRTIMER_MODE_PINNED*/);
+}
+
+static void test_irq_loop(char *cpus, int ms)
+{
+	static struct cpumask cpumask;
+
+	str_to_cpumask(cpus, &cpumask);
+	smp_call_function_many(&cpumask, test_raise_timer, &ms, 0);
+}
+
+void my_tasklet_function(unsigned long ms)
+{
+	if (ms >=1000)
+		ms = 1000;
+	mdelay(ms);
+}
+DECLARE_TASKLET(my_tasklet, my_tasklet_function, 0);
+
+static void test_raise_tasklet(void *info)
+{
+	unsigned long ms = *(int *)info;
+
+	my_tasklet.data = ms;
+	tasklet_schedule(&my_tasklet);
+}
+
+static void test_sirq_loop(char *cpus, int ms)
+{
+	static struct cpumask cpumask;
+
+	str_to_cpumask(cpus, &cpumask);
+	smp_call_function_many(&cpumask, test_raise_tasklet, &ms, 0);
+}
+#endif
+
 static ssize_t pupil_settings_file_read(struct diag_trace_file *trace_file,
 		struct file *file, char __user *buf, size_t size, loff_t *ppos)
 {
@@ -522,7 +584,7 @@ static ssize_t pupil_settings_file_read(struct diag_trace_file *trace_file,
 	diag_trace_file_printk(trace_file, "  xby-debug:\n");
 	diag_trace_file_printk(trace_file,
 		"    xby-debug1:%ld\n", atomic64_read(&xby_debug_counter1));
-	diag_trace_file_printk(trace_file, 
+	diag_trace_file_printk(trace_file,
 		"    xby-debug2:%ld\n", atomic64_read(&xby_debug_counter2));
 	diag_trace_file_printk(trace_file,
 		"    xby-debug3:%ld\n", atomic64_read(&xby_debug_counter3));
@@ -697,9 +759,7 @@ static ssize_t pupil_settings_file_write(struct diag_trace_file *trace_file,
 			last = now;
 		}
 		local_irq_enable();
-	}
-#if defined(EXPERIENTIAL) && !defined(XBY_UBUNTU_1604)
-	else if (strcmp(cmd, "mdelay") == 0) {
+	} else if (strcmp(cmd, "mdelay") == 0) {
 		int i, ms;
 
 		ret = sscanf(chr, "%s %d", cmd, &ms);
@@ -709,6 +769,31 @@ static ssize_t pupil_settings_file_write(struct diag_trace_file *trace_file,
 		for (i = 0; i < ms; i++)
 			mdelay(1);
 	}
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,4,0)
+	else if (strcmp(cmd, "kill") == 0) {
+		int id;
+		pid_t vpid;
+		struct task_struct *tsk = NULL;
+
+		ret = sscanf(chr, "%s %d", cmd, &id);
+		if (ret == 2) {
+			rcu_read_lock();
+
+			if (orig_find_task_by_pid_ns)
+				tsk = orig_find_task_by_pid_ns(id, &init_pid_ns);
+			if (tsk) {
+				vpid = task_tgid_nr_ns(tsk, task_active_pid_ns(tsk));
+				diag_trace_file_printk(&pupil_log_file,
+					"KILL process，容器内ＩＤ：%d，主机ＰＩＤ：%d，进程名称：%s, type: %d\n",
+					vpid, id, tsk->comm, diag_get_task_type(tsk));
+				force_sig(SIGKILL, tsk);
+			}
+
+			rcu_read_unlock();
+		}
+	}
+#endif
+#if defined(EXPERIENTIAL) && !defined(XBY_UBUNTU_1604)
 	else if (strcmp(cmd, "print") == 0) {
 		char sub_cmd[255];
 
@@ -741,7 +826,7 @@ static ssize_t pupil_settings_file_write(struct diag_trace_file *trace_file,
 					kprobe_pupil_pre, NULL);
 	} else if (strcmp(cmd, "kprobe-verbose") == 0) {
 		ret = sscanf(chr, "%s %d", cmd, &kprobe_verbose);
-		
+
 		if (ret != 2)
 			return -EINVAL;
 	} else if (strcmp(cmd, "kretprobe") == 0) {
@@ -752,7 +837,7 @@ static ssize_t pupil_settings_file_write(struct diag_trace_file *trace_file,
 			kretprobe_init();
 	} else if (strcmp(cmd, "kretprobe-verbose") == 0) {
 		ret = sscanf(chr, "%s %d", cmd, &kretprobe_verbose);
-		
+
 		if (ret != 2)
 			return -EINVAL;
 	} else if (strcmp(cmd, "xby-debug") == 0) {
@@ -777,7 +862,7 @@ static ssize_t pupil_settings_file_write(struct diag_trace_file *trace_file,
 			} else if (strcmp(sub_cmd, "call-rcu") == 0) {
 #if 0
 				int i;
-				
+
 				for (i = 0; i < 100000; i++) {
 					xby_debug_rcu.seq = 0;
 					call_rcu(&xby_debug_rcu.rcu, xby_debug_rcu_free);
@@ -828,7 +913,7 @@ static ssize_t pupil_settings_file_write(struct diag_trace_file *trace_file,
 			} else if (strcmp(sub_cmd, "kmalloc") == 0) {
 				static unsigned long ptrs[1024 * 1024];
 				int i;
-				
+
 				for (i = 0; i < 1024 * 1024; i++)
 					ptrs[i] = __get_free_page(GFP_ATOMIC);
 				mdelay(10 * 1000);
@@ -905,6 +990,22 @@ static ssize_t pupil_settings_file_write(struct diag_trace_file *trace_file,
 				cgroup = cpuacct_to_cgroup(acct);
 				diag_cpuacct_cgroup_name_tsk(current, buf, 255);
 #endif
+			} else if (strcmp(sub_cmd, "irq-loop") == 0) {
+ 				char cpus[255];
+				int ms;
+
+				ret = sscanf(chr, "%s %s %s %d", cmd, sub_cmd, cpus, &ms);
+				if (ret == 4) {
+					test_irq_loop(cpus, ms);
+				}
+			} else if (strcmp(sub_cmd, "sirq-loop") == 0) {
+ 				char cpus[255];
+				int ms;
+
+				ret = sscanf(chr, "%s %s %s %d", cmd, sub_cmd, cpus, &ms);
+				if (ret == 4) {
+					test_sirq_loop(cpus, ms);
+				}
 			}
 		}
 	}
@@ -929,7 +1030,7 @@ static ssize_t pupil_log_file_write(struct diag_trace_file *trace_file,
 static void save_task_info(struct task_struct *tsk, struct pupil_task_detail *detail)
 {
 	detail->et_type = et_pupil_task;
-	do_gettimeofday(&detail->tv);
+	do_diag_gettimeofday(&detail->tv);
 	detail->pid = tsk->pid;
 	detail->proc_chains.chains[0][0] = 0;
 	dump_proc_chains_simple(tsk, &detail->proc_chains);
@@ -1032,7 +1133,7 @@ long diag_ioctl_pupil_task(unsigned int cmd, unsigned long arg)
 		if (!pupil_alloced) {
 			ret = -EINVAL;
 		} else if (!ret) {
-			ret = copy_to_user_variant_buffer(&pupil_variant_buffer, dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len); 
+			ret = copy_to_user_variant_buffer(&pupil_variant_buffer, dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len);
 			record_dump_cmd("task-info");
 		}
 		break;

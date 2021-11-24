@@ -33,7 +33,7 @@ struct exit_monitor_detail {
 	int et_type;
 	int seq;
 	unsigned long id;
-	struct timeval tv;
+	struct diag_timespec tv;
 	struct diag_task_detail task;
 	struct diag_kern_stack_detail kern_stack;
 	struct diag_user_stack_detail user_stack;
@@ -44,7 +44,7 @@ struct exit_monitor_map {
 	int et_type;
 	int seq;
 	unsigned long id;
-	struct timeval tv;
+	struct diag_timespec tv;
 	struct diag_task_detail task;
 	dev_t dev;
 	unsigned long ino;

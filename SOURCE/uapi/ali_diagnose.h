@@ -17,6 +17,11 @@
 
 struct pt_regs;
 
+struct diag_timespec {
+	unsigned long tv_sec;
+	unsigned long tv_usec;
+};
+
 #ifndef __KERNEL__
 #include <unistd.h>
 #include <fcntl.h>
@@ -52,8 +57,8 @@ extern unsigned long run_in_host;
 extern unsigned long debug_mode;
 #endif
 
-#define XBY_VERSION					"diagnose-tools 2.1-release"
-#define DIAG_VERSION		((2 << 24) | (1 << 16) | 0xfffd)
+#define XBY_VERSION					"diagnose-tools 3.0-rc1"
+#define DIAG_VERSION		((3 << 24) | (0 << 16) | 0x1)
 
 #define DIAG_DEV_NAME "diagnose-tools"
 
@@ -82,7 +87,8 @@ extern unsigned long debug_mode;
 #define DIAG_IOCTL_TYPE_SCHED_DELAY (DIAG_IOCTL_TYPE_IRQ_TRACE + 1)
 #define DIAG_IOCTL_TYPE_REBOOT (DIAG_IOCTL_TYPE_SCHED_DELAY + 1)
 #define DIAG_IOCTL_TYPE_PING_DELAY (DIAG_IOCTL_TYPE_REBOOT + 1)
-#define DIAG_IOCTL_TYPE_UPROBE (DIAG_IOCTL_TYPE_PING_DELAY + 1)
+#define DIAG_IOCTL_TYPE_PING_DELAY6 (DIAG_IOCTL_TYPE_PING_DELAY + 1)
+#define DIAG_IOCTL_TYPE_UPROBE (DIAG_IOCTL_TYPE_PING_DELAY6 + 1)
 #define DIAG_IOCTL_TYPE_SYS_COST (DIAG_IOCTL_TYPE_UPROBE + 1)
 #define DIAG_IOCTL_TYPE_FS_CACHE (DIAG_IOCTL_TYPE_SYS_COST + 1)
 #define DIAG_IOCTL_TYPE_HIGH_ORDER (DIAG_IOCTL_TYPE_FS_CACHE + 1)
@@ -90,11 +96,17 @@ extern unsigned long debug_mode;
 #define DIAG_IOCTL_TYPE_NET_BANDWIDTH (DIAG_IOCTL_TYPE_D + 1)
 #define DIAG_IOCTL_TYPE_SIG_INFO (DIAG_IOCTL_TYPE_NET_BANDWIDTH + 1)
 #define DIAG_IOCTL_TYPE_TASK_MONITOR (DIAG_IOCTL_TYPE_SIG_INFO + 1)
-#define DIAG_IOCTL_TYPE_END (DIAG_IOCTL_TYPE_SIG_INFO + 1)
+#define DIAG_IOCTL_TYPE_RW_SEM (DIAG_IOCTL_TYPE_TASK_MONITOR + 1)
+#define DIAG_IOCTL_TYPE_RSS_MONITOR (DIAG_IOCTL_TYPE_RW_SEM + 1)
+#define DIAG_IOCTL_TYPE_MEMCG_STATS (DIAG_IOCTL_TYPE_RSS_MONITOR + 1)
+#define DIAG_IOCTL_TYPE_THROTTLE_DELAY (DIAG_IOCTL_TYPE_MEMCG_STATS + 1)
+
+#define DIAG_IOCTL_TYPE_END (DIAG_IOCTL_TYPE_THROTTLE_DELAY + 1)
 
 long diag_ioctl_sys_delay(unsigned int cmd, unsigned long arg);
 long diag_ioctl_sys_cost(unsigned int cmd, unsigned long arg);
 long diag_ioctl_sched_delay(unsigned int cmd, unsigned long arg);
+long diag_ioctl_throttle_delay(unsigned int cmd, unsigned long arg);
 long diag_ioctl_irq_delay(unsigned int cmd, unsigned long arg);
 long diag_ioctl_irq_stats(unsigned int cmd, unsigned long arg);
 long diag_ioctl_irq_trace(unsigned int cmd, unsigned long arg);
@@ -112,6 +124,7 @@ long diag_ioctl_high_order(unsigned int cmd, unsigned long arg);
 long diag_ioctl_drop_packet(unsigned int cmd, unsigned long arg);
 long diag_ioctl_tcp_retrans(unsigned int cmd, unsigned long arg);
 long diag_ioctl_ping_delay(unsigned int cmd, unsigned long arg);
+long diag_ioctl_ping_delay6(unsigned int cmd, unsigned long arg);
 long diag_ioctl_rw_top(unsigned int cmd, unsigned long arg);
 long diag_ioctl_fs_shm(unsigned int cmd, unsigned long arg);
 long diag_ioctl_fs_orphan(unsigned int cmd, unsigned long arg);
@@ -122,6 +135,9 @@ long diag_ioctl_reboot(unsigned int cmd, unsigned long arg);
 long diag_ioctl_net_bandwidth(unsigned int cmd, unsigned long arg);
 long diag_ioctl_sig_info(unsigned int cmd, unsigned long arg);
 long diag_ioctl_task_monitor(unsigned int cmd, unsigned long arg);
+long diag_ioctl_rw_sem(unsigned int cmd, unsigned long arg);
+long diag_ioctl_rss_monitor(unsigned int cmd, unsigned long arg);
+long diag_ioctl_memcg_stats(unsigned int cmd, unsigned long arg);
 
 struct diag_ioctl_test {
 	int in;
@@ -313,6 +329,27 @@ struct diag_ioctl_dump_param_cycle {
 #define DIAG_BASE_SYSCALL_TASK_MONITOR \
 	(DIAG_BASE_SYSCALL_SIG_INFO + DIAG_SYSCALL_INTERVAL)
 
+// 1750
+#define DIAG_BASE_SYSCALL_RW_SEM \
+	(DIAG_BASE_SYSCALL_TASK_MONITOR + DIAG_SYSCALL_INTERVAL)
+
+///1800
+#define DIAG_BASE_SYSCALL_RSS_MONITOR \
+	(DIAG_BASE_SYSCALL_RW_SEM + DIAG_SYSCALL_INTERVAL)
+
+///1850
+#define DIAG_BASE_SYSCALL_PING_DELAY6 \
+	(DIAG_BASE_SYSCALL_RSS_MONITOR + DIAG_SYSCALL_INTERVAL)
+
+///1900
+#define DIAG_BASE_SYSCALL_MEMCG_STATS \
+	(DIAG_BASE_SYSCALL_PING_DELAY6 + DIAG_SYSCALL_INTERVAL)
+
+/// 1900
+#define DIAG_BASE_SYSCALL_THROTTLE_DELAY \
+	(DIAG_BASE_SYSCALL_PING_DELAY6 + DIAG_SYSCALL_INTERVAL)
+
+
 #define DIAG_SYSCALL_END (DIAG_BASE_SYSCALL + DIAG_SYSCALL_INTERVAL * 1000)
 
 enum diag_record_id {
@@ -372,6 +409,7 @@ enum diag_record_id {
 	et_load_monitor_base = et_kprobe_base + DIAG_EVENT_TYPE_INTERVAL,
 	et_load_monitor_detail,
 	et_load_monitor_task,
+	et_load_monitor_cpu_run,
 
 	et_mm_leak_base = et_load_monitor_base + DIAG_EVENT_TYPE_INTERVAL,
 	et_mm_leak_detail,
@@ -468,6 +506,22 @@ enum diag_record_id {
 	et_task_monitor_base = et_sig_info_base + DIAG_EVENT_TYPE_INTERVAL,
 	et_task_monitor_summary,
 	et_task_monitor_detail,
+
+	et_rw_sem_base = et_task_monitor_base + DIAG_EVENT_TYPE_INTERVAL,
+	et_rw_sem_detail,
+
+	et_rss_monitor_base = et_rw_sem_base + DIAG_EVENT_TYPE_INTERVAL,
+	et_rss_monitor_detail,
+	et_rss_monitor_raw_detail,
+
+	et_memcg_stats_base = et_rss_monitor_base + DIAG_EVENT_TYPE_INTERVAL,
+	et_memcg_stats_summary,
+	et_memcg_stats_detail,
+
+	et_throttle_delay_base = et_rss_monitor_base + DIAG_EVENT_TYPE_INTERVAL,
+	et_throttle_delay_dither,
+	et_throttle_delay_rq,
+
 	et_count
 };
 
@@ -491,6 +545,10 @@ struct diag_task_detail {
 	 * 0->user 1->sys 2->idle
 	 */
 	unsigned long sys_task;
+	/**
+	 * 1->user mode 0->sys mode -1->unknown
+	 */
+	unsigned long user_mode;
 	char comm[TASK_COMM_LEN];
 };
 

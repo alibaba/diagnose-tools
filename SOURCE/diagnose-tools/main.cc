@@ -24,7 +24,6 @@
 #include <stdio.h>     /* for printf */
 #include <stdlib.h>    /* for exit */
 #include <stdio_ext.h>
-
 #include <set>
 
 #include "internal.h"
@@ -46,7 +45,8 @@ unsigned long vmsize_limit = 1;
 
 static int report_version(int argc, char **argv)
 {
-	printf("diagnose-tools tools version 2.1-release\n");
+	printf(XBY_VERSION);
+	printf("\n");
 	exit(0);
 
 	return 0;
@@ -82,7 +82,7 @@ static int usage(int argc, char **argv)
 	printf("    install: install module into system\n");
 	printf("    uninstall: remove module from system\n");
 	printf("    task-info $pid dump task-info\n");
-    printf("    jmaps\n");
+	printf("    jmaps\n");
 	usage_flame();
 	usage_run_trace();
 	usage_load_monitor();
@@ -107,6 +107,7 @@ static int usage(int argc, char **argv)
 	usage_mm_leak();
 	usage_sched_delay();
 	usage_ping_delay();
+	usage_ping_delay6();
 	usage_reboot();
 	usage_uprobe();
 	usage_sys_cost();
@@ -119,6 +120,10 @@ static int usage(int argc, char **argv)
 	usage_net_bandwidth();
 	usage_sig_info();
 	usage_task_monitor();
+	usage_rw_sem();
+	usage_rss_monitor();
+	usage_memcg_stats();
+	usage_throttle_delay();
 
 	printf("\n");
 	printf("/***************************************************************************/\n");
@@ -202,6 +207,7 @@ static struct diagnose_func all_funcs[] {
 	{"exit-monitor", exit_monitor_main, 0},
 	{"sys-delay", sys_delay_main, 0},
 	{"sched-delay", sched_delay_main, 0},
+	{"throttle-delay", throttle_delay_main, 0},
 	{"utilization", utilization_main, 0},
 	{"tcp-retrans", tcp_retrans_main, 0},
 	{"rw-top", rw_top_main, 0},
@@ -219,7 +225,9 @@ static struct diagnose_func all_funcs[] {
 	{"kprobe", kprobe_main, 0},
 	{"mm-leak",mm_leak_main, 0},
 	{"ping-delay", ping_delay_main, 0},
+	{"ping-delay6", ping_delay6_main, 0},
 	{"uprobe", uprobe_main, 0},
+	{"memcg-stats", memcg_stats_main, 0},
 	{"--vmsize", no_vmsize, 1},
 	{"-V", report_version, 0},
 	{"-v", report_version, 0},
@@ -238,6 +246,8 @@ static struct diagnose_func all_funcs[] {
 	{"net-bandwidth", net_bandwidth_main, 0},
 	{"sig-info", sig_info_main, 0},
 	{"task-monitor", task_monitor_main, 0},
+	{"rw-sem", rw_sem_main, 0},
+	{"rss-monitor", rss_monitor_main, 0},
 	{"test", testcase_main, 0},
 };
 
@@ -402,10 +412,10 @@ static int check_in_host(void)
 
 	if (is_pid_1_has_environ("container"))
 		r = RUN_IN_CONTAINER;
-	else 
+	else
 		r = detect_container_by_pid_2();
 	if (debug_mode) {
-		printf("diagnose-tool is running in %s\n", r == RUN_IN_HOST ? 
+		printf("diagnose-tool is running in %s\n", r == RUN_IN_HOST ?
 				"HOST" : "CONTAINER");
 	}
 

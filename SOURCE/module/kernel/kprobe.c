@@ -28,6 +28,7 @@
 #include <linux/cpu.h>
 #include <linux/syscalls.h>
 #include <linux/bitmap.h>
+#include <linux/tcp.h>
 #include <net/sock.h>
 
 #include <asm/irq_regs.h>
@@ -49,6 +50,7 @@ enum kern_kprobe_style {
 	DIAG_KPROBE_NONE,
 	DIAG_KPROBE_TCP_SENDMSG,
 	DIAG_KPROBE_DQUOT_SET_DQBLK,
+	DIAG_KPROBE_TCP_SET_TSQ_THROTTLED,
 };
 static enum kern_kprobe_style kern_kprobe_style;
 static struct kprobe diag_kprobe;
@@ -122,6 +124,27 @@ static int need_trace(struct task_struct *tsk, struct pt_regs *regs)
 #endif
 	}
 
+	if (kern_kprobe_style == DIAG_KPROBE_TCP_SET_TSQ_THROTTLED) {
+#if KERNEL_VERSION(4, 9, 151) == LINUX_VERSION_CODE
+		struct sock *sk = (void *)ORIG_PARAM1(regs);
+		const struct sk_buff *skb = (void *)ORIG_PARAM2(regs);
+		unsigned int factor = (unsigned int)ORIG_PARAM3(regs);
+		unsigned int limit;
+	
+		limit = max(2 * skb->truesize, sk->sk_pacing_rate >> 10);
+		limit = min_t(u32, limit,
+			      sock_net(sk)->ipv4.sysctl_tcp_limit_output_bytes);
+		limit <<= factor;
+	
+		if (atomic_read(&sk->sk_wmem_alloc) <= limit)
+			return 0;
+		if (skb == sk->sk_write_queue.next ||
+		    skb->prev == sk->sk_write_queue.next)
+			return 0;
+		//set TSQ_THROTTLED
+#endif
+	}
+
 	if (kprobe_settings.tgid) {
 		struct task_struct *leader = tsk->group_leader ? tsk->group_leader : tsk;
 
@@ -174,7 +197,7 @@ static int kprobe_pre(struct kprobe *p, struct pt_regs *regs)
 			if (sample) {
 				raw_detail = &diag_percpu_context[smp_processor_id()]->kprobe.kprobe_raw_stack_detail;
 				raw_detail->et_type = et_kprobe_raw_detail;
-				do_gettimeofday(&raw_detail->tv);
+				do_diag_gettimeofday(&raw_detail->tv);
 				raw_detail->proc_chains.chains[0][0] = 0;
 				dump_proc_chains_simple(current, &raw_detail->proc_chains);
 				diag_task_brief(current, &raw_detail->task);
@@ -194,7 +217,7 @@ static int kprobe_pre(struct kprobe *p, struct pt_regs *regs)
 			if (sample) {
 				detail = &diag_percpu_context[smp_processor_id()]->kprobe.kprobe_detail;
 				detail->et_type = et_kprobe_detail;
-				do_gettimeofday(&detail->tv);
+				do_diag_gettimeofday(&detail->tv);
 				detail->proc_chains.chains[0][0] = 0;
 				dump_proc_chains_simple(current, &detail->proc_chains);
 				diag_task_brief(current, &detail->task);
@@ -218,7 +241,7 @@ static int kprobe_pre(struct kprobe *p, struct pt_regs *regs)
 
 		detail = &diag_percpu_context[smp_processor_id()]->kprobe.kprobe_detail;
 		detail->et_type = et_kprobe_detail;
-		do_gettimeofday(&detail->tv);
+		do_diag_gettimeofday(&detail->tv);
 		detail->proc_chains.chains[0][0] = 0;
 		dump_proc_chains_simple(current, &detail->proc_chains);
 		diag_task_brief(current, &detail->task);
@@ -265,6 +288,12 @@ static int __activate_kprobe(void)
 				kprobe_pre, NULL);
 #endif
 			kern_kprobe_style = DIAG_KPROBE_DQUOT_SET_DQBLK;
+		} else if (strcmp(kprobe_settings.func, "TCP_SET_TSQ_THROTTLED") == 0) {
+#if KERNEL_VERSION(4, 9, 151) == LINUX_VERSION_CODE
+			hook_kprobe(&diag_kprobe, "tcp_small_queue_check",
+				kprobe_pre, NULL);
+#endif
+			kern_kprobe_style = DIAG_KPROBE_TCP_SET_TSQ_THROTTLED;
 		} else {
 			hook_kprobe(&diag_kprobe, kprobe_settings.func,
 				kprobe_pre, NULL);
@@ -280,6 +309,7 @@ static void __deactivate_kprobe(void)
 {
 	unhook_kprobe(&diag_kprobe);
 	synchronize_sched();
+
 	kern_kprobe_style = DIAG_KPROBE_NONE;
 
 	msleep(20);

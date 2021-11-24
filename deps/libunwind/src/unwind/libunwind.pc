@@ -1,0 +1,11 @@
+prefix=/home/baoyou.xie/git/diagnose-tools/deps
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: libunwind
+Description: libunwind base library
+Version: 1.5-rc1
+Libs: -L${libdir} -lunwind
+Libs.private: -llzma -lz
+Cflags: -I${includedir}

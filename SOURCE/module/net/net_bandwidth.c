@@ -54,7 +54,7 @@
 
 #include "uapi/net_bandwidth.h"
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0) && !defined(XBY_UBUNTU_1604) \
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 20, 0) && !defined(XBY_UBUNTU_1604) \
 	&& !defined(CENTOS_3_10_123_9_3)
 
 __maybe_unused static atomic64_t diag_nr_running = ATOMIC64_INIT(0);
@@ -186,13 +186,16 @@ __maybe_unused static struct conn_info *find_alloc_desc(int direct,
 	return info;
 }
 
-static void inspect_packet(const struct sk_buff *skb, const struct iphdr *iphdr, enum net_bandwidth_step step)
+static noinline void inspect_packet(const struct sk_buff *skb, const struct iphdr *iphdr, enum net_bandwidth_step step)
 {
 	int source = 0;
 	int dest = 0;
 	struct conn_info *conn_info;
 
 	if (step >= NET_COUNT)
+		return;
+	if (skb->len < sizeof(struct iphdr) || !iphdr
+        || iphdr->ihl * 4 < sizeof(struct iphdr))
 		return;
 
 	if (iphdr->protocol == IPPROTO_UDP)
@@ -222,8 +225,13 @@ static void inspect_packet(const struct sk_buff *skb, const struct iphdr *iphdr,
 	atomic64_add(skb->truesize, &conn_info->sum_truesize[step]);
 }
 
-static void trace_net_dev_xmit_hit(void *ignore, struct sk_buff *skb,
+#if KERNEL_VERSION(3, 10, 0) <= LINUX_VERSION_CODE
+__maybe_unused static void trace_net_dev_xmit_hit(void *ignore, struct sk_buff *skb,
 								   int rc, struct net_device *dev, unsigned int skb_len)
+#else
+__maybe_unused static void trace_net_dev_xmit_hit(struct sk_buff *skb,
+								   int rc, struct net_device *dev, unsigned int skb_len)
+#endif
 {
 	struct iphdr *iphdr;
 
@@ -234,8 +242,23 @@ static void trace_net_dev_xmit_hit(void *ignore, struct sk_buff *skb,
 		return;
 
 	iphdr = ip_hdr(skb);
+	if (virt_addr_valid(iphdr)) {
+		inspect_packet(skb, iphdr, NET_SEND_SKB);
+	}
+}
+
+#if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
+__maybe_unused static void trace_net_dev_start_xmit_hit(void *ignore, struct sk_buff *skb, struct net_device *dev)
+{
+	struct iphdr *iphdr;
+
+	if (!net_bandwidth_settings.activated)
+		return;
+
+	iphdr = ip_hdr(skb);
 	inspect_packet(skb, iphdr, NET_SEND_SKB);
 }
+#endif
 
 static int kprobe___netif_receive_skb_core_pre(struct kprobe *p, struct pt_regs *regs)
 {
@@ -265,7 +288,11 @@ int __activate_net_bandwidth(void)
 
 	clean_data();
 
+#if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
+	hook_tracepoint("net_dev_start_xmit", trace_net_dev_start_xmit_hit, NULL);
+#else
 	hook_tracepoint("net_dev_xmit", trace_net_dev_xmit_hit, NULL);
+#endif
 
 	hook_kprobe(&kprobe___netif_receive_skb_core, "__netif_receive_skb_core",
 				kprobe___netif_receive_skb_core_pre, NULL);
@@ -282,7 +309,11 @@ out_variant_buffer:
 
 void __deactivate_net_bandwidth(void)
 {
+#if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
+	unhook_tracepoint("net_dev_start_xmit", trace_net_dev_start_xmit_hit, NULL);
+#else
 	unhook_tracepoint("net_dev_xmit", trace_net_dev_xmit_hit, NULL);
+#endif
 
 	unhook_kprobe(&kprobe___netif_receive_skb_core);
 

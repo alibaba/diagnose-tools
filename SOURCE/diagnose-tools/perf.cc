@@ -75,7 +75,7 @@ static void do_activate(const char *arg)
 	struct diag_perf_settings settings;
 
 	memset(&settings, 0, sizeof(struct diag_perf_settings));
-	
+
 	settings.style = parse.int_value("style");
 	settings.verbose = parse.int_value("verbose");
 	settings.tgid = parse.int_value("tgid");
@@ -113,7 +113,7 @@ static void do_activate(const char *arg)
 	printf("    BVT：\t%d\n", settings.bvt);
 	printf("    SYS：\t%d\n", settings.sys);
 	printf("    RAW-STACK：%lu\n", settings.raw_stack);
-	
+
 	if (ret)
 		return;
 
@@ -158,7 +158,7 @@ static void do_settings(const char *arg)
 		{
 			printf("功能设置：\n");
 			printf("    是否激活：\t%s\n", settings.activated ? "√" : "×");
-			printf("    进程ID：\t%d\n", settings.pid);
+			printf("    进程ID：\t%d\n", settings.tgid);
 			printf("    线程ID：\t%d\n", settings.pid);
 			printf("    进程名称：\t%s\n", settings.comm);
 			printf("    CPUS：\t%s\n", settings.cpus);
@@ -171,8 +171,8 @@ static void do_settings(const char *arg)
 		else
 		{
 			root["activated"] = Json::Value(settings.activated);
+			root["tgid"] = Json::Value(settings.tgid);
 			root["pid"] = Json::Value(settings.pid);
-			root["tid"] = Json::Value(settings.pid);
 			root["comm"] = Json::Value(settings.comm);
 			root["cpus"] = Json::Value(settings.cpus);
 			root["idle"] = Json::Value(settings.idle);
@@ -309,7 +309,7 @@ static int json_extract(void *buf, unsigned int len, void *)
 			&detail->user_stack, task, 0);
 		diag_sls_proc_chains(&detail->proc_chains, task);
 		root["task"] = task;
-		
+
 		root["tv_sec"] = Json::Value(detail->tv.tv_sec);
 		root["tv_usec"] = Json::Value(detail->tv.tv_usec);
 
@@ -355,6 +355,8 @@ static void do_dump(const char *arg)
 	string inlist_file;
 	string line = "";
 	string input_line;
+	int java_only = 0;
+	int user_symbol = 1;
 
 	report_reverse = parse.int_value("reverse");
 	console = parse.int_value("console");
@@ -363,11 +365,15 @@ static void do_dump(const char *arg)
 	inlist_file = parse.string_value("inlist");
 	out_json = parse.int_value("json", 0);
 	out_flame = parse.int_value("flame", 1);
+	java_only = parse.int_value("java-only", 0);
+	user_symbol = parse.int_value("user-symbol", 1);
+	g_symbol_parser.java_only = java_only;
+	g_symbol_parser.user_symbol = user_symbol;
 
 	memset(variant_buf, 0, 50 * 1024 * 1024);
 	if (console) {
 		java_attach_once();
-				
+
 		while (cin) {
 			getline(cin, input_line);
 			if (!cin.eof()){
@@ -404,7 +410,7 @@ static void do_dump(const char *arg)
                                }
                                fin.close();
                        }
-               in.close(); 
+               in.close();
 	       }
        } else {
 		if (run_in_host) {
@@ -434,7 +440,7 @@ static int sls_extract(void *buf, unsigned int len, void *)
 	int *et_type;
 	struct perf_detail *detail;
     symbol sym;
-	
+
 	Json::Value root;
 	Json::Value task;
 	Json::Value kern_stack;

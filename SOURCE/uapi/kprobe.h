@@ -37,7 +37,7 @@ struct diag_kprobe_settings {
 
 struct kprobe_detail {
 	int et_type;
-	struct timeval tv;
+	struct diag_timespec tv;
 	struct diag_proc_chains_detail proc_chains;
 	struct diag_task_detail task;
 	struct diag_kern_stack_detail kern_stack;
@@ -46,7 +46,7 @@ struct kprobe_detail {
 
 struct kprobe_raw_stack_detail {
 	int et_type;
-	struct timeval tv;
+	struct diag_timespec tv;
 	struct diag_proc_chains_detail proc_chains;
 	struct diag_task_detail task;
 	struct diag_kern_stack_detail kern_stack;

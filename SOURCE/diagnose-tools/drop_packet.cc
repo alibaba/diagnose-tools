@@ -197,7 +197,7 @@ static int sls_extract(void *buf, unsigned int len, void *)
 	int i;
 	unsigned char *saddr;
 	unsigned char *daddr;
-	struct timeval tv;
+	struct diag_timespec tv;
 	Json::Value root;
 	Json::Value raw;
 	stringstream ss;
@@ -246,7 +246,7 @@ static int sls_extract(void *buf, unsigned int len, void *)
 			root[packet_steps_str[i]] = raw;
 		}
 
-		gettimeofday(&tv, NULL);
+		diag_gettimeofday(&tv, NULL);
 		write_file(sls_file, "drop-packet", &tv, 0, 0, root);
 		write_syslog(syslog_enabled, "drop-packet", &tv, 0, 0, root);
 		break;

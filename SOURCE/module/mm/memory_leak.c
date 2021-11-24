@@ -35,14 +35,20 @@
 #include "pub/trace_file.h"
 #include "pub/variant_buffer.h"
 #include "pub/trace_point.h"
+#include "pub/mem_pool.h"
 #include "uapi/mm_leak.h"
 
-struct alloc_desc {
-	const void *addr;
+struct mm_block_desc {
+	void *addr;
+	u64 stamp;
+	size_t bytes_req;
+	size_t bytes_alloc;
+	struct diag_task_detail task;
 	unsigned long trace_buf[BACKTRACE_DEPTH];
 };
 
 static atomic64_t diag_nr_running = ATOMIC64_INIT(0);
+struct diag_mm_leak_settings mm_leak_settings;
 static int mm_leak_alloced;
 static unsigned long last_dump_addr = 0;
 /**
@@ -53,37 +59,31 @@ static DEFINE_PER_CPU(int, tracing_nest_count);
 static struct radix_tree_root mm_leak_tree;
 static DEFINE_SPINLOCK(tree_lock);
 
-static unsigned int mm_leak_activated = 0;
-static unsigned int mm_leak_verbose;
+static struct ali_mem_pool mem_pool;
 
 static struct diag_variant_buffer mm_leak_variant_buffer;
 
-static void *internal_kmalloc(size_t size, gfp_t flags)
+static void *alloc_desc(void)
 {
 	void *ret;
 
-	per_cpu(tracing_nest_count, smp_processor_id()) += 1;
-	ret = kmalloc(size, flags);
-	per_cpu(tracing_nest_count, smp_processor_id()) -= 1;
+	ret = ali_mem_pool_alloc(&mem_pool);
 
 	return ret;
 }
 
-static void internal_kfree(void *addr)
+static void free_desc(struct mm_block_desc *desc)
 {
-	per_cpu(tracing_nest_count, smp_processor_id()) += 1;
-	kfree(addr);
-	per_cpu(tracing_nest_count, smp_processor_id()) -= 1;
+	ali_mem_pool_free(&mem_pool, desc);
 }
 
 static void __maybe_unused clean_data(void)
 {
 	int nr_found;
-	struct alloc_desc *batch[NR_BATCH];
+	struct mm_block_desc *batch[NR_BATCH];
 	unsigned long pos = 0;
 	int i;
-	struct alloc_desc *desc;
-	unsigned long flags;
+	struct mm_block_desc *desc;
 
 	rcu_read_lock();
 
@@ -92,37 +92,18 @@ static void __maybe_unused clean_data(void)
 		for (i = 0; i < nr_found; i++) {
 			desc = batch[i];
 			pos = (unsigned long)desc->addr + 1;
-			spin_lock_irqsave(&tree_lock, flags);
 			radix_tree_delete(&mm_leak_tree, (unsigned long)desc->addr);
-			spin_unlock_irqrestore(&tree_lock, flags);
-			internal_kfree(desc);
+			free_desc(desc);
 		}
 	} while (nr_found > 0);
 
 	rcu_read_unlock();
 }
 
-__maybe_unused static struct alloc_desc *find_desc(void *addr)
+static struct mm_block_desc *find_alloc_desc(void *addr)
 {
-	struct alloc_desc *desc;
 	unsigned long flags;
-
-	if (addr == NULL)
-		return NULL;
-
-	desc = radix_tree_lookup(&mm_leak_tree, (unsigned long)addr);
-	if (!desc) {
-		spin_lock_irqsave(&tree_lock, flags);
-		desc = radix_tree_lookup(&mm_leak_tree, (unsigned long)addr);
-		spin_unlock_irqrestore(&tree_lock, flags);
-	}
-
-	return desc;
-}
-
-static struct alloc_desc *find_alloc_desc(const void *addr)
-{
-	struct alloc_desc *desc;
+	struct mm_block_desc *desc;
 	int ret;
 
 	if (addr == NULL)
@@ -130,20 +111,20 @@ static struct alloc_desc *find_alloc_desc(const void *addr)
 
 	desc = radix_tree_lookup(&mm_leak_tree, (unsigned long)addr);
 	if (!desc) {
-		desc = internal_kmalloc(sizeof(struct alloc_desc), GFP_ATOMIC | __GFP_ZERO);
+		desc = alloc_desc();
 		ret = 0;
 
 		if (desc) {
-			unsigned long flags;
-			struct alloc_desc *tmp;
+			struct mm_block_desc *tmp;
 
 			desc->addr = addr;
 			diagnose_save_stack_trace(current, desc->trace_buf);
+			diag_task_brief(current, &desc->task);
 
 			spin_lock_irqsave(&tree_lock, flags);
 			tmp = radix_tree_lookup(&mm_leak_tree, (unsigned long)addr);
 			if (tmp) {
-				internal_kfree(desc);
+				free_desc(desc);
 				desc = tmp;
 			} else {
 				radix_tree_insert(&mm_leak_tree, (unsigned long)addr, desc);
@@ -155,10 +136,10 @@ static struct alloc_desc *find_alloc_desc(const void *addr)
 	return desc;
 }
 
-static struct alloc_desc *takeout_desc(void *addr)
+static struct mm_block_desc *takeout_desc(void *addr)
 {
 	unsigned long flags;
-	struct alloc_desc *desc = NULL;
+	struct mm_block_desc *desc = NULL;
 
 	spin_lock_irqsave(&tree_lock, flags);
 	desc = radix_tree_delete(&mm_leak_tree, (unsigned long)addr);
@@ -169,23 +150,37 @@ static struct alloc_desc *takeout_desc(void *addr)
 
 #if KERNEL_VERSION(3, 10, 0) <= LINUX_VERSION_CODE
 static void trace_kmem_cache_alloc_hit(void *__data, unsigned long call_site, const void *ptr,
-         size_t bytes_req, size_t bytes_alloc, gfp_t gfp_flags)
+	   size_t bytes_req, size_t bytes_alloc, gfp_t gfp_flags)
 #else
 static void trace_kmem_cache_alloc_hit(unsigned long call_site, const void *ptr,
-         size_t bytes_req, size_t bytes_alloc, gfp_t gfp_flags)
+	   size_t bytes_req, size_t bytes_alloc, gfp_t gfp_flags)
 #endif
 {
 	unsigned long flags;
-	struct alloc_desc *desc;
+	struct mm_block_desc *desc;
+
+	if (mm_leak_settings.max_bytes > 0 && bytes_alloc > mm_leak_settings.max_bytes)
+		return;
+
+	if (bytes_alloc < mm_leak_settings.min_bytes)
+		return;
 
 	local_irq_save(flags);
 
 	if (per_cpu(tracing_nest_count, smp_processor_id()) > 0)
 		goto out;
 
+	/**
+	 * 虽然find_alloc_desc调用了alloc_desc，但是此句仍然不可少
+	 * 因为基树可能分配内存，导致重入本函数
+	 */
 	per_cpu(tracing_nest_count, smp_processor_id()) += 1;
-	desc = find_alloc_desc(ptr);
-
+	desc = find_alloc_desc((void *)ptr);
+	if (desc) {
+		desc->stamp = sched_clock();
+		desc->bytes_req = bytes_req;
+		desc->bytes_alloc = bytes_alloc;
+	}
 	per_cpu(tracing_nest_count, smp_processor_id()) -= 1;
 
 out:
@@ -199,7 +194,7 @@ static void trace_kmem_cache_free_hit(unsigned long call_site, const void *ptr)
 #endif
 {
 	unsigned long flags;
-	struct alloc_desc *desc;
+	struct mm_block_desc *desc;
 
 	local_irq_save(flags);
 
@@ -210,7 +205,7 @@ static void trace_kmem_cache_free_hit(unsigned long call_site, const void *ptr)
 
 	desc = takeout_desc((void *)ptr);
 	if (desc) {
-		kfree(desc);
+		free_desc(desc);
 	}
 
 	per_cpu(tracing_nest_count, smp_processor_id()) -= 1;
@@ -226,6 +221,7 @@ static int __activate_mm_leak(void)
 	ret = alloc_diag_variant_buffer(&mm_leak_variant_buffer);
 	if (ret)
 		goto out_variant_buffer;
+
 	mm_leak_alloced = 1;
 
 	hook_tracepoint("kmem_cache_alloc", trace_kmem_cache_alloc_hit, NULL);
@@ -238,10 +234,10 @@ out_variant_buffer:
 
 int activate_mm_leak(void)
 {
-	if (!mm_leak_activated)
-		mm_leak_activated = __activate_mm_leak();
+	if (!mm_leak_settings.activated)
+		mm_leak_settings.activated = __activate_mm_leak();
 
-	return mm_leak_activated;
+	return mm_leak_settings.activated;
 }
 
 static int __deactivate_mm_leak(void)
@@ -265,9 +261,9 @@ static int __deactivate_mm_leak(void)
 
 int deactivate_mm_leak(void)
 {
-	if (mm_leak_activated)
+	if (mm_leak_settings.activated)
 		__deactivate_mm_leak();
-	mm_leak_activated = 0;
+	mm_leak_settings.activated = 0;
 
 	return 0;
 }
@@ -275,12 +271,14 @@ int deactivate_mm_leak(void)
 static void do_dump(void)
 {
 	int nr_found;
-	struct alloc_desc *batch[NR_BATCH];
+	struct mm_block_desc *batch[NR_BATCH];
 	unsigned long pos = last_dump_addr + 1;
 	int i, j;
-	struct alloc_desc *desc;
+	struct mm_block_desc *desc;
 	unsigned long flags;
 	int count = 0;
+	u64 now = sched_clock();
+	u64 delta_time;
 
 	rcu_read_lock();
 
@@ -292,14 +290,27 @@ static void do_dump(void)
 			desc = batch[i];
 			last_dump_addr = (unsigned long)desc->addr;
 			pos = (unsigned long)desc->addr + 1;
-			spin_lock_irqsave(&tree_lock, flags);
-			radix_tree_delete(&mm_leak_tree, (unsigned long)desc->addr);
-			spin_unlock_irqrestore(&tree_lock, flags);
+
+			delta_time = now - desc->stamp;
+			if (delta_time < (u64)mm_leak_settings.time_threshold * 1000 * 1000 * 1000)
+				continue;
 	
 			detail.et_type = et_mm_leak_detail;
-			do_gettimeofday(&detail.tv);
+			do_diag_gettimeofday(&detail.tv);
 			for (j = 0; j < BACKTRACE_DEPTH; j++) {
 				detail.kern_stack.stack[j] = desc->trace_buf[j];
+			}
+			detail.task = desc->task;
+			detail.addr = (void *)desc->addr;
+			detail.bytes_req = desc->bytes_req;
+			detail.bytes_alloc = desc->bytes_alloc;
+			detail.delta_time = delta_time / (1000 * 1000 * 1000); //s
+
+			spin_lock_irqsave(&tree_lock, flags);
+			desc = radix_tree_delete(&mm_leak_tree, (unsigned long)desc->addr);
+			spin_unlock_irqrestore(&tree_lock, flags);
+			if (desc) {
+				free_desc(desc);
 			}
 
 			diag_variant_buffer_spin_lock(&mm_leak_variant_buffer, flags);
@@ -309,12 +320,10 @@ static void do_dump(void)
 			diag_variant_buffer_seal(&mm_leak_variant_buffer);
 			diag_variant_buffer_spin_unlock(&mm_leak_variant_buffer, flags);
 
-			internal_kfree(desc);
-
 			count++;
-			if (count >= 10000)
-				break;
 		}
+		if (count >= 10000)
+			break;
 	} while (nr_found > 0);
 
 	rcu_read_unlock();
@@ -322,18 +331,29 @@ static void do_dump(void)
 
 int mm_leak_syscall(struct pt_regs *regs, long id)
 {
-	unsigned int verbose;
 	int __user *ptr_len;
 	void __user *buf;
+	size_t __user buf_len;
 	size_t size;
 	int ret = 0;
 	unsigned long cycle;
 	struct diag_mm_leak_settings settings;
 
 	switch (id) {
-	case DIAG_MM_LEAK_VERBOSE:
-		verbose = (unsigned int)SYSCALL_PARAM1(regs);
-		mm_leak_verbose = verbose;
+	case DIAG_MM_LEAK_SET:
+		buf = (void __user *)SYSCALL_PARAM1(regs);
+		buf_len = (size_t)SYSCALL_PARAM2(regs);
+
+		if (buf_len != sizeof(struct diag_mm_leak_settings)) {
+			ret = -EINVAL;
+		} else if (mm_leak_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, buf, buf_len);
+			if (!ret) {
+				  mm_leak_settings = settings;
+			}
+		}
 		break;
 	case DIAG_MM_LEAK_SETTINGS:
 		buf = (void __user *)SYSCALL_PARAM1(regs);
@@ -342,8 +362,7 @@ int mm_leak_syscall(struct pt_regs *regs, long id)
 		if (size != sizeof(struct diag_mm_leak_settings)) {
 			ret = -EINVAL;
 		} else {
-			settings.activated = mm_leak_activated;
-			settings.verbose = mm_leak_verbose;
+			settings = mm_leak_settings;
 			ret = copy_to_user(buf, &settings, size);
 		}
 		break;
@@ -375,33 +394,33 @@ int mm_leak_syscall(struct pt_regs *regs, long id)
 
 long diag_ioctl_mm_leak(unsigned int cmd, unsigned long arg)
 {
-	unsigned int verbose;
 	int ret = 0;
 	struct diag_mm_leak_settings settings;
 	struct diag_ioctl_dump_param_cycle dump_param;
 
 	switch (cmd) {
-	case CMD_MM_LEAK_VERBOSE:
-		ret = copy_from_user(&verbose, (void *)arg, sizeof(unsigned int));
-		if (!ret) {
-			mm_leak_verbose = verbose;
+	case CMD_MM_LEAK_SET:
+		if (mm_leak_settings.activated) {
+			ret = -EBUSY;
+		} else {
+			ret = copy_from_user(&settings, (void *)arg, sizeof(struct diag_mm_leak_settings));
+			if (!ret) {
+				mm_leak_settings = settings;
+			}
 		}
 		break;
 	case CMD_MM_LEAK_SETTINGS:
-		settings.activated = mm_leak_activated;
-		settings.verbose = mm_leak_verbose;
+		settings = mm_leak_settings;
 		ret = copy_to_user((void *)arg, &settings, sizeof(struct diag_mm_leak_settings));
 		break;
 	case CMD_MM_LEAK_DUMP:
 		ret = copy_from_user(&dump_param, (void *)arg, sizeof(struct diag_ioctl_dump_param_cycle));
-
 		if (!mm_leak_alloced) {
 			ret = -EINVAL;
 		} else if (!ret) {
 			if (dump_param.cycle) {
 				last_dump_addr = 0;
 			}
-
 			do_dump();
 			ret = copy_to_user_variant_buffer(&mm_leak_variant_buffer, 
 				dump_param.user_ptr_len, dump_param.user_buf, dump_param.user_buf_len);
@@ -418,19 +437,33 @@ long diag_ioctl_mm_leak(unsigned int cmd, unsigned long arg)
 
 int diag_memory_leak_init(void)
 {
+	int ret = 0;
+
 	init_diag_variant_buffer(&mm_leak_variant_buffer, 5 * 1024 * 1024);
 	INIT_RADIX_TREE(&mm_leak_tree, GFP_ATOMIC);
 
-	if (mm_leak_activated)
-		activate_mm_leak();
+	ali_mem_pool_init(&mem_pool, sizeof(struct mm_block_desc));
+	ret = ali_mem_pool_putin(&mem_pool, 1 * 10000);
+	if (ret) {
+		goto out_destroy_variant_buffer;
+	}
+
+	if (mm_leak_settings.activated)
+		__activate_mm_leak();
 
 	return 0;
+out_destroy_variant_buffer:
+	destroy_diag_variant_buffer(&mm_leak_variant_buffer);
+	return ret;
 }
 
 void diag_memory_leak_exit(void)
 {
-	if (mm_leak_activated)
+	if (mm_leak_settings.activated)
 		deactivate_mm_leak();
 
 	clean_data();
+
+	destroy_diag_variant_buffer(&mm_leak_variant_buffer);
+	ali_mem_pool_destroy(&mem_pool);
 }

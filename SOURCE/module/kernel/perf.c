@@ -129,7 +129,7 @@ void perf_timer(struct diag_percpu_context *context)
 			raw_detail->et_type = et_perf_raw_detail;
 			raw_detail->id = perf_id;
 			raw_detail->seq = perf_seq;
-			do_gettimeofday(&raw_detail->tv);
+			do_diag_gettimeofday(&raw_detail->tv);
 			diag_task_brief(current, &raw_detail->task);
 			diag_task_kern_stack(current, &raw_detail->kern_stack);
 			diag_task_raw_stack(current, &raw_detail->raw_stack);
@@ -149,7 +149,7 @@ void perf_timer(struct diag_percpu_context *context)
 			detail->et_type = et_perf_detail;
 			detail->id = perf_id;
 			detail->seq = perf_seq;
-			do_gettimeofday(&detail->tv);
+			do_diag_gettimeofday(&detail->tv);
 			diag_task_brief(current, &detail->task);
 			diag_task_kern_stack(current, &detail->kern_stack);
 			diag_task_user_stack(current, &detail->user_stack);

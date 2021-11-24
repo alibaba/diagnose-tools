@@ -33,6 +33,10 @@ using namespace std;
 
 static char sls_file[256];
 static int syslog_enabled;
+static int out_json = 0;
+static int out_flame = 1;
+
+static Json::FastWriter fast_writer;
 
 void usage_rw_top(void)
 {
@@ -254,7 +258,7 @@ static int sls_extract(void *buf, unsigned int len, void *)
 	int *et_type;
 	struct rw_top_detail *detail;
 	Json::Value root;
-	struct timeval tv;
+	struct diag_timespec tv;
 
 	if (len == 0)
 		return 0;
@@ -274,7 +278,7 @@ static int sls_extract(void *buf, unsigned int len, void *)
 		root["comm"] = Json::Value(detail->comm);
 		root["path_name"] = Json::Value(detail->path_name);
 
-		gettimeofday(&tv, NULL);
+		diag_gettimeofday(&tv, NULL);
 		write_file(sls_file, "rw-top", &tv, detail->id, detail->seq, root);
 		write_syslog(syslog_enabled, "rw-top", &tv, detail->id, detail->seq, root);
 
@@ -286,9 +290,78 @@ static int sls_extract(void *buf, unsigned int len, void *)
 	return 0;
 }
 
+static int json_extract(void *buf, unsigned int len, void *)
+{
+	int *et_type;
+	struct rw_top_detail *detail;
+	struct rw_top_perf *perf;
+	//struct rw_top_raw_perf *raw_perf;
+	Json::Value root;
+	Json::Value task;
+	if (len == 0)
+		return 0;
+
+	et_type = (int *)buf;
+	switch (*et_type) {
+	case et_rw_top_detail:
+		if (len < sizeof(struct rw_top_detail))
+			break;
+		detail = (struct rw_top_detail *)buf;
+		root["type"] = Json::Value("rw-top");
+		root["seq"] = Json::Value(detail->seq);
+		root["r_size"] = Json::Value(detail->r_size);
+		root["w_size"] = Json::Value(detail->w_size);
+		root["map_size"] = Json::Value(detail->map_size);
+		root["rw_size"] = Json::Value(detail->rw_size);
+		root["pid"] = Json::Value(detail->pid);
+		root["comm"] = Json::Value(detail->comm);
+		root["device_name"] = Json::Value(detail->device_name);
+		root["path_name"] = Json::Value(detail->path_name);
+
+		std::cout << "#$" << fast_writer.write(root);
+		break;
+	case et_rw_top_perf:
+		if (len < sizeof(struct rw_top_perf))
+			break;
+		perf = (struct rw_top_perf *)buf;
+
+		root["type"] = Json::Value("rw-top");
+		root["path_name"] = Json::Value(perf->path_name);
+		root["device_name"] = Json::Value(perf->device_name);
+
+		diag_sls_task(&perf->task, task);
+		diag_sls_kern_stack(&perf->kern_stack, task);
+		diag_sls_user_stack(perf->task.tgid,
+				perf->task.container_tgid,
+				perf->task.comm,
+				&perf->user_stack, task, 0);
+		diag_sls_proc_chains(&perf->proc_chains, task);
+
+		root["task"] = task;
+		root["tv_sec"] = Json::Value(perf->tv.tv_sec);
+		root["tv_usec"] = Json::Value(perf->tv.tv_usec);
+
+		std::cout << "#$" << fast_writer.write(root);
+		break;
+	case et_rw_top_raw_perf:
+		//to be done
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
 static void do_extract(char *buf, int len)
 {
-	extract_variant_buffer(buf, len, rw_top_extract, NULL);
+	if (out_json) {
+		extract_variant_buffer(buf, len, json_extract, NULL);
+	}
+
+	if (out_flame) {
+		extract_variant_buffer(buf, len, rw_top_extract, NULL);
+	}
 }
 
 static void do_dump(const char *arg)
@@ -355,6 +428,8 @@ static void do_dump(const char *arg)
                }
        } else {
 
+		out_json = parse.int_value("json", 0);
+		out_flame = parse.int_value("flame", 1);
 		if (run_in_host) {
 			ret = diag_call_ioctl(DIAG_IOCTL_RW_TOP_DUMP, (long)&dump_param);
 		} else {

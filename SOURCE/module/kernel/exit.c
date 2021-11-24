@@ -86,7 +86,11 @@ static int hook_sched_process_exit(struct task_struct *p)
 
 	mm = get_task_mm(current);
 	if (mm) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
+		down_read(&mm->mmap_lock);
+#else
 		down_read(&mm->mmap_sem);
+#endif
 		for (vma = mm->mmap; vma; vma = vma->vm_next) {
 			file = vma->vm_file;
 			if (file) {
@@ -98,7 +102,7 @@ static int hook_sched_process_exit(struct task_struct *p)
 
 				map = &diag_percpu_context[smp_processor_id()]->exit_monitor_map;
 				map->et_type = et_exit_monitor_map;
-				do_gettimeofday(&map->tv);
+				do_diag_gettimeofday(&map->tv);
 				map->dev = inode->i_sb->s_dev;
 				map->ino = inode->i_ino;
 				map->pgoff = ((loff_t)vma->vm_pgoff) << PAGE_SHIFT;
@@ -119,7 +123,11 @@ static int hook_sched_process_exit(struct task_struct *p)
 				diag_variant_buffer_spin_unlock(&exit_monitor_variant_buffer, flags);
 			}
 		}
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
+		up_read(&mm->mmap_lock);
+#else
 		up_read(&mm->mmap_sem);
+#endif
 		mmput(mm);
 	}
 
@@ -128,7 +136,7 @@ static int hook_sched_process_exit(struct task_struct *p)
 	detail->et_type = et_exit_monitor_detail;
 	detail->id = exit_monitor_event_id;
 	detail->seq = exit_monitor_event_seq;
-	do_gettimeofday(&detail->tv);
+	do_diag_gettimeofday(&detail->tv);
 	diag_task_brief(current, &detail->task);
 	diag_task_kern_stack(current, &detail->kern_stack);
 	diag_task_user_stack(current, &detail->user_stack);

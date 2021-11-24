@@ -21,7 +21,8 @@
 #define INVALID_ADDR ((size_t)(-1))
 enum {
     NATIVE_TYPE = 0,
-    JIT_TYPE = 1
+    JIT_TYPE = 1,
+    UNKNOWN = 2,
 };
 
 struct elf_file {
@@ -155,6 +156,9 @@ private:
     bool load_pid_maps(int pid);
     bool load_elf(pid_t pid, const elf_file& file);
     bool load_perf_map(int pid, int pid_ns);
+public:
+    int java_only;
+    int user_symbol;
 };
 
 extern symbol_parser g_symbol_parser;

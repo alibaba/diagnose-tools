@@ -22,7 +22,7 @@ int hook_kprobe(struct kprobe *kp, const char *name,
 
 	if (!name || strlen(name) >= 255)
 		return -EINVAL;
-	addr = (kprobe_opcode_t *)__kallsyms_lookup_name(name);
+	addr = (kprobe_opcode_t *)diag_kallsyms_lookup_name(name);
 	if (!addr)
 		return -EINVAL;
 

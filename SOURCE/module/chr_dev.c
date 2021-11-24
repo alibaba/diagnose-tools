@@ -91,6 +91,9 @@ static long diag_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     case DIAG_IOCTL_TYPE_SCHED_DELAY:
         ret = diag_ioctl_sched_delay(nr, arg);
         break;
+	case DIAG_IOCTL_TYPE_THROTTLE_DELAY:
+		ret = diag_ioctl_throttle_delay(nr, arg);
+		break;
     case DIAG_IOCTL_TYPE_IRQ_DELAY:
         ret = diag_ioctl_irq_delay(nr, arg);
         break;
@@ -142,6 +145,9 @@ static long diag_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     case DIAG_IOCTL_TYPE_PING_DELAY:
         ret = diag_ioctl_ping_delay(nr, arg);
         break;
+    case DIAG_IOCTL_TYPE_PING_DELAY6:
+        ret = diag_ioctl_ping_delay6(nr, arg);
+        break;
     case DIAG_IOCTL_TYPE_RW_TOP:
         ret = diag_ioctl_rw_top(nr, arg);
         break;
@@ -165,6 +171,17 @@ static long diag_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
         break;
     case DIAG_IOCTL_TYPE_TASK_MONITOR:
         ret = diag_ioctl_task_monitor(nr, arg);
+        break;
+    case DIAG_IOCTL_TYPE_RW_SEM:
+        ret = diag_ioctl_rw_sem(nr, arg);
+    case DIAG_IOCTL_TYPE_RSS_MONITOR:
+        ret = diag_ioctl_rss_monitor(nr, arg);
+        break;
+    case DIAG_IOCTL_TYPE_MM_LEAK:
+        ret = diag_ioctl_mm_leak(nr, arg);
+        break;
+    case DIAG_IOCTL_TYPE_MEMCG_STATS:
+        ret = diag_ioctl_memcg_stats(nr, arg);
         break;
     default:
         break;

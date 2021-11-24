@@ -25,7 +25,9 @@ declare -a __all_case=(["1"]="sys-delay" ["2"]="sys-cost" ["3"]="sched-delay" \
 			["18"]="drop-packet" ["19"]="tcp-retrans" ["20"]="ping-delay" \
 			["21"]="rw-top" ["22"]="fs-shm" ["23"]="fs-orphan" \
 			["24"]="fs-cache" ["25"]="task-info" ["26"]="reboot" \
-			["27"]="net-bandwidth" ["28"]="sig-info" ["999"]="kern-demo" )
+			["27"]="net-bandwidth" ["28"]="sig-info" ["29"]="task_monitor" \
+			[30]="rw-sem" [31]="mm-leak" [32]="rss-monitor" ["33"]="ping-delay6" \
+			["999"]="kern-demo" )
 
 sys_delay() {
 	eval "$DIAG_CMD sys-delay --deactivate --activate='style=0' --test --report --deactivate --settings" > sys-delay.log
@@ -96,14 +98,14 @@ run_trace() {
 	cat run-trace.log | awk '{if (substr($1,1,2) == "**") {print substr($0, 3)}}' | /usr/diagnose-tools/flame-graph/flamegraph.pl > run-trace.svg
 	echo "火焰图位于run-trace.svg"
 
-	TEST_ADDR="`objdump -s -d $DIAG_BINPATH | grep '<_ZL6mytestv>:' | awk '{printf $1}' | tr '[a-z]' '[A-Z]'`"
+	TEST_ADDR="`objdump -s -d $DIAG_BINPATH | grep '<mytest>:' | awk '{printf $1}' | tr '[a-z]' '[A-Z]'`"
         TEST_OFFSET=`echo "obase=10; ibase=16; $TEST_ADDR - 400000" | bc`
 	TEST_END=$[$TEST_OFFSET+10]
 
 	eval "$DIAG_CMD test-run-trace --type=2 --count=10 &"
 	TEST_PID=`ps aux | grep diagnose-tools | grep test-run-trace | awk '{printf $2}'`
 
-	eval "$DIAG_CMD run-trace --uprobe=\"tgid=$TEST_PID start-file=$DIAG_BINPATH start-offset=$TEST_OFFSET stop-file=$DIAG_BINPATH stop-offset=$TEST_END\" --activate --settings"
+	eval "$DIAG_CMD run-trace --uprobe=\"tgid=$TEST_PID start-file=$DIAG_BINPATH start-offset=$TEST_OFFSET stop-file=$DIAG_BINPATH stop-offset=$TEST_END\" --activate=\"raw-stack=1\" --settings"
 	
 	sleep 10
 	eval "$DIAG_CMD run-trace --report --deactivate" > run-trace.log
@@ -134,7 +136,7 @@ EOF
 }
 
 kprobe() {
-	eval "$DIAG_CMD kprobe --deactivate --activate='probe=hrtimer_interrupt'"
+	eval "$DIAG_CMD kprobe --deactivate --activate='probe=down_write'"
         files=""
         for i in `seq 10`; do
                 sleep 1
@@ -237,6 +239,13 @@ ping_delay() {
 	eval "$DIAG_CMD ping-delay --deactivate"
 }
 
+ping_delay6() {
+	eval "$DIAG_CMD ping-delay6 --deactivate --activate='verbose=0' --settings"
+	ping6 ::1 -c 2
+	eval "$DIAG_CMD ping-delay6 --report" > ping_delay6.log
+	eval "$DIAG_CMD ping-delay6 --deactivate"
+}
+
 rw_top() {
 	mkdir /apsarapangu
 	eval "$DIAG_CMD rw-top --deactivate -activate=\"raw-stack=0 perf=1 verbose=1\" --settings"
@@ -301,7 +310,7 @@ net_bandwidth() {
 	eval "$DIAG_CMD net-bandwidth --deactivate --activate"
 	ping www.baidu.com -c 1 > /dev/null
 	sleep 1
-	eval "$DIAG_CMD net-bandwidth --report='testcount=2' --deactivate --settings" > net_bandwidth.log
+	eval "$DIAG_CMD net-bandwidth --report --deactivate --settings" > net_bandwidth.log
 }
 
 sig_info() {
@@ -315,6 +324,44 @@ task_monitor() {
 	sleep 1
 	eval "$DIAG_CMD task-monitor --report" > task_monitor.log
 }
+
+rw_sem() {
+        eval "$DIAG_CMD rw-sem --deactivate --activate='style=0'"
+	sleep 3
+	eval "$DIAG_CMD rw-sem --report --deactivate --settings" > rw_sem.log
+        eval "$DIAG_CMD rw-sem --deactivate --activate='style=1'"
+	sleep 3
+	eval "$DIAG_CMD rw-sem --report --deactivate --settings" >> rw_sem.log
+	sleep 3
+	eval "$DIAG_CMD rw-sem --deactivate --activate='style=1 threshold=100'"
+	eval "$DIAG_CMD rw-sem --report --deactivate --settings" >> rw_sem.log
+}
+
+mm_leak() {
+        eval "$DIAG_CMD mm-leak --deactivate --activate --settings"
+        sleep 1
+        eval "$DIAG_CMD mm-leak --report --deactivate" > mm_leak.log
+        eval "$DIAG_CMD mm-leak --deactivate --activate='max-bytes=1000 min-bytes=100' --settings"
+        sleep 3
+        eval "$DIAG_CMD mm-leak --report --deactivate" > mm_leak.log
+        eval "$DIAG_CMD mm-leak --deactivate --activate='time-threshold=1 max-bytes=2000 min-bytes=500' --settings"
+        sleep 5
+        eval "$DIAG_CMD mm-leak --report --deactivate" > mm_leak.log
+
+}
+
+rss_monitor() {
+        eval "$DIAG_CMD rss-monitor --deactivate --activate='tgid=1' --settings"
+        sleep 1
+        eval "$DIAG_CMD rss-monitor --report --deactivate" > rss-monitor.log
+        eval "$DIAG_CMD rss-monitor --deactivate --activate='pid=1 raw-stack=1' --settings"
+        sleep 3
+        eval "$DIAG_CMD rss-monitor --report='follow=0' --deactivate" > rss-monitor.log
+        eval "$DIAG_CMD rss-monitor --deactivate --activate='tgid=1 raw-stack=1 time-threshold=1' --settings"
+        sleep 5
+        eval "$DIAG_CMD rss-monitor --report='follow=1' --deactivate" > rss-monitor.log
+}
+
 
 call_sub_cmd() {
 	func=$1

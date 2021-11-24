@@ -215,7 +215,7 @@ __maybe_unused static void trace_retransmit_synack(struct sock *sk, struct reque
 		tmp.src_addr = sock->saddr;
 		tmp.dest_addr = sock->daddr;
 #else
-		tmp.src_port = be16_to_cpu(sock->inet_num);
+		tmp.src_port = sock->inet_num;
 		tmp.dest_port = be16_to_cpu(sock->inet_dport);
 		tmp.src_addr = sock->inet_rcv_saddr;
 		tmp.dest_addr = sock->inet_daddr;
@@ -236,7 +236,7 @@ __maybe_unused static void trace_retransmit_synack(struct sock *sk, struct reque
 		unsigned long flags;
 
 		trace.et_type = et_tcp_retrans_trace;
-		do_gettimeofday(&trace.tv);
+		do_diag_gettimeofday(&trace.tv);
 		trace.src_addr = tmp.src_addr;
 		trace.src_port = tmp.src_port;
 		trace.dest_addr = tmp.dest_addr;
@@ -267,7 +267,7 @@ __maybe_unused static void trace_retransmit_skb(struct sock *sk, struct sk_buff 
 		tmp.src_addr = sock->saddr;
 		tmp.dest_addr = sock->daddr;
 #else
-		tmp.src_port = be16_to_cpu(sock->inet_num);
+		tmp.src_port = sock->inet_num;
 		tmp.dest_port = be16_to_cpu(sock->inet_dport);
 		tmp.src_addr = sock->inet_rcv_saddr;
 		tmp.dest_addr = sock->inet_daddr;
@@ -288,7 +288,7 @@ __maybe_unused static void trace_retransmit_skb(struct sock *sk, struct sk_buff 
 		unsigned long flags;
 
 		trace.et_type = et_tcp_retrans_trace;
-		do_gettimeofday(&trace.tv);
+		do_diag_gettimeofday(&trace.tv);
 		trace.src_addr = tmp.src_addr;
 		trace.src_port = tmp.src_port;
 		trace.dest_addr = tmp.dest_addr;

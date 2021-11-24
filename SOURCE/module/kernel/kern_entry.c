@@ -144,112 +144,176 @@ int diag_kernel_init(void)
 	pe = diag_proc_mkdir("ali-linux/diagnose/kern", NULL);
 
 	ret = diag_irq_stats_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_irq_stats_init failed, ret=%d\n", ret);
 		goto out;
+	}
 
 	ret = diag_irq_delay_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_irq_delay_init failed, ret=%d\n", ret);
 		goto out_irq_delay;
+	}
 
 	ret = diag_sched_delay_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_sched_delay_init failed, ret=%d\n", ret);
 		goto out_sched;
+	}
 
 	ret = diag_rcu_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_rcu_init failed, ret=%d\n", ret);
 		goto out_rcu;
+	}
 
 	ret = diag_sys_loop_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_sys_loop_init failed, ret=%d\n", ret);
 		goto out_sys_loop;
+	}
 
 	ret = diag_mutex_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_mutex_init failed, ret=%d\n", ret);
 		goto out_mutex;
+	}
 
 	ret = diag_load_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_load_init failed, ret=%d\n", ret);
 		goto out_load;
+	}
 
 	ret = diag_exit_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_exit_init failed, ret=%d\n", ret);
 		goto out_exit;
+	}
 
 	ret = diag_sys_cost_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_sys_cost_init failed, ret=%d\n", ret);
 		goto out_syscall_cpu_cost;
+	}
 
 	ret = diag_task_time_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_task_time_init failed, ret=%d\n", ret);
 		goto out_task_time;
+	}
 
 	ret = diag_sys_delay_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_sys_delay_init failed, ret=%d\n", ret);
 		goto out_syscall;
+	}
 
 	ret = diag_timer_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_time_init failed, ret=%d\n", ret);
 		goto out_timer;
+	}
 
 	ret = diag_exec_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_exec_init failed, ret=%d\n", ret);
 		goto out_exec;
+	}
 
 	ret = diag_runq_info_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_runq_info_init failed, ret=%d\n", ret);
 		goto out_runq_info;
+	}
 
 	ret = diag_kern_demo_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_kern_demo_init failed, ret=%d\n", ret);
 		goto out_kern_demo;
+	}
 
 	ret = diag_task_runs_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_task_runs_init failed, ret=%d\n", ret);
 		goto out_task_runs;
+	}
 
 	ret = diag_kern_perf_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_kern_perf_init failed, ret=%d\n", ret);
 		goto out_perf;
+	}
 
 	ret = diag_run_trace_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_run_trace_init failed, ret=%d\n", ret);
 		goto out_run_trace;
+	}
 
 	ret = diag_lock_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_lock_init failed, ret=%d\n", ret);
 		goto out_lock;
+	}
 
 	ret = diag_irq_trace_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_irq_trace_init failed, ret=%d\n", ret);
 		goto out_irq_trace;
+	}
 
 	ret = diag_sys_broken_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_sys_broken_init failed, ret=%d\n", ret);
 		goto out_sys_broken;
+	}
 
 	ret = diag_kprobe_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_kprobe_init failed, ret=%d\n", ret);
 		goto out_kprobe;
+	}
 
 	ret = diag_utilization_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_utilization_init failed, ret=%d\n", ret);
 		goto out_utilization;
+	}
 
 	ret = diag_reboot_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_reboot_init failed, ret=%d\n", ret);
 		goto out_reboot;
+	}
 
 	ret = diag_uprobe_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_uprobe_init failed, ret=%d\n", ret);
 		goto out_uprobe;
+	}
 
 	ret = diag_sig_info_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_sig_info_init failed, ret=%d\n", ret);
 		goto out_sig_info;
+	}
 
 	ret = diag_task_monitor_init();
-	if (ret)
+	if (ret) {
+		pr_err("diag_task_monitor_init failed, ret=%d\n", ret);
 		goto out_task_monitor;
+	}
+
+	ret = diag_rw_sem_init();
+	if (ret) {
+		pr_err("diag_rw_sem_init failed, ret=%d\n", ret);
+		goto out_rw_sem;
+	}
+
+	ret = diag_throttle_delay_init();
+	if (ret)
+		goto out_throttle_delay;
 
 	on_each_cpu(start_timer, NULL, 1);
 
@@ -259,6 +323,11 @@ int diag_kernel_init(void)
 
 	return 0;
 
+out_throttle_delay:
+	diag_throttle_delay_exit();
+
+out_rw_sem:
+	diag_task_monitor_exit();
 out_task_monitor:
 	diag_sig_info_exit();
 out_sig_info:
@@ -336,6 +405,7 @@ void diag_kernel_exit(void)
 		}
 	}
 
+	diag_rw_sem_exit();
 	diag_task_monitor_exit();
 	diag_sig_info_exit();
 	diag_uprobe_exit();

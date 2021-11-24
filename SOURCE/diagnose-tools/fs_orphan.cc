@@ -31,7 +31,7 @@ using namespace std;
 
 static char sls_file[256];
 static int syslog_enabled;
-static struct timeval sls_tv;
+static struct diag_timespec sls_tv;
 static unsigned long sls_id;
 
 void usage_fs_orphan(void)
@@ -272,7 +272,7 @@ static void do_sls(char *arg)
 	}
 
 	if (ret == 0 && len > 0) {
-		gettimeofday(&sls_tv, NULL);
+		diag_gettimeofday(&sls_tv, NULL);
 		sls_id = sls_tv.tv_sec;
 		extract_variant_buffer(variant_buf, len, sls_extract, NULL);
 	}

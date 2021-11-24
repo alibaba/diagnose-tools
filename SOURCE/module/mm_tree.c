@@ -234,7 +234,10 @@ int get_argv_from_mm(struct mm_struct *mm, char *buf, size_t size)
 	if (offset + len >= PAGE_SIZE)
 		len = PAGE_SIZE - offset;
 
-#if KERNEL_VERSION(4, 15, 0) <= LINUX_VERSION_CODE
+#if KERNEL_VERSION(5, 10, 0) <= LINUX_VERSION_CODE
+	ret = get_user_pages_remote(mm, pos, 1, FOLL_FORCE,
+			&page, NULL, NULL);
+#elif KERNEL_VERSION(4, 15, 0) <= LINUX_VERSION_CODE
 	ret = get_user_pages_remote(current, mm, pos, 1, FOLL_FORCE,
 			&page, NULL, NULL);
 #elif KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
@@ -445,10 +448,18 @@ ssize_t dump_pid_cmdline(int pre, enum diag_printk_type type, void *obj,
 		goto out_mmput;
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
+	down_read(&mm->mmap_lock);
+#else
 	down_read(&mm->mmap_sem);
+#endif
 	arg_start = mm->arg_start;
 	arg_end = mm->arg_end;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
+	up_read(&mm->mmap_lock);
+#else
 	up_read(&mm->mmap_sem);
+#endif
 
 	if (arg_start > arg_end) {
 		return -EFAULT;

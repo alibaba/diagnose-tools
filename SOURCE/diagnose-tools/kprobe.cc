@@ -103,7 +103,7 @@ static void do_activate(const char *arg)
 	}
 
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
-	printf("    进程ID：%d\n", settings.pid);
+	printf("    进程ID：%d\n", settings.tgid);
 	printf("    线程ID：%d\n", settings.pid);
 	printf("    进程名称：%s\n", settings.comm);
 	printf("    函数名称：%s\n", settings.func);
@@ -141,7 +141,7 @@ static void print_settings_in_json(struct diag_kprobe_settings *settings, int re
 
 	if (ret == 0) {
 		root["activated"] = Json::Value(settings->activated);
-		root["tgid"] = Json::Value(settings->pid);
+		root["tgid"] = Json::Value(settings->tgid);
 		root["pid"] = Json::Value(settings->pid);
 		root["comm"] = Json::Value(settings->comm);
 		root["func"] = Json::Value(settings->func);
@@ -180,7 +180,7 @@ static void do_settings(const char *arg)
 	if (ret == 0) {
 		printf("功能设置：\n");
 		printf("    是否激活：%s\n", settings.activated ? "√" : "×");
-		printf("    进程ID：%d\n", settings.pid);
+		printf("    进程ID：%d\n", settings.tgid);
 		printf("    线程ID：%d\n", settings.pid);
 		printf("    进程名称：%s\n", settings.comm);
 		printf("    函数名称：%s\n", settings.func);

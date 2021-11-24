@@ -225,7 +225,7 @@ static int sls_extract(void *buf, unsigned int len, void *)
 	struct tcp_retrans_trace *trace;
 	unsigned char *src_addr;
 	unsigned char *dest_addr;
-	struct timeval tv;
+	struct diag_timespec tv;
 	Json::Value root;
 	stringstream ss;
 
@@ -245,7 +245,7 @@ static int sls_extract(void *buf, unsigned int len, void *)
 		root["tcp_dupack"] = Json::Value(summary->tcp_dupack);
 		root["tcp_send_dupack"] = Json::Value(summary->tcp_send_dupack);
 
-		gettimeofday(&tv, NULL);
+		diag_gettimeofday(&tv, NULL);
 		write_file(sls_file, "tcp-retrans-summary", &tv, 0, 0, root);
 		write_syslog(syslog_enabled, "tcp-retrans-summary", &tv, 0, 0, root);
 
@@ -280,7 +280,7 @@ static int sls_extract(void *buf, unsigned int len, void *)
 			root["syncack_count"] = Json::Value(detail->syncack_count);
 			root["skb_count"] = Json::Value(detail->skb_count);
 
-			gettimeofday(&tv, NULL);
+			diag_gettimeofday(&tv, NULL);
 			write_file(sls_file, "tcp-retrans-detail", &tv, 0, 0, root);
 			write_syslog(syslog_enabled, "tcp-retrans-detail", &tv, 0, 0, root);
 		}

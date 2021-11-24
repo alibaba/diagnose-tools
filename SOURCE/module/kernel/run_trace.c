@@ -71,7 +71,7 @@ struct task_info {
 	unsigned long id;
 	unsigned int threshold_ms;
 	char comm[TASK_COMM_LEN];
-	struct timeval start_tv;
+	struct diag_timespec start_tv;
 	u64 start_monitor;
 	u64 last_event;
 	int traced;
@@ -253,7 +253,7 @@ int start_run_trace(struct task_struct *tsk, unsigned int threshold_ms, int stop
 	task_info->seq = 1;
 	task_info->threshold_ms = threshold_ms;
 	task_info->start_monitor = task_info->last_event = sched_clock();
-	do_gettimeofday(&task_info->start_tv);
+	do_diag_gettimeofday(&task_info->start_tv);
 	task_info->traced = 1;
 	task_info->stop_on_exit_syscall = stop_on_exit_syscall;
 	discard_diag_variant_buffer(&task_info->buffer);
@@ -313,7 +313,7 @@ static void stop_run_trace(struct task_struct *tsk, int stop_on_sys_exit)
 				event_raw_stack.header.start_tv = task_info->start_tv;
 				diag_task_brief(tsk, &event_raw_stack.header.task);
 				diag_task_raw_stack(tsk, &event_raw_stack.raw_stack);
-				do_gettimeofday(&event_raw_stack.header.tv);
+				do_diag_gettimeofday(&event_raw_stack.header.tv);
 				event_raw_stack.header.delta_ns = delta_ns;
 				event_raw_stack.duration_ns = duration_ns;
 				diag_variant_buffer_reserve(&task_info->buffer,
@@ -330,7 +330,7 @@ static void stop_run_trace(struct task_struct *tsk, int stop_on_sys_exit)
 				task_info->seq++;
 				event.header.start_tv = task_info->start_tv;
 				diag_task_brief(tsk, &event.header.task);
-				do_gettimeofday(&event.header.tv);
+				do_diag_gettimeofday(&event.header.tv);
 				event.header.delta_ns = delta_ns;
 				event.duration_ns = duration_ns;
 				diag_variant_buffer_reserve(&task_info->buffer, sizeof(event));
@@ -415,7 +415,7 @@ hook_sched_switch(struct task_struct *prev, struct task_struct *next)
 		event.header.id = task_info->id;
 		event.header.seq = task_info->seq;
 		event.header.start_tv = task_info->start_tv;
-		do_gettimeofday(&event.header.tv);
+		do_diag_gettimeofday(&event.header.tv);
 		task_info->seq++;
 		diag_task_brief(current, &event.header.task);
 		event.header.delta_ns = delta_ns;
@@ -438,7 +438,7 @@ hook_sched_switch(struct task_struct *prev, struct task_struct *next)
 		event.header.id = task_info->id;
 		event.header.seq = task_info->seq;
 		event.header.start_tv = task_info->start_tv;
-		do_gettimeofday(&event.header.tv);
+		do_diag_gettimeofday(&event.header.tv);
 		task_info->seq++;
 		diag_task_brief(next, &event.header.task);
 		event.header.delta_ns = delta_ns;
@@ -500,7 +500,7 @@ static void trace_sys_enter_hit(void *__data, struct pt_regs *regs, long id)
 			event->header.id = task_info->id;
 			event->header.seq = task_info->seq;
 			event->header.start_tv = task_info->start_tv;
-			do_gettimeofday(&event->header.tv);
+			do_diag_gettimeofday(&event->header.tv);
 			task_info->seq++;
 			diag_task_brief(current, &event->header.task);
 			event->syscall_id = id;
@@ -519,7 +519,7 @@ static void trace_sys_enter_hit(void *__data, struct pt_regs *regs, long id)
 			event.header.id = task_info->id;
 			event.header.seq = task_info->seq;
 			event.header.start_tv = task_info->start_tv;
-			do_gettimeofday(&event.header.tv);
+			do_diag_gettimeofday(&event.header.tv);
 			task_info->seq++;
 			diag_task_brief(current, &event.header.task);
 			event.syscall_id = id;
@@ -554,7 +554,7 @@ static void trace_sys_exit_hit(void *__data, struct pt_regs *regs, long ret)
 		event.header.id = task_info->id;
 		event.header.seq = task_info->seq;
 		event.header.start_tv = task_info->start_tv;
-		do_gettimeofday(&event.header.tv);
+		do_diag_gettimeofday(&event.header.tv);
 		task_info->seq++;
 		diag_task_brief(current, &event.header.task);
 		event.header.delta_ns = delta_ns;
@@ -626,7 +626,7 @@ static void trace_irq_handler_entry_hit(void *ignore, int irq,
 		event.header.id = task_info->id;
 		event.header.seq = task_info->seq;
 		event.header.start_tv = task_info->start_tv;
-		do_gettimeofday(&event.header.tv);
+		do_diag_gettimeofday(&event.header.tv);
 		task_info->seq++;
 		event.irq = irq;
 		diag_task_brief(current, &event.header.task);
@@ -661,7 +661,7 @@ static void trace_irq_handler_exit_hit(void *ignore, int irq,
 		event.header.id = task_info->id;
 		event.header.seq = task_info->seq;
 		event.header.start_tv = task_info->start_tv;
-		do_gettimeofday(&event.header.tv);
+		do_diag_gettimeofday(&event.header.tv);
 		task_info->seq++;
 		event.irq = irq;
 		diag_task_brief(current, &event.header.task);
@@ -701,7 +701,7 @@ static void trace_softirq_entry_hit(void *ignore, unsigned long nr_sirq)
 		event.header.id = task_info->id;
 		event.header.seq = task_info->seq;
 		event.header.start_tv = task_info->start_tv;
-		do_gettimeofday(&event.header.tv);
+		do_diag_gettimeofday(&event.header.tv);
 		task_info->seq++;
 		event.nr_sirq = nr_sirq;
 		diag_task_brief(current, &event.header.task);
@@ -741,7 +741,7 @@ static void trace_softirq_exit_hit(void *ignore, unsigned long nr_sirq)
 		event.header.id = task_info->id;
 		event.header.seq = task_info->seq;
 		event.header.start_tv = task_info->start_tv;
-		do_gettimeofday(&event.header.tv);
+		do_diag_gettimeofday(&event.header.tv);
 		task_info->seq++;
 		event.nr_sirq = nr_sirq;
 		diag_task_brief(current, &event.header.task);
@@ -775,7 +775,7 @@ static void trace_timer_expire_entry_hit(void *ignore, struct timer_list *timer)
 		event.header.id = task_info->id;
 		event.header.seq = task_info->seq;
 		event.header.start_tv = task_info->start_tv;
-		do_gettimeofday(&event.header.tv);
+		do_diag_gettimeofday(&event.header.tv);
 		task_info->seq++;
 		event.func = func;
 		diag_task_brief(current, &event.header.task);
@@ -809,7 +809,7 @@ static void trace_timer_expire_exit_hit(void *ignore, struct timer_list *timer)
 		event.header.id = task_info->id;
 		event.header.seq = task_info->seq;
 		event.header.start_tv = task_info->start_tv;
-		do_gettimeofday(&event.header.tv);
+		do_diag_gettimeofday(&event.header.tv);
 		task_info->seq++;
 		event.func = func;
 		diag_task_brief(current, &event.header.task);
@@ -844,7 +844,7 @@ static void trace_sched_wakeup_hit(void *ignore, struct task_struct *p)
 		event.header.id = task_info->id;
 		event.header.seq = task_info->seq;
 		event.header.start_tv = task_info->start_tv;
-		do_gettimeofday(&event.header.tv);
+		do_diag_gettimeofday(&event.header.tv);
 		task_info->seq++;
 		diag_task_brief(p, &event.header.task);
 		event.header.delta_ns = delta_ns;
