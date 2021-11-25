@@ -1170,6 +1170,26 @@ void __weak task_monitor_timer(struct diag_percpu_context *context)
         return;
 }
 
+long __weak diag_ioctl_throttle_delay(unsigned int cmd, unsigned long arg)
+{
+    return -EINVAL;
+}
+
+int __weak throttle_delay_syscall(struct pt_regs *regs, long id)
+{
+    return -EINVAL;
+}
+
+int __weak deactivate_throttle_delay(void)
+{
+    return -EINVAL;
+}
+
+int __weak activate_throttle_delay(void)
+{
+    return -EINVAL;
+}
+
 int __weak diag_rw_sem_init(void)
 {
         return 0;
