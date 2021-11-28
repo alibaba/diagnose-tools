@@ -249,14 +249,14 @@ static int kprobe_extract(void *buf, unsigned int len, void *)
 		raw_detail = (struct kprobe_raw_stack_detail *)buf;
 
 		printf("KPROBE命中：PID： %d[%s]，时间：[%lu:%lu]\n",
-			run_in_host ? raw_detail->task.pid : detail->task.container_pid,
+			run_in_host ? raw_detail->task.pid : raw_detail->task.container_pid,
 			raw_detail->task.comm,
 			raw_detail->tv.tv_sec, raw_detail->tv.tv_usec);
 
 		seq++;
 		printf("##CGROUP:[%s]  %d      [%03d]  KPROBE命中，时间：[%lu:%lu]\n",
 				raw_detail->task.cgroup_buf,
-				run_in_host ? raw_detail->task.pid : detail->task.container_pid,
+				run_in_host ? raw_detail->task.pid : raw_detail->task.container_pid,
 				seq,
 				raw_detail->tv.tv_usec, raw_detail->tv.tv_usec);
 		diag_printf_kern_stack(&raw_detail->kern_stack);
