@@ -462,7 +462,7 @@ int diag_memcg_stats_init(void)
 
 	return init_diag_variant_buffer(
 			&memcg_stats_variant_buffer,
-			2 * 1024 * 1024);
+			4 * 1024 * 1024);
 }
 
 void diag_memcg_stats_exit(void)
