@@ -60,7 +60,7 @@ static void do_activate(const char *arg)
 	}
 
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
-	printf("    阀值(s)：%lu\n", settings.time_threshold);
+	printf("    阈值(s)：%lu\n", settings.time_threshold);
 	printf("    输出级别：%d\n", settings.verbose);
 	printf("    MAX-BYTES：%d\n", settings.max_bytes);
 	printf("    MIN-BYTES：%d\n", settings.min_bytes);
@@ -175,7 +175,7 @@ static void do_settings(void)
 		printf("功能设置：\n");
 		printf("    是否激活：%s\n", settings.activated ? "√" : "×");
 		printf("    输出级别：%d\n", settings.verbose);
-		printf("    阀值(s)：%lu\n", settings.time_threshold);
+		printf("    阈值(s)：%lu\n", settings.time_threshold);
 		printf("    MAX-BYTES：%d\n", settings.max_bytes);
 		printf("    MIN-BYTES：%d\n", settings.min_bytes);
 	} else {

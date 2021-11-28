@@ -8,7 +8,6 @@
 #include <linux/slab.h>
 #include <linux/kprobes.h>
 #include <linux/kallsyms.h>
-#include <linux/kernfs.h>
 #include <linux/version.h>
 #include <linux/mount.h>
 #if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE

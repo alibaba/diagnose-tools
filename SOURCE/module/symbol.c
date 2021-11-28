@@ -20,7 +20,11 @@
 struct mutex *orig_text_mutex;
 rwlock_t *orig_tasklist_lock;
 
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 15, 0)
+struct mutex *orig_tracepoints_mutex;
+#else
 struct mutex *orig_tracepoint_module_list_mutex;
+#endif
 struct list_head *orig_tracepoint_module_list;
 
 #if defined(DIAG_ARM64)
@@ -208,7 +212,11 @@ int alidiagnose_symbols_init(void)
 
 	LOOKUP_SYMS(__show_regs);
 	LOOKUP_SYMS(ptype_all);
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 15, 0)
+	LOOKUP_SYMS(tracepoints_mutex);
+#else
 	LOOKUP_SYMS(tracepoint_module_list_mutex);
+#endif
 	LOOKUP_SYMS(tracepoint_module_list);
 
 	return 0;

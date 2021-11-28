@@ -70,7 +70,7 @@ static void do_activate(const char *arg)
 	}
 
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
-	printf("    阀值(ms)：\t%d\n", settings.threshold);
+	printf("    阈值(ms)：\t%d\n", settings.threshold);
 	printf("    输出级别：\t%d\n", settings.verbose);
 	if (ret)
 		return;
@@ -136,7 +136,7 @@ static void do_settings(const char *arg)
 	if (ret == 0) {
 		printf("功能设置：\n");
 		printf("    是否激活：%s\n", settings.activated ? "√" : "×");
-		printf("    阀值(ms)：%d\n", settings.threshold);
+		printf("    阈值(ms)：%d\n", settings.threshold);
 		printf("    输出级别：%d\n", settings.verbose);
 	} else {
 		printf("获取irq-delay设置失败，请确保正确安装了diagnose-tools工具\n");

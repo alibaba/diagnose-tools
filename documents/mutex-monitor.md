@@ -32,15 +32,15 @@ diagnose-tools mutex-monitor --activate
 激活本功能时，可用参数为：
 * verbose 本参数目前未用。
 * style如果为1，输出进程链。
-* threshold 该参数设置监控阀值，单位是ms。默认值是1000。当某个函数持有mutex超过1000 ms时，就会打印这个函数的调用链。
-例如，如下命令将监控阀值设置为900ms：
+* threshold 该参数设置监控阈值，单位是ms。默认值是1000。当某个函数持有mutex超过1000 ms时，就会打印这个函数的调用链。
+例如，如下命令将监控阈值设置为900ms：
 ```
 diagnose-tools mutex-monitor --activate="threshold=900"
 ```
 如果成功，将输出如下：
 ```
 功能设置成功，返回值：0
-    阀值(ms)：	900
+    阈值(ms)：	900
     输出级别：	0
     STYLE：	0
 ```
@@ -48,7 +48,7 @@ diagnose-tools mutex-monitor --activate="threshold=900"
 如果失败，将输出如下：
 ```
 功能设置失败，返回值：-16
-    阀值(ms)：	900
+    阈值(ms)：	900
     输出级别：	0
     STYLE：	0
 ```
@@ -67,7 +67,7 @@ diagnose-tools mutex-monitor --settings
 ```
 功能设置：
     是否激活：	×
-    阀值(ms)：	0
+    阈值(ms)：	0
     输出级别：	0
     STYLE：	1
 ```

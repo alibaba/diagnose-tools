@@ -31,12 +31,12 @@ diagnose-tools sys-delay --activate
 ```
 在激活本功能时，可以指定如下参数：
 
-* threshold 设置监控阀值，单位是ms。默认值是50。
+* threshold 设置监控阈值，单位是ms。默认值是50。
 * style如果为1，输出进程链。其他值不输出。需在—activate激活前设置style为1，才能输出进程链；
 * verbose 设置输出级别，目前未用。
 
 例如，使用如下命令，可以：
-1. 监控阀值修改为60ms。当在syscall中执行时间超过60ms，就会在系统中记录下异常信息
+1. 监控阈值修改为60ms。当在syscall中执行时间超过60ms，就会在系统中记录下异常信息
 2. 将输出级别修改为1。目前该参数无实际意义
 
 ```
@@ -46,7 +46,7 @@ diagnose-tools sys-delay --activate="threshold=60 verbose=1"
 如果激活功能成功，将打印如下信息：
 ```
 功能设置成功，返回值：0
-    阀值(ms)：	60
+    阈值(ms)：	60
     输出级别：	1
     STYLE：	0
 ```
@@ -54,7 +54,7 @@ diagnose-tools sys-delay --activate="threshold=60 verbose=1"
 如果不能成功激活功能，将打印如下信息：
 ```
 功能设置失败，返回值：-16
-    阀值(ms)：	60
+    阈值(ms)：	60
     输出级别：	1
 STYLE：	0
 ```
@@ -68,7 +68,7 @@ diagnose-tools sys-delay --settings
 ```
 功能设置：
     是否激活：	√
-    阀值(ms)：	60
+    阈值(ms)：	60
     输出级别：	1
     STYLE：	0
 ```
