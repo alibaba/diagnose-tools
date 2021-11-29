@@ -1,5 +1,5 @@
 ##  load-monitor
-load-monitor功能实时抓取系统Load值，一旦Load值超过设置的阀值，就输出系统中所有处于Running/Uninterruptale状态的线程调用链。
+load-monitor功能实时抓取系统Load值，一旦Load值超过设置的阈值，就输出系统中所有处于Running/Uninterruptale状态的线程调用链。
 ### 查看帮助信息
 通过如下命令查看本功能的帮助信息：
 ```
@@ -31,10 +31,10 @@ diagnose-tools load-monitor --activate
 激活本功能时，可用的参数为：
 * verbose 设置输出级别，目前未用。
 * style如果为1，输出进程链。其他值不输出。
-* load设置监控阀值，一旦Load值超过此值，就触发Load报警输出。默认值是0，表示不监控此值。
-* load.r 设置监控阀值，一旦Load.R值超过此值，就触发Load.R报警输出。默认值是0，表示不监控此值。
-* load.d 设置监控阀值，一旦Load.D值超过此值，就触发Load.D报警输出。默认值是0，表示不监控此值。
-* task.d 设置监控阀值，一旦Task.D值超过此值，就触发Task.D报警输出。默认值是0，表示不监控此值。
+* load设置监控阈值，一旦Load值超过此值，就触发Load报警输出。默认值是0，表示不监控此值。
+* load.r 设置监控阈值，一旦Load.R值超过此值，就触发Load.R报警输出。默认值是0，表示不监控此值。
+* load.d 设置监控阈值，一旦Load.D值超过此值，就触发Load.D报警输出。默认值是0，表示不监控此值。
+* task.d 设置监控阈值，一旦Task.D值超过此值，就触发Task.D报警输出。默认值是0，表示不监控此值。
 
 Load/Load.R/Load.D/Task.d分别代表几个被监控的负载值。
 
@@ -91,7 +91,7 @@ diagnose-tools load-monitor --settings
     STYLE：	0
 ```
 ### 查看结果
-激活本功能后，一旦系统负载超过阀值，就会记录下日志。执行如下命令查看本功能的输出结果：
+激活本功能后，一旦系统负载超过阈值，就会记录下日志。执行如下命令查看本功能的输出结果：
 ```
 diagnose-tools load-monitor --report
 ```

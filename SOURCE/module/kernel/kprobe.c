@@ -148,12 +148,12 @@ static int need_trace(struct task_struct *tsk, struct pt_regs *regs)
 	if (kprobe_settings.tgid) {
 		struct task_struct *leader = tsk->group_leader ? tsk->group_leader : tsk;
 
-		if (leader->pid != kprobe_settings.tgid)
+		if (task_pid_nr_ns(leader, task_active_pid_ns(leader)) != kprobe_settings.tgid)
 			return 0;
 	}
 
 	if (kprobe_settings.pid) {
-		if (tsk->pid != kprobe_settings.pid)
+		if (task_pid_nr_ns(tsk, task_active_pid_ns(tsk)) != kprobe_settings.pid)
 			return 0;
 	}
 
@@ -246,6 +246,8 @@ static int kprobe_pre(struct kprobe *p, struct pt_regs *regs)
 		dump_proc_chains_simple(current, &detail->proc_chains);
 		diag_task_brief(current, &detail->task);
 		diag_task_kern_stack(current, &detail->kern_stack);
+		diag_task_user_stack(current, &detail->user_stack);
+
 		diag_task_user_stack(current, &detail->user_stack);
 
 		for (i = 0; i < 5000; i++)

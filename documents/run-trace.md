@@ -32,8 +32,8 @@ diagnose-tools run-trace --activate
 ```
 在激活本功能时，可用参数为：
 * verbose VERBOSE 设置输出信息的级别，目前未用。
-* threshold 该参数设置监控阀值，单位是ms。默认值是500。当用户态应用在一段代码中运行超过阀值，就会详细的输出这段代码超时的详细信息。应用程序可以传递参数指定自己想要监控的阀值，将忽略此设置。
-* threshold-us 该参数设置监控阀值，单位是us。此参数优先级高于threshold参数。
+* threshold 该参数设置监控阈值，单位是ms。默认值是500。当用户态应用在一段代码中运行超过阈值，就会详细的输出这段代码超时的详细信息。应用程序可以传递参数指定自己想要监控的阈值，将忽略此设置。
+* threshold-us 该参数设置监控阈值，单位是us。此参数优先级高于threshold参数。
 * timer-us 指定采样周期，单位是us。如果指定此参数，将定期采集当前线程的行为。
 * buf-size-k 设置每个线程的监控缓冲区大小，默认为200K，最大可以上调到10M。单位为K。
 例如，如下命令将设置采样周期为10us，以及输出级别为1：
@@ -43,7 +43,7 @@ diagnose-tools run-trace --activate='timer-us=10 verbose=1'
 如果成功，将输出：
 ```
 功能设置成功，返回值：0
-    阀值(us)：500000
+    阈值(us)：500000
     输出级别：1
     TIMER_US：10
     BUF-SIZE-K：0
@@ -51,13 +51,13 @@ diagnose-tools run-trace --activate='timer-us=10 verbose=1'
 如果失败，将输出：
 ```
 功能设置失败，返回值：-16
-    阀值(us)：500000
+    阈值(us)：500000
     输出级别：1
     TIMER_US：10
     BUF-SIZE-K：0
 ```
 ###  设置参数
---set-syscall 设置将对哪个进程监控哪个系统调用，以及其监控阀值。在不同的环境中，同一个系统调用的编号并不相同。可以使用/usr/diagnose-tools/get_sys_call.sh脚本来获得某个系统调用号。例如下面的命令将获得open系统调用的编号：
+--set-syscall 设置将对哪个进程监控哪个系统调用，以及其监控阈值。在不同的环境中，同一个系统调用的编号并不相同。可以使用/usr/diagnose-tools/get_sys_call.sh脚本来获得某个系统调用号。例如下面的命令将获得open系统调用的编号：
 ```
 sh /usr/diagnose-tools/get_sys_call.sh open
 ```
@@ -66,7 +66,7 @@ sh /usr/diagnose-tools/get_sys_call.sh open
 --uprobe="tgid=`pgrep run-trace.out | head -1` start-file=/usr/diagnose-tools/bin/run-trace.out start-offset=1875 stop-file=/usr/diagnose-tools/bin/run-trace.out stop-offset=1885"
 该命令会监控run-trace.out文件，并在其偏移1875地方设置探针，开始对RT进行计时，并在第1885的地方再次设置探针，结束对RT进行计时。
 这样，就不需要修改应用程序就可以监控其run-trace结果了。
-例如，如下命令将监控阀值编号为1234的进程的第35号系统调用，其监控阀值为900ms：
+例如，如下命令将监控阈值编号为1234的进程的第35号系统调用，其监控阈值为900ms：
 ```
 diagnose-tools run-trace --set-syscall="1234 35 900"
 ```
@@ -179,7 +179,7 @@ diagnose-tools run-trace --settings
 ```
 功能设置：
     是否激活：×
-    阀值(ms)：500
+    阈值(ms)：500
     输出级别：0
     线程监控项：0
     系统调用监控项：0

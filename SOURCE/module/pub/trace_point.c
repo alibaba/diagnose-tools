@@ -18,7 +18,11 @@
 #include <linux/rculist.h>
 #include <linux/module.h>
 
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 15, 0)
+extern struct mutex *orig_tracepoints_mutex;
+#else
 extern struct mutex *orig_tracepoint_module_list_mutex;
+#endif
 extern struct list_head *orig_tracepoint_module_list;
 
 #include "pub/trace_point.h"
@@ -188,10 +192,14 @@ static void for_each_moudule_trace_point(
 		void (*fct)(struct tracepoint *tp, void *priv),
 		void *priv)
 {
-    struct tp_module *tp_mod;
-    struct module *mod;
+	struct tp_module *tp_mod;
+	struct module *mod;
 
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 15, 0)
+	mutex_lock(orig_tracepoints_mutex);
+#else
 	mutex_lock(orig_tracepoint_module_list_mutex);
+#endif
 
 	list_for_each_entry(tp_mod, orig_tracepoint_module_list, list) {
             mod = tp_mod->mod;
@@ -201,7 +209,11 @@ static void for_each_moudule_trace_point(
           }
 	}
 
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 15, 0)
+	mutex_unlock(orig_tracepoints_mutex);
+#else
 	mutex_unlock(orig_tracepoint_module_list_mutex);
+#endif
 }
 
 static struct tracepoint *find_tracepoint(const char *name)

@@ -27,11 +27,11 @@ diagnose-tools sched-delay --activate
 
 在激活本功能时，可用参数为：
 * verbose：该参数控制输出的详细程度，可以是任意整数。此参数目前未使用。
-* threshold：配置监控的阀值，当调度延迟超过该阀值将引起警告信息输出。时间单位是ms。
+* threshold：配置监控的阈值，当调度延迟超过该阈值将引起警告信息输出。时间单位是ms。
 * tgid 设置要监控的进程PID
 * pid 设置要监控的线程TID
 * comm 设置要监控的进程名称
-例如，如下命令会将检测阀值设置为80ms。一旦系统有超过80ms的调度延迟，将输出其调用链：
+例如，如下命令会将检测阈值设置为80ms。一旦系统有超过80ms的调度延迟，将输出其调用链：
 ```
 diagnose-tools sched-delay --activate=”threshold=80”
 ```

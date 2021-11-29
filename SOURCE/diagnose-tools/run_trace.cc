@@ -93,7 +93,7 @@ static void do_activate(const char *arg)
 	}
 
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
-	printf("    阀值(us)：%d\n", settings.threshold_us);
+	printf("    阈值(us)：%d\n", settings.threshold_us);
 	printf("    输出级别：%d\n", settings.verbose);
 	printf("    TIMER_US：%d\n", settings.timer_us);
 	printf("    BUF-SIZE-K：%d\n", settings.buf_size_k);
@@ -142,7 +142,7 @@ static void do_settings(const char *arg)
 		{
 			printf("功能设置：\n");
 			printf("    是否激活：%s\n", settings.activated ? "√" : "×");
-			printf("    阀值(us)：%d\n", settings.threshold_us);
+			printf("    阈值(us)：%d\n", settings.threshold_us);
 			printf("    输出级别：%d\n", settings.verbose);
 			printf("    TIMER_US：%d\n", settings.timer_us);
 			printf("    线程监控项：%d\n", settings.threads_count);

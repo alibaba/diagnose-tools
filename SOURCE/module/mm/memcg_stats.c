@@ -8,7 +8,6 @@
 #include <linux/slab.h>
 #include <linux/kprobes.h>
 #include <linux/kallsyms.h>
-#include <linux/kernfs.h>
 #include <linux/version.h>
 #include <linux/mount.h>
 #if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
@@ -463,7 +462,7 @@ int diag_memcg_stats_init(void)
 
 	return init_diag_variant_buffer(
 			&memcg_stats_variant_buffer,
-			2 * 1024 * 1024);
+			4 * 1024 * 1024);
 }
 
 void diag_memcg_stats_exit(void)

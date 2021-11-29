@@ -69,7 +69,7 @@ static void do_activate(const char *arg)
 	string str;
 
 	memset(&settings, 0, sizeof(struct diag_kprobe_settings));
-	
+
 	settings.verbose = parse.int_value("verbose");
 	settings.tgid = parse.int_value("tgid");
 	settings.pid = parse.int_value("pid");
@@ -103,8 +103,13 @@ static void do_activate(const char *arg)
 	}
 
 	printf("功能设置%s，返回值：%d\n", ret ? "失败" : "成功", ret);
-	printf("    进程ID：%d\n", settings.tgid);
-	printf("    线程ID：%d\n", settings.pid);
+	if (run_in_host) {
+		printf("    进程ID：%d\n", settings.tgid);
+		printf("    线程ID：%d\n", settings.pid);
+	} else {
+		printf("容器进程ID：%d\n", settings.tgid);
+		printf("容器线程ID：%d\n", settings.pid);
+	}
 	printf("    进程名称：%s\n", settings.comm);
 	printf("    函数名称：%s\n", settings.func);
 	printf("    CPUS：%s\n", settings.cpus);
@@ -125,7 +130,7 @@ static void do_activate(const char *arg)
 static void do_deactivate(void)
 {
 	int ret = 0;
-	
+
 	ret = diag_deactivate("kprobe");
 	if (ret == 0) {
 		printf("kprobe is not activated\n");
@@ -180,8 +185,13 @@ static void do_settings(const char *arg)
 	if (ret == 0) {
 		printf("功能设置：\n");
 		printf("    是否激活：%s\n", settings.activated ? "√" : "×");
-		printf("    进程ID：%d\n", settings.tgid);
-		printf("    线程ID：%d\n", settings.pid);
+		if (run_in_host) {
+			printf("    进程ID：%d\n", settings.tgid);
+			printf("    线程ID：%d\n", settings.pid);
+		} else {
+			printf("容器进程ID：%d\n", settings.tgid);
+			printf("容器线程ID：%d\n", settings.pid);
+		}
 		printf("    进程名称：%s\n", settings.comm);
 		printf("    函数名称：%s\n", settings.func);
 		printf("    CPUS：%s\n", settings.cpus);
@@ -197,8 +207,8 @@ static int kprobe_extract(void *buf, unsigned int len, void *)
 	int *et_type;
 	struct kprobe_detail *detail;
 	struct kprobe_raw_stack_detail *raw_detail;
-    symbol sym;
-    elf_file file;
+	symbol sym;
+	elf_file file;
 	static int seq = 0;
 
 	if (len == 0)
@@ -212,13 +222,14 @@ static int kprobe_extract(void *buf, unsigned int len, void *)
 		detail = (struct kprobe_detail *)buf;
 
 		printf("KPROBE命中：PID： %d[%s]，时间：[%lu:%lu]\n",
-			detail->task.pid, detail->task.comm,
+			run_in_host ? detail->task.pid : detail->task.container_pid,
+			detail->task.comm,
 			detail->tv.tv_sec, detail->tv.tv_usec);
 
 		seq++;
 		printf("##CGROUP:[%s]  %d      [%03d]  KPROBE命中，时间：[%lu:%lu]\n",
 				detail->task.cgroup_buf,
-				detail->task.pid,
+				run_in_host ? detail->task.pid : detail->task.container_pid,
 				seq,
 				detail->tv.tv_sec, detail->tv.tv_usec);
 		diag_printf_kern_stack(&detail->kern_stack);
@@ -238,13 +249,14 @@ static int kprobe_extract(void *buf, unsigned int len, void *)
 		raw_detail = (struct kprobe_raw_stack_detail *)buf;
 
 		printf("KPROBE命中：PID： %d[%s]，时间：[%lu:%lu]\n",
-			raw_detail->task.pid, raw_detail->task.comm,
+			run_in_host ? raw_detail->task.pid : raw_detail->task.container_pid,
+			raw_detail->task.comm,
 			raw_detail->tv.tv_sec, raw_detail->tv.tv_usec);
 
 		seq++;
 		printf("##CGROUP:[%s]  %d      [%03d]  KPROBE命中，时间：[%lu:%lu]\n",
 				raw_detail->task.cgroup_buf,
-				raw_detail->task.pid,
+				run_in_host ? raw_detail->task.pid : raw_detail->task.container_pid,
 				seq,
 				raw_detail->tv.tv_usec, raw_detail->tv.tv_usec);
 		diag_printf_kern_stack(&raw_detail->kern_stack);
@@ -344,12 +356,12 @@ static void do_dump(const char *arg)
 	string inlist_file;
 	string line = "";
 	string input_line;
-	
+
 	console = parse.int_value("console");
 	in_file = parse.string_value("in");
 	out_file = parse.string_value("out");
 	inlist_file = parse.string_value("inlist");
-	
+
 	memset(variant_buf, 0, 40 * 1024 * 1024);
 	if (console) {
 	         while (cin) {
@@ -395,7 +407,7 @@ static void do_dump(const char *arg)
 			ret = -ENOSYS;
 			syscall(DIAG_KPROBE_DUMP, &ret, &len, variant_buf, 40 * 1024 * 1024);
 		}
-		
+
 		if (out_file.length() > 0) {
 			if (ret == 0 && len > 0) {
 				ofstream fout(out_file);
@@ -468,7 +480,7 @@ int kprobe_main(int argc, char **argv)
 		case 0:
 			usage_kprobe();
 			break;
-	    case 1:
+		case 1:
 			do_activate(optarg ? optarg : "");
 			break;
 		case 2:

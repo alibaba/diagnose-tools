@@ -74,7 +74,7 @@ static void do_activate(const char *arg)
 	printf("功能设置%s, 返回值：%d\n", ret ? "失败":"成功", ret);
 	printf("    进程ID：\t%d\n", settings.tgid);
 	printf("    线程ID：\t%d\n", settings.pid);
-	printf("    阀值(s)：\t%lu\n", settings.time_threshold);
+	printf("    阈值(s)：\t%lu\n", settings.time_threshold);
 	printf("    RAW-STACK：\t%lu\n", settings.raw_stack);
 	printf("    输出级别：\t%d\n", settings.verbose);
 
@@ -149,7 +149,7 @@ static void do_settings(const char *arg)
 		printf("    是否激活：%s\n", settings.activated ? "√" : "×");
 		printf("    进程ID：%d\n", settings.tgid);
 		printf("    线程ID：%d\n", settings.pid);
-		printf("    阀值(s)：%lu\n", settings.time_threshold);
+		printf("    阈值(s)：%lu\n", settings.time_threshold);
 		printf("    RAW-STACK：%lu\n", settings.raw_stack);
 		printf("    输出级别：%d\n", settings.verbose);
 	} else {
