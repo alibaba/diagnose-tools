@@ -31,6 +31,7 @@ int exit_monitor_main(int argc, char **argv);
 int utilization_main(int argc, char **argv);
 int perf_main(int argc, char **argv);
 int tcp_retrans_main(int argc, char **argv);
+int tcp_connect_main(int argc, char **argv);
 int rw_top_main(int argc, char **argv);
 int irq_delay_main(int argc, char **argv);
 int mutex_monitor_main(int argc, char **argv);

@@ -11,6 +11,8 @@
 
 extern int diag_tcp_retrans_init(void);
 extern void diag_tcp_retrans_exit(void);
+extern int diag_net_tcp_connect_init(void);
+extern void diag_net_tcp_connect_exit(void);
 extern int diag_net_drop_packet_init(void);
 extern void diag_net_drop_packet_exit(void);
 extern int diag_net_reqsk_init(void);
