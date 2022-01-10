@@ -663,11 +663,12 @@ static void jump_init(void)
 
 } 
 
+#if 0
 static int kprobe_dequeue_entity_pre(struct kprobe *p, struct pt_regs *regs)
 {
-	struct sched_entity *se = (void *)ORIG_PARAM2(regs);
-	int *flags = (void *)ORIG_PARAM3(regs); 
-	struct task_struct *task;
+	//struct sched_entity *se = (void *)ORIG_PARAM2(regs);
+	//int *flags = (void *)ORIG_PARAM3(regs); 
+	//struct task_struct *task;
 
 	if (!throttle_delay_settings.activated)
 		return 0;
@@ -675,6 +676,7 @@ static int kprobe_dequeue_entity_pre(struct kprobe *p, struct pt_regs *regs)
 
 	return 0;
 }
+#endif
 
 #if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
 static void trace_sched_switch_hit(void *__data, bool preempt,

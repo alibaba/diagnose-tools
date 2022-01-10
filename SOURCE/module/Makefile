@@ -220,7 +220,7 @@ ifneq ($(KERNELRELEASE),)
 	$(TARGET)-objs += io/io_entry.o
 	$(TARGET)-objs += fs/fs_entry.o fs/orphan.o fs/shm.o fs/rw_top.o
 	$(TARGET)-objs += net/net_entry.o net/tcp_retrans.o net/drop_packet.o net/ping_delay.o net/ping_delay6.o \
-			net/net_bandwidth.o
+			net/net_bandwidth.o net/tcp_connect.o
 
 	ifeq ($(EXPERIENTIAL),1)
 		$(TARGET)-objs += test/test.o

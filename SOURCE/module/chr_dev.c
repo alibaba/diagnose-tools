@@ -183,6 +183,9 @@ static long diag_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     case DIAG_IOCTL_TYPE_MEMCG_STATS:
         ret = diag_ioctl_memcg_stats(nr, arg);
         break;
+    case DIAG_IOCTL_TYPE_TCP_CONNECT:
+        ret = diag_ioctl_tcp_connect(nr, arg);
+        break;
     default:
         break;
     }

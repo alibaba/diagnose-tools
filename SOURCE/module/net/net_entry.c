@@ -76,8 +76,14 @@ int diag_net_init(void)
 	if (ret)
 		goto out_net_bandwidth;
 
+	ret = diag_net_tcp_connect_init();
+	if (ret)
+		goto out_tcp_connect;
+
 	return 0;
 
+out_tcp_connect:
+	diag_net_net_bandwidth_exit();
 out_net_bandwidth:
 	diag_net_ping_delay6_exit();
 out_ping_delay6:
@@ -106,5 +112,6 @@ void diag_net_exit(void)
 	diag_net_packet_corruption_exit();
 	diag_net_redis_ixgbe_exit();
 	diag_net_net_bandwidth_exit();
+	diag_net_tcp_connect_exit();
 	//remove_proc_entry("ali-linux/diagnose/net", NULL);
 }

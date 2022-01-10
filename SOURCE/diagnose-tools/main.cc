@@ -228,6 +228,7 @@ static struct diagnose_func all_funcs[] {
 	{"ping-delay6", ping_delay6_main, 0},
 	{"uprobe", uprobe_main, 0},
 	{"memcg-stats", memcg_stats_main, 0},
+	{"tcp-connect", tcp_connect_main, 0},
 	{"--vmsize", no_vmsize, 1},
 	{"-V", report_version, 0},
 	{"-v", report_version, 0},
