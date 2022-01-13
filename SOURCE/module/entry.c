@@ -70,6 +70,7 @@ static DECLARE_MUTEX(controller_sem);
 static DEFINE_SEMAPHORE(controller_sem);
 #endif
 
+static void *diag_context_mem;
 struct diag_percpu_context *diag_percpu_context[NR_CPUS];
 unsigned long diag_ignore_jump_check = 0;
 unsigned long open_syscall = 0;
@@ -484,6 +485,7 @@ static int __init diagnosis_init(void)
 {
 	int ret = 0;
 	char cgroup_buf[256];
+	int diag_context_size;
 	int i;
 
 	ret = diag_init_symbol();
@@ -503,11 +505,15 @@ static int __init diagnosis_init(void)
 
 	ret = -ENOMEM;
 	memset(diag_percpu_context, 0, NR_CPUS * sizeof(struct diag_percpu_context *));
+
+	diag_context_size = num_possible_cpus() * sizeof(struct diag_percpu_context);
+	diag_context_mem = vmalloc(diag_context_size);
+	if (!diag_context_mem)
+		goto out_context;
+
+	memset(diag_context_mem, 0, diag_context_size);
 	for (i = 0; i < num_possible_cpus(); i++) {
-		diag_percpu_context[i] = vmalloc(sizeof(struct diag_percpu_context));
-		if (diag_percpu_context[i] == NULL)
-			goto out_percpu_context;
-		memset(diag_percpu_context[i], 0,  sizeof(struct diag_percpu_context));
+		diag_percpu_context[i] = diag_context_mem + i * sizeof(struct diag_percpu_context);
 	}
 
 	ret = diag_linux_proc_init();
@@ -597,20 +603,16 @@ out_net:
 out_kern:
 	diag_linux_proc_exit();
 out_proc:
+	if (diag_context_mem)
+		vfree(diag_context_mem);
+out_context:
 	alidiagnose_symbols_exit();
-out_percpu_context:
-	for (i = 0; i < num_possible_cpus(); i++) {
-		if (diag_percpu_context[i] != NULL)
-			vfree(diag_percpu_context[i]);
-	}
 out:
 	return ret;
 }
 
 static void __exit diagnosis_exit(void)
 {
-	int i;
-
 	printk("diagnose-tools in diagnosis_exit\n");
 
 	if (sys_enter_hooked)
@@ -660,10 +662,8 @@ static void __exit diagnosis_exit(void)
 
 	synchronize_sched();
 
-	for (i = 0; i < num_possible_cpus(); i++) {
-		if (diag_percpu_context[i] != NULL)
-			vfree(diag_percpu_context[i]);
-	}
+	if (diag_context_mem)
+		vfree(diag_context_mem);
 }
 
 module_init(diagnosis_init);
