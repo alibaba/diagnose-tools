@@ -11,12 +11,12 @@
 
 #include <assert.h>
 #include <sched.h>
-#include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
 #include <getopt.h>
+#include <signal.h>
+#include <execinfo.h>
 #include <sys/resource.h>
 
 #include <sys/time.h>
@@ -491,6 +491,31 @@ static void report_limit(void)
 	pr_limits((char *)"RLIMIT_AS", RLIMIT_AS);
 }
 
+// SIGSEGV信号处理函数：打印堆栈后正常退出
+static void sig_handler(int sig)
+{
+	void *bt[32];
+	int bt_size;
+	char **bt_syms;
+	int i;
+
+	if (sig != SIGSEGV)
+		return;
+
+	printf("Signal: SIGSEGV\n");
+	printf("Stack:\n");
+
+	bt_size = backtrace(bt, 32);
+	bt_syms = backtrace_symbols(bt, bt_size);
+
+	for (i = 1; i < bt_size; i++) {
+		printf("    %s\n", bt_syms[i]);
+	}
+	free(bt_syms);
+
+	exit(0);
+}
+
 int main(int argc, char* argv[])
 {
 	unsigned int i, j, idx = 1;
@@ -500,6 +525,9 @@ int main(int argc, char* argv[])
 	int ret;
 
 	limit_resource();
+
+	//注册SIGSEGV信号处理
+	signal(SIGSEGV, sig_handler);
 
 	fd = open("/dev/diagnose-tools", O_RDWR, 0);
 	if (fd > 0) {
