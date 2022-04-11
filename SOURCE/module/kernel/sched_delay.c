@@ -46,7 +46,8 @@
 
 #include "uapi/sched_delay.h"
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32)  && !defined(UBUNTU_1604)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32)  && !defined(UBUNTU_1604) \
+	&& LINUX_VERSION_CODE <= KERNEL_VERSION(4, 20, 0)
 
 #if defined(ALIOS_4000)
 static unsigned long *get_last_queued_addr(struct task_struct *p)
