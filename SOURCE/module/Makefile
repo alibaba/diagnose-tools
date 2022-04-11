@@ -140,7 +140,12 @@ ifneq ($(findstring alios7.x86_64,$(KERNEL_BUILD_PATH)),)
 
 	ifneq ($(findstring ali5000,$(KERNEL_BUILD_PATH)),)
 		DIAG_EXTRA_CFLAGS += -DALIOS_5000
-
+		ifneq ($(findstring -003,$(KERNEL_BUILD_PATH)),)
+			DIAG_EXTRA_CFLAGS += -DALIOS_5000_003
+		endif
+		ifneq ($(findstring -004,$(KERNEL_BUILD_PATH)),)
+			DIAG_EXTRA_CFLAGS += -DALIOS_5000_004
+		endif
 	endif
 endif
 
