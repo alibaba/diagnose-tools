@@ -198,8 +198,7 @@
 /* Define to 1 if __thread keyword is supported by the C compiler. */
 /* #undef HAVE___THREAD */
 
-/* Define to the sub-directory in which libtool stores uninstalled libraries.
-   */
+/* Define to the sub-directory where libtool stores uninstalled libraries. */
 #define LT_OBJDIR ".libs/"
 
 /* Define to 1 if your C compiler doesn't accept -c and -o together. */

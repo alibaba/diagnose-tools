@@ -110,8 +110,8 @@ DIST_COMMON = INSTALL NEWS README AUTHORS ChangeLog \
 	$(top_srcdir)/src/setjmp/libunwind-setjmp.pc.in \
 	$(am__include_HEADERS_DIST) $(noinst_HEADERS) COPYING TODO \
 	config/ar-lib config/compile config/config.guess \
-	config/config.sub config/depcomp config/install-sh \
-	config/missing config/ltmain.sh $(top_srcdir)/config/ar-lib \
+	config/config.sub config/install-sh config/missing \
+	config/ltmain.sh $(top_srcdir)/config/ar-lib \
 	$(top_srcdir)/config/compile $(top_srcdir)/config/config.guess \
 	$(top_srcdir)/config/config.sub \
 	$(top_srcdir)/config/install-sh $(top_srcdir)/config/ltmain.sh \
@@ -322,6 +322,7 @@ LIBZ = -lz
 LIPO = 
 LN_S = ln -s
 LTLIBOBJS = 
+LT_SYS_LIBRARY_PATH = 
 MAINT = #
 MAKEINFO = ${SHELL} /home/baoyou.xie/git/diagnose-tools/deps/libunwind/config/missing makeinfo
 MANIFEST_TOOL = :
