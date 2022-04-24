@@ -127,10 +127,8 @@ static int lookup_syms(void)
 {
 	LOOKUP_SYMS(text_mutex);
 	LOOKUP_SYMS(tasklist_lock);
-#if defined(DIAG_ARM64)
-	LOOKUP_SYMS(__flush_dcache_area);
-	LOOKUP_SYMS(aarch64_insn_patch_text);
-#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 0, 0) || defined(CENTOS_4_18_193)
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 2, 0) || defined(CENTOS_4_18_193)
 	LOOKUP_SYMS(stack_trace_save_tsk);
 #ifdef CONFIG_USER_STACKTRACE_SUPPORT
 	LOOKUP_SYMS(stack_trace_save_user);
@@ -141,19 +139,16 @@ static int lookup_syms(void)
 	LOOKUP_SYMS(save_stack_trace_user);
 #endif
 #endif
+
+#if defined(DIAG_ARM64)
+	LOOKUP_SYMS(__flush_dcache_area);
+	LOOKUP_SYMS(aarch64_insn_patch_text);
 #else
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,12,0)
 	LOOKUP_SYMS(text_poke_smp);
 #else
 	LOOKUP_SYMS(text_poke_bp);
 #endif /* LINUX_VERSION_CODE */
-#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 0, 0) || defined(CENTOS_4_18_193)
-	LOOKUP_SYMS(stack_trace_save_tsk);
-	LOOKUP_SYMS(stack_trace_save_user);
-#else
-	LOOKUP_SYMS(save_stack_trace_user);
-	LOOKUP_SYMS(save_stack_trace_tsk);
-#endif
 #endif /* DIAG_ARM64 */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
