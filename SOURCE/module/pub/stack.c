@@ -142,7 +142,9 @@ copy_stack_frame(const void __user *fp, struct stackframe *frame)
 #endif
 		goto out;
 
+	pagefault_disable();
 	ret = __copy_from_user_inatomic(data, fp, 16);
+	pagefault_enable();
 	if (ret)
 		ret = -EFAULT;
 	else
@@ -832,8 +834,10 @@ void diag_task_raw_stack(struct task_struct *tsk, struct diag_raw_stack_detail *
 	stack = (char *)&detail->stack[0];
 	for (i = 0; i < (DIAG_USER_STACK_SIZE / 1024); i++) {
 		if (tsk == current) {
+			pagefault_disable();
 			ret = __copy_from_user_inatomic(stack,
 				(void __user *)sp + detail->stack_size, 1024);
+			pagefault_enable();
 		} else {
 			ret = diagnose_task_raw_stack_remote(tsk, stack,
 				(void __user *)sp + detail->stack_size, 1024);
