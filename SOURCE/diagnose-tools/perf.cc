@@ -64,6 +64,7 @@ void usage_perf(void)
 	printf("            raw-stack output raw stack\n");
 	printf("        --deactivate\n");
 	printf("        --report dump log with text/file.\n");
+	printf("            no-attach ignore attaching to the target process to prevent getting stuck\n");
 	printf("        --test testcase for perf.\n");
 }
 
@@ -357,6 +358,7 @@ static void do_dump(const char *arg)
 	string input_line;
 	int java_only = 0;
 	int user_symbol = 1;
+	int no_attach = 0;
 
 	report_reverse = parse.int_value("reverse");
 	console = parse.int_value("console");
@@ -367,12 +369,13 @@ static void do_dump(const char *arg)
 	out_flame = parse.int_value("flame", 1);
 	java_only = parse.int_value("java-only", 0);
 	user_symbol = parse.int_value("user-symbol", 1);
+	no_attach = parse.int_value("no-attach", 0);
 	g_symbol_parser.java_only = java_only;
 	g_symbol_parser.user_symbol = user_symbol;
 
 	memset(variant_buf, 0, 50 * 1024 * 1024);
 	if (console) {
-		java_attach_once();
+		java_attach_once(no_attach);
 
 		while (cin) {
 			getline(cin, input_line);
@@ -392,7 +395,7 @@ static void do_dump(const char *arg)
 		fin.read(variant_buf, 50 * 1024 * 1024);
 		len = fin.gcount();
 		if (len > 0) {
-			java_attach_once();
+			java_attach_once(no_attach);
 			do_extract(variant_buf, len);
                         fin.close();
 		}
@@ -404,7 +407,7 @@ static void do_dump(const char *arg)
                                fin.read(variant_buf, 50 * 1024 * 1024);
                                len = fin.gcount();
                                if (len > 0) {
-                                       java_attach_once();
+                                       java_attach_once(no_attach);
                                        do_extract(variant_buf, len);
                                        memset(variant_buf, 0, 50 * 1024 * 1024);
                                }
@@ -428,7 +431,7 @@ static void do_dump(const char *arg)
 			}
 		} else {
 			if (ret == 0 && len > 0) {
-				java_attach_once();
+				java_attach_once(no_attach);
 				do_extract(variant_buf, len);
 			}
 		}
