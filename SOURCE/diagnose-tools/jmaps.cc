@@ -691,13 +691,16 @@ void attach_java_process(PROCESS_MAP &root_map, int need_check)
     dump_proc_perf(root_map, need_check);
 }
 
-int java_attach_once(void)
+int java_attach_once(int flag_no_attach)
 {
     NAMESPACE_MAP ns_map;
     PROCESS_MAP root_map;
     static int first = 1;
 
     char buf[1024] = {0};
+
+	if (flag_no_attach)
+		return 0;
 
     getcwd(buf, sizeof(buf));
 

@@ -157,7 +157,7 @@ class pid_cmdline {
 int jmaps_main(int argc, char **argv);
 void restore_global_env();
 int attach_ns_env(int pid);
-int java_attach_once();
+int java_attach_once(int flag_no_attach = 0);
 
 extern class pid_cmdline pid_cmdline;
 
