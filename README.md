@@ -32,4 +32,3 @@
   
     make test
     
-  不清楚的地方，加我的微信：linux-kernel
