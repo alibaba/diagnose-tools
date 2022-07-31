@@ -58,6 +58,7 @@ static inline void __percpu_counter_add(struct percpu_counter *fbc,
 #include "pub/variant_buffer.h"
 #include "pub/stack.h"
 #include "uapi/throttle_delay.h"
+#include "uapi/pmu.h"
 /**
  * 手工替换函数相关的宏
  */
@@ -478,6 +479,11 @@ struct diag_percpu_context {
 		struct rss_monitor_detail rss_monitor_detail;
 		struct rss_monitor_raw_stack_detail rss_monitor_raw_stack_detail;
 	} rss_monitor;
+
+	struct {
+		struct perf_event *events[PMU_INDEX_MAX];
+		struct diag_pmu_detail detail;
+	} pmu;
 };
 
 extern struct diag_percpu_context *diag_percpu_context[NR_CPUS];
@@ -889,6 +895,11 @@ int activate_memcg_stats(void);
 int deactivate_memcg_stats(void);
 int diag_memcg_stats_init(void);
 void diag_memcg_stats_exit(void);
+
+int activate_pmu(void);
+int deactivate_pmu(void);
+int diag_pmu_init(void);
+void diag_pmu_exit(void);
 
 int diag_dev_init(void);
 void diag_dev_cleanup(void);

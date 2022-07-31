@@ -12,7 +12,7 @@
 #include "pub/cgroup.h"
 #include "../symbol.h"
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0) || LINUX_VERSION_CODE > KERNEL_VERSION(4,10,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0) || LINUX_VERSION_CODE > KERNEL_VERSION(5,16,0)
 struct cgroup * cpuacct_to_cgroup(struct cpuacct *acct)
 {
 	return NULL;
@@ -33,8 +33,6 @@ void diag_cpuacct_cgroup_name_tsk(struct task_struct *tsk, char *buf, unsigned i
 }
 
 #else
-
-typedef struct cpuacct *(*match_cpuacct)(struct cpuacct *acct, void *data);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,12,0)
 
@@ -98,7 +96,7 @@ struct cgroup *diag_cpuacct_cgroup_tsk(struct task_struct *tsk)
 	return ret;
 }
 
-static struct cpuacct * cpuacct_cgroup_walk_tree(match_cpuacct match_cpuacct, void *data)
+struct cpuacct * cpuacct_cgroup_walk_tree(match_cpuacct match_cpuacct, void *data)
 {
 	struct cpuacct *root = orig_root_cpuacct;
 	struct cgroup_subsys_state *css;
@@ -173,7 +171,7 @@ static inline int diag_cgroup_name(struct cgroup *cgrp, char *buf, size_t buflen
 	return 0;
 }
 
-static struct cpuacct * cpuacct_cgroup_walk_tree(match_cpuacct match_cpuacct, void *data)
+struct cpuacct * cpuacct_cgroup_walk_tree(match_cpuacct match_cpuacct, void *data)
 {
 	struct cpuacct *root = orig_root_cpuacct;
 	struct cgroup_subsys_state *css;

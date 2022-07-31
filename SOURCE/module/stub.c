@@ -260,6 +260,13 @@ int __weak memcg_stats_syscall(struct pt_regs *regs, long id)
 	return -ENOSYS;
 }
 
+DIAG_WEAK_FUNC_INIT_EXIT(pmu)
+DIAG_WEAK_FUNC_ACT_DEACT_IOCTL(pmu)
+int __weak pmu_syscall(struct pt_regs *regs, long id)
+{
+	return -ENOSYS;
+}
+
 void __weak sys_loop_timer(struct diag_percpu_context *context)
 {
     //

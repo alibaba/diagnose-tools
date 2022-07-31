@@ -101,6 +101,7 @@ extern unsigned long debug_mode;
 #define DIAG_IOCTL_TYPE_MEMCG_STATS (DIAG_IOCTL_TYPE_RSS_MONITOR + 1)
 #define DIAG_IOCTL_TYPE_THROTTLE_DELAY (DIAG_IOCTL_TYPE_MEMCG_STATS + 1)
 #define DIAG_IOCTL_TYPE_TCP_CONNECT (DIAG_IOCTL_TYPE_THROTTLE_DELAY + 1)
+#define DIAG_IOCTL_TYPE_PMU (DIAG_IOCTL_TYPE_TCP_CONNECT + 1)
 
 #define DIAG_IOCTL_TYPE_END (DIAG_IOCTL_TYPE_THROTTLE_DELAY + 1)
 
@@ -355,6 +356,10 @@ struct diag_ioctl_dump_param_cycle {
 #define DIAG_BASE_SYSCALL_TCP_CONNECT \
 	(DIAG_BASE_SYSCALL_THROTTLE_DELAY + DIAG_SYSCALL_INTERVAL)
 
+//2050
+#define DIAG_BASE_SYSCALL_PMU \
+	(DIAG_BASE_SYSCALL_TCP_CONNECT + DIAG_SYSCALL_INTERVAL)
+
 #define DIAG_SYSCALL_END (DIAG_BASE_SYSCALL + DIAG_SYSCALL_INTERVAL * 1000)
 
 enum diag_record_id {
@@ -529,6 +534,9 @@ enum diag_record_id {
 
 	et_tcp_connect_base = et_throttle_delay_base + DIAG_EVENT_TYPE_INTERVAL,
 	et_tcp_connect_detail,
+
+	et_pmu_base = et_tcp_connect_base + DIAG_EVENT_TYPE_INTERVAL,
+	et_pmu_detail,
 
 	et_count
 };

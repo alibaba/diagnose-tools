@@ -183,6 +183,8 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 			activate_throttle_delay();
 		} else if (strcmp(func, "tcp-connect") == 0) {
 			activate_tcp_connect();
+		} else if (strcmp(func, "pmu") == 0) {
+			activate_pmu();
 		}
 
 		up(&controller_sem);
@@ -264,6 +266,8 @@ static ssize_t controller_file_write(struct diag_trace_file *trace_file,
 			deactivate_throttle_delay();
 		} else if (strcmp(func, "tcp-connect") == 0) {
 			deactivate_tcp_connect();
+		} else if (strcmp(func, "pmu") == 0) {
+			deactivate_pmu();
 		}
 
 		up(&controller_sem);
@@ -564,6 +568,12 @@ static int __init diagnosis_init(void)
 		goto out_fs;
 	}
 
+	ret = diag_pmu_init();
+	if (ret) {
+		pr_err("diag_pmu_init failed.\n");
+		goto out_pmu;
+	}
+
 	ret = diag_xby_test_init();
 	if (ret) {
 		pr_err("diag_xhy_test_init failed.\n");
@@ -587,6 +597,8 @@ static int __init diagnosis_init(void)
 out_dev:
 	diag_xby_test_exit();
 out_xby_test:
+	diag_pmu_exit();
+out_pmu:
 	diag_fs_exit();
 out_fs:
 	diag_pupil_exit();
@@ -657,6 +669,9 @@ static void __exit diagnosis_exit(void)
 	msleep(20);
 
 	diag_fs_exit();
+	msleep(20);
+
+	diag_pmu_exit();
 	msleep(20);
 
 	alidiagnose_symbols_exit();

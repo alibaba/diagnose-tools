@@ -21,5 +21,8 @@ struct cgroup *diag_cpuacct_cgroup_tsk(struct task_struct *tsk);
 void diag_cpuacct_cgroup_name_tsk(struct task_struct *tsk, char *buf, unsigned int count);
 struct cgroup * cpuacct_to_cgroup(struct cpuacct *acct);
 
+typedef struct cpuacct *(*match_cpuacct)(struct cpuacct *acct, void *data);
+struct cpuacct * cpuacct_cgroup_walk_tree(match_cpuacct match_cpuacct, void *data);
+
 #endif /* __DIAG_PUB_CGROUP_H */
 

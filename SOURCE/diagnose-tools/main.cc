@@ -249,6 +249,7 @@ static struct diagnose_func all_funcs[] {
 	{"task-monitor", task_monitor_main, 0},
 	{"rw-sem", rw_sem_main, 0},
 	{"rss-monitor", rss_monitor_main, 0},
+	{"pmu", pmu_main, 0},
 	{"test", testcase_main, 0},
 };
 

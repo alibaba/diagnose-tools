@@ -177,6 +177,9 @@ void usage_fs_cache(void);
 int high_order_main(int argc, char *argv[]);
 void usage_high_order(void);
 
+int pmu_main(int argc, char **argv);
+void usage_pmu(void);
+
 int testcase_main(int argc, char *argv[]);
 
 struct timeval;

@@ -229,6 +229,7 @@ ifneq ($(KERNELRELEASE),)
 	$(TARGET)-objs += fs/fs_entry.o fs/orphan.o fs/shm.o fs/rw_top.o
 	$(TARGET)-objs += net/net_entry.o net/tcp_retrans.o net/drop_packet.o net/ping_delay.o net/ping_delay6.o \
 			net/net_bandwidth.o net/tcp_connect.o
+	$(TARGET)-objs += pmu/entry.o pmu/pmu.o pmu/debug.o
 
 	ifeq ($(EXPERIENTIAL),1)
 		$(TARGET)-objs += test/test.o
